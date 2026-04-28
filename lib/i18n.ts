@@ -83,6 +83,22 @@ export const t = {
     draft: 'Utkast',
     inProgress: 'Pågår',
     complete: 'Ferdig',
+    released: 'Utgitt',
+
+    // Spotify import
+    importFromSpotify: '🎵 Importer fra Spotify',
+    importTitle: 'Importer låter fra Spotify',
+    importSubtitle: 'Top 10 mest populære for denne artisten',
+    importSelectAll: 'Velg alle',
+    importDeselectAll: 'Fjern alle',
+    importSelected: 'Importer {n} valgte',
+    importNoTracks: 'Fant ingen tracks på Spotify for denne artisten.',
+    importLoading: 'Henter låter fra Spotify...',
+    importing: 'Importerer...',
+    importAlreadyImported: 'Allerede importert',
+    importPopularityHint: 'Popularity er Spotifys relative score 0-100, ikke ekte stream-tall',
+    importNoSpotifyArtist: 'Koble denne artisten til en Spotify-profil først for å importere låter.',
+    spotifyPopularity: 'Popularity',
 
     // Song tabs
     lyrics: 'Sangtekst',
@@ -225,6 +241,22 @@ export const t = {
     draft: 'Draft',
     inProgress: 'In progress',
     complete: 'Complete',
+    released: 'Released',
+
+    // Spotify import
+    importFromSpotify: '🎵 Import from Spotify',
+    importTitle: 'Import songs from Spotify',
+    importSubtitle: 'Top 10 most popular tracks for this artist',
+    importSelectAll: 'Select all',
+    importDeselectAll: 'Deselect all',
+    importSelected: 'Import {n} selected',
+    importNoTracks: 'No tracks found on Spotify for this artist.',
+    importLoading: 'Fetching songs from Spotify...',
+    importing: 'Importing...',
+    importAlreadyImported: 'Already imported',
+    importPopularityHint: 'Popularity is Spotify\'s relative 0-100 score, not real stream counts',
+    importNoSpotifyArtist: 'Link this artist to a Spotify profile first to import songs.',
+    spotifyPopularity: 'Popularity',
 
     // Song tabs
     lyrics: 'Lyrics',

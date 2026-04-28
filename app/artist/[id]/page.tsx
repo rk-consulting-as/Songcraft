@@ -7,15 +7,41 @@ import Link from 'next/link'
 
 import type { SocialLinksMap } from '@/lib/socialLinks'
 
-type Song = { id: string; title: string; status: string; created_at: string; lyrics_instructions: string }
+type Song = {
+  id: string; title: string; status: string; created_at: string; lyrics_instructions: string
+  spotify_track_id?: string | null
+  spotify_url?: string | null
+  spotify_popularity?: number | null
+  spotify_release_date?: string | null
+  spotify_album?: string | null
+  spotify_cover_url?: string | null
+}
 type Artist = {
   id: string; name: string; genre: string; description: string; song_structure: string
   avatar_url?: string | null
+  spotify_id?: string | null
   spotify_url?: string | null; spotify_verified?: boolean
   social_links?: SocialLinksMap | null
 }
 
-const STATUS_COLORS: Record<string, string> = { draft: '#8a7a60', in_progress: '#d4a843', complete: '#7bc87b' }
+type SpotifyTrack = {
+  id: string
+  title: string
+  album?: string
+  releaseDate?: string
+  durationMs?: number
+  popularity: number
+  coverUrl: string | null
+  spotifyUrl: string | null
+  explicit: boolean
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  draft: '#8a7a60',
+  in_progress: '#d4a843',
+  complete: '#7bc87b',
+  released: '#1ed760',
+}
 
 export default function ArtistPage() {
   const params = useParams()
@@ -32,6 +58,14 @@ export default function ArtistPage() {
   const [generatedSongs, setGeneratedSongs] = useState<{ title: string; instructions: string }[]>([])
   const [saving, setSaving] = useState(false)
   const [useProfile, setUseProfile] = useState(true)
+
+  // Spotify import
+  const [showImport, setShowImport] = useState(false)
+  const [importLoading, setImportLoading] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [spotifyTracks, setSpotifyTracks] = useState<SpotifyTrack[]>([])
+  const [importError, setImportError] = useState<string | null>(null)
+  const [selectedTrackIds, setSelectedTrackIds] = useState<Set<string>>(new Set())
 
   useEffect(() => { setLangState(useLang()); fetchData() }, [artistId])
   const tx = t[lang]
@@ -101,9 +135,84 @@ export default function ArtistPage() {
     setSongs(songs.filter(s => s.id !== id))
   }
 
+  // Spotify import
+  const openImport = async () => {
+    if (!artist?.spotify_id) return
+    setShowImport(true)
+    setImportLoading(true)
+    setImportError(null)
+    setSpotifyTracks([])
+    setSelectedTrackIds(new Set())
+    try {
+      const res = await fetch(`/api/spotify/tracks?artistId=${encodeURIComponent(artist.spotify_id)}`)
+      const data = await res.json()
+      if (data.error) {
+        setImportError(data.error)
+      } else {
+        const tracks = (data.tracks || []) as SpotifyTrack[]
+        setSpotifyTracks(tracks)
+        // Pre-select tracks that are NOT already imported.
+        const alreadyImported = new Set(songs.map(s => s.spotify_track_id).filter(Boolean) as string[])
+        setSelectedTrackIds(new Set(tracks.filter(t => !alreadyImported.has(t.id)).map(t => t.id)))
+      }
+    } catch (e: any) {
+      setImportError(e?.message || 'Failed to fetch tracks')
+    }
+    setImportLoading(false)
+  }
+
+  const toggleTrack = (id: string) => {
+    setSelectedTrackIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const isAlreadyImported = (trackId: string) => songs.some(s => s.spotify_track_id === trackId)
+
+  // Normalize Spotify's release_date (which can be YYYY, YYYY-MM, or YYYY-MM-DD) to YYYY-MM-DD for the date column.
+  const normalizeReleaseDate = (raw?: string): string | null => {
+    if (!raw) return null
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw
+    if (/^\d{4}-\d{2}$/.test(raw)) return raw + '-01'
+    if (/^\d{4}$/.test(raw)) return raw + '-01-01'
+    return null
+  }
+
+  const importSelected = async () => {
+    if (selectedTrackIds.size === 0) return
+    setImporting(true)
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const toImport = spotifyTracks.filter(t => selectedTrackIds.has(t.id) && !isAlreadyImported(t.id))
+    const rows = toImport.map(t => ({
+      artist_id: artistId,
+      user_id: user?.id,
+      title: t.title,
+      lyrics_instructions: '',
+      status: 'released',
+      spotify_track_id: t.id,
+      spotify_url: t.spotifyUrl,
+      spotify_popularity: t.popularity,
+      spotify_release_date: normalizeReleaseDate(t.releaseDate),
+      spotify_album: t.album || null,
+      spotify_cover_url: t.coverUrl,
+    }))
+    const { data, error } = await supabase.from('songs').insert(rows).select()
+    if (error) {
+      setImportError(error.message)
+    } else if (data) {
+      setSongs([...data, ...songs])
+      setShowImport(false)
+    }
+    setImporting(false)
+  }
+
   if (loading) return <div style={{ color: '#6a5a40', padding: '40px' }}>{tx.loading}</div>
 
-  const statusLabel = (s: string) => ({ draft: tx.draft, in_progress: tx.inProgress, complete: tx.complete }[s] || s)
+  const statusLabel = (s: string) => ({ draft: tx.draft, in_progress: tx.inProgress, complete: tx.complete, released: tx.released }[s] || s)
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0a0f 0%, #12071e 50%, #0a0f0a 100%)' }}>
@@ -158,7 +267,17 @@ export default function ArtistPage() {
             </div>
           </div>
         </div>
-        <button className="btn-gold" onClick={() => { setShowGenerator(true); setGeneratedSongs([]) }}>{tx.generateWithAI}</button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          {artist?.spotify_id && (
+            <button
+              onClick={openImport}
+              style={{ background: 'rgba(30,215,96,0.12)', border: '1px solid rgba(30,215,96,0.4)', color: '#1ed760', padding: '10px 18px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}
+            >
+              {tx.importFromSpotify}
+            </button>
+          )}
+          <button className="btn-gold" onClick={() => { setShowGenerator(true); setGeneratedSongs([]) }}>{tx.generateWithAI}</button>
+        </div>
       </div>
 
       <div style={{ padding: '32px', maxWidth: '900px', margin: '0 auto' }}>
@@ -247,6 +366,125 @@ export default function ArtistPage() {
           </div>
         )}
 
+        {/* Spotify import card */}
+        {showImport && (
+          <div className="card" style={{ marginBottom: '32px', borderColor: 'rgba(30,215,96,0.4)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <div>
+                <h2 style={{ margin: 0, color: '#1ed760', fontWeight: 'normal', fontSize: '18px' }}>{tx.importTitle}</h2>
+                <p style={{ margin: '4px 0 0', color: '#6a5a40', fontSize: '12px' }}>{tx.importSubtitle}</p>
+              </div>
+              <button className="btn-outline" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => setShowImport(false)}>{tx.close}</button>
+            </div>
+
+            {importLoading && <p style={{ color: '#6a5a40', fontSize: '13px' }}>🔍 {tx.importLoading}</p>}
+
+            {importError && (
+              <div style={{ background: 'rgba(200,80,80,0.08)', border: '1px solid rgba(200,80,80,0.3)', color: '#c05050', padding: '10px 14px', borderRadius: '4px', fontSize: '13px', marginBottom: '12px' }}>
+                {importError}
+              </div>
+            )}
+
+            {!importLoading && spotifyTracks.length === 0 && !importError && (
+              <p style={{ color: '#6a5a40', fontSize: '13px' }}>{tx.importNoTracks}</p>
+            )}
+
+            {spotifyTracks.length > 0 && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <button
+                    onClick={() => {
+                      const importable = spotifyTracks.filter(t => !isAlreadyImported(t.id))
+                      if (selectedTrackIds.size === importable.length) setSelectedTrackIds(new Set())
+                      else setSelectedTrackIds(new Set(importable.map(t => t.id)))
+                    }}
+                    style={{ background: 'none', border: 'none', color: '#8a7a60', fontSize: '12px', cursor: 'pointer' }}
+                  >
+                    {selectedTrackIds.size === spotifyTracks.filter(t => !isAlreadyImported(t.id)).length ? tx.importDeselectAll : tx.importSelectAll}
+                  </button>
+                  <span style={{ color: '#5a4a30', fontSize: '11px' }}>💡 {tx.importPopularityHint}</span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
+                  {spotifyTracks.map(track => {
+                    const already = isAlreadyImported(track.id)
+                    const checked = selectedTrackIds.has(track.id)
+                    return (
+                      <div
+                        key={track.id}
+                        onClick={() => !already && toggleTrack(track.id)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '12px',
+                          padding: '10px 12px', borderRadius: '6px',
+                          background: already ? 'rgba(255,255,255,0.02)' : checked ? 'rgba(30,215,96,0.08)' : 'rgba(255,255,255,0.03)',
+                          border: `1px solid ${already ? 'rgba(180,140,80,0.1)' : checked ? 'rgba(30,215,96,0.3)' : 'rgba(180,140,80,0.15)'}`,
+                          cursor: already ? 'default' : 'pointer',
+                          opacity: already ? 0.55 : 1,
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={already}
+                          onChange={() => toggleTrack(track.id)}
+                          onClick={e => e.stopPropagation()}
+                          style={{ width: '16px', height: '16px', accentColor: '#1ed760', cursor: already ? 'default' : 'pointer', flexShrink: 0 }}
+                        />
+                        {track.coverUrl ? (
+                          <img src={track.coverUrl} alt="" style={{ width: '44px', height: '44px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }} />
+                        ) : (
+                          <div style={{ width: '44px', height: '44px', borderRadius: '4px', background: 'rgba(30,215,96,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>🎵</div>
+                        )}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ color: '#e8e0d0', fontSize: '14px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {track.title}
+                            {track.explicit && <span style={{ marginLeft: 6, fontSize: 9, padding: '1px 4px', background: '#3a3530', color: '#a09080', borderRadius: 2 }}>E</span>}
+                          </div>
+                          <div style={{ color: '#6a5a40', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {track.album}{track.releaseDate ? ' · ' + track.releaseDate.slice(0, 4) : ''}
+                            {already && <span style={{ marginLeft: 8, color: '#5a7a5a' }}>✓ {tx.importAlreadyImported}</span>}
+                          </div>
+                        </div>
+                        {/* Popularity bar */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px', flexShrink: 0, width: '70px' }}>
+                          <div style={{ width: '60px', height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '2px', overflow: 'hidden' }}>
+                            <div style={{ width: `${track.popularity}%`, height: '100%', background: '#1ed760' }} />
+                          </div>
+                          <span style={{ color: '#5a7a5a', fontSize: '10px' }}>{track.popularity}/100</span>
+                        </div>
+                        {track.spotifyUrl && (
+                          <a
+                            href={track.spotifyUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            title={lang === 'no' ? 'Åpne i Spotify' : 'Open in Spotify'}
+                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', borderRadius: '50%', background: '#1ed760', color: '#000', fontSize: '12px', textDecoration: 'none', fontWeight: 'bold', flexShrink: 0 }}
+                          >
+                            ♪
+                          </a>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    className="btn-gold"
+                    onClick={importSelected}
+                    disabled={importing || selectedTrackIds.size === 0}
+                    style={{ background: '#1ed760', borderColor: '#1ed760', color: '#000' }}
+                  >
+                    {importing ? tx.importing : tx.importSelected.replace('{n}', String(selectedTrackIds.size))}
+                  </button>
+                  <button className="btn-outline" onClick={() => setShowImport(false)}>{tx.cancel}</button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <h2 style={{ margin: 0, color: '#d4a843', fontWeight: 'normal', fontSize: '16px' }}>{tx.songsCount} ({songs.length})</h2>
         </div>
@@ -259,32 +497,66 @@ export default function ArtistPage() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {songs.map((song, i) => (
-              <Link key={song.id} href={`/song/${song.id}`} style={{ textDecoration: 'none' }}>
-                <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '16px 20px', transition: 'border-color 0.2s' }}
-                  onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(212,168,67,0.5)')}
-                  onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(180,140,80,0.2)')}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1 }}>
-                    <span style={{ color: '#3a3530', fontSize: '13px', minWidth: '28px' }}>#{i + 1}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ color: '#e8e0d0', fontSize: '15px', marginBottom: '3px' }}>{song.title}</div>
-                      {song.lyrics_instructions && (
-                        <div style={{ color: '#5a4a30', fontSize: '12px', lineHeight: '1.4' }}>
-                          {song.lyrics_instructions.length > 100 ? song.lyrics_instructions.slice(0, 100) + '...' : song.lyrics_instructions}
+            {songs.map((song, i) => {
+              const isReleased = song.status === 'released'
+              return (
+                <Link key={song.id} href={`/song/${song.id}`} style={{ textDecoration: 'none' }}>
+                  <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '16px 20px', transition: 'border-color 0.2s', borderColor: isReleased ? 'rgba(30,215,96,0.2)' : undefined }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = isReleased ? 'rgba(30,215,96,0.5)' : 'rgba(212,168,67,0.5)')}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = isReleased ? 'rgba(30,215,96,0.2)' : 'rgba(180,140,80,0.2)')}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0 }}>
+                      {song.spotify_cover_url ? (
+                        <img src={song.spotify_cover_url} alt="" style={{ width: '44px', height: '44px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }} />
+                      ) : (
+                        <span style={{ color: '#3a3530', fontSize: '13px', minWidth: '28px', textAlign: 'center' }}>#{i + 1}</span>
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ color: '#e8e0d0', fontSize: '15px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{song.title}</span>
+                          {isReleased && song.spotify_url && (
+                            <a
+                              href={song.spotify_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={e => { e.preventDefault(); e.stopPropagation(); window.open(song.spotify_url!, '_blank') }}
+                              title={lang === 'no' ? 'Åpne i Spotify' : 'Open in Spotify'}
+                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '18px', height: '18px', borderRadius: '50%', background: '#1ed760', color: '#000', fontSize: '10px', textDecoration: 'none', fontWeight: 'bold', flexShrink: 0 }}
+                            >
+                              ♪
+                            </a>
+                          )}
+                        </div>
+                        {isReleased ? (
+                          <div style={{ color: '#5a7a5a', fontSize: '12px', lineHeight: '1.4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {song.spotify_album}
+                            {song.spotify_release_date ? ' · ' + song.spotify_release_date.slice(0, 4) : ''}
+                          </div>
+                        ) : song.lyrics_instructions ? (
+                          <div style={{ color: '#5a4a30', fontSize: '12px', lineHeight: '1.4' }}>
+                            {song.lyrics_instructions.length > 100 ? song.lyrics_instructions.slice(0, 100) + '...' : song.lyrics_instructions}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                      {isReleased && typeof song.spotify_popularity === 'number' && (
+                        <div title={`${tx.spotifyPopularity}: ${song.spotify_popularity}/100`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
+                          <div style={{ width: '60px', height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '2px', overflow: 'hidden' }}>
+                            <div style={{ width: `${song.spotify_popularity}%`, height: '100%', background: '#1ed760' }} />
+                          </div>
+                          <span style={{ color: '#5a7a5a', fontSize: '10px' }}>{song.spotify_popularity}/100</span>
                         </div>
                       )}
+                      <span style={{ fontSize: '11px', letterSpacing: '1px', color: STATUS_COLORS[song.status] || '#8a7a60', border: `1px solid ${STATUS_COLORS[song.status] || '#8a7a60'}40`, padding: '3px 10px', borderRadius: '20px' }}>
+                        {statusLabel(song.status)}
+                      </span>
+                      <button onClick={e => deleteSong(song.id, e)} style={{ background: 'none', border: 'none', color: '#3a3530', cursor: 'pointer', fontSize: '18px', padding: '4px 8px' }}>×</button>
+                      <span style={{ color: '#6a5a40', fontSize: '13px' }}>→</span>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
-                    <span style={{ fontSize: '11px', letterSpacing: '1px', color: STATUS_COLORS[song.status] || '#8a7a60', border: `1px solid ${STATUS_COLORS[song.status] || '#8a7a60'}40`, padding: '3px 10px', borderRadius: '20px' }}>
-                      {statusLabel(song.status)}
-                    </span>
-                    <button onClick={e => deleteSong(song.id, e)} style={{ background: 'none', border: 'none', color: '#3a3530', cursor: 'pointer', fontSize: '18px', padding: '4px 8px' }}>×</button>
-                    <span style={{ color: '#6a5a40', fontSize: '13px' }}>→</span>
-                  </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              )
+            })}
           </div>
         )}
       </div>

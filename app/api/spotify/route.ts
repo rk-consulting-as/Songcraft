@@ -1,23 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-let cachedToken: { token: string; expires: number } | null = null
-
-async function getSpotifyToken() {
-  if (cachedToken && Date.now() < cachedToken.expires) return cachedToken.token
-  const res = await fetch('https://accounts.spotify.com/api/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: 'Basic ' + Buffer.from(
-        process.env.SPOTIFY_CLIENT_ID + ':' + process.env.SPOTIFY_CLIENT_SECRET
-      ).toString('base64'),
-    },
-    body: 'grant_type=client_credentials',
-  })
-  const data = await res.json()
-  cachedToken = { token: data.access_token, expires: Date.now() + (data.expires_in - 60) * 1000 }
-  return cachedToken.token
-}
+import { getSpotifyToken } from '@/lib/spotify'
 
 export async function GET(req: NextRequest) {
   const query = req.nextUrl.searchParams.get('q')
