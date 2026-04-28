@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSpotifyToken } from '@/lib/spotify'
+import { spotifyFetch } from '@/lib/spotify'
 
 // GET /api/spotify/track-by-url?url=<spotify track url, URI, or bare id>&market=NO
 //
@@ -70,10 +70,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const token = await getSpotifyToken()
-    const res = await fetch(
-      `https://api.spotify.com/v1/tracks/${encodeURIComponent(id)}?market=${encodeURIComponent(market)}`,
-      { headers: { Authorization: `Bearer ${token}` } }
+    const res = await spotifyFetch(
+      `https://api.spotify.com/v1/tracks/${encodeURIComponent(id)}?market=${encodeURIComponent(market)}`
     )
     if (!res.ok) {
       let detail = ''

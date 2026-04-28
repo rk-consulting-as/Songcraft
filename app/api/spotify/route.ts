@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSpotifyToken } from '@/lib/spotify'
+import { spotifyFetch } from '@/lib/spotify'
 
 export async function GET(req: NextRequest) {
   const query = req.nextUrl.searchParams.get('q')
   if (!query) return NextResponse.json({ artists: [] })
 
   try {
-    const token = await getSpotifyToken()
-    const res = await fetch(
-      `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=artist&limit=5`,
-      { headers: { Authorization: `Bearer ${token}` } }
+    const res = await spotifyFetch(
+      `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=artist&limit=5`
     )
     const data = await res.json()
     const artists = (data.artists?.items || []).map((a: any) => ({

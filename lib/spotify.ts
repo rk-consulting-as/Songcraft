@@ -1,11 +1,9 @@
 // Server-side helpers for Spotify Web API (Client Credentials flow).
-// Used by /api/spotify (search) and /api/spotify/tracks (top tracks import).
+// Used by all routes under /api/spotify.
 
 let cachedToken: { token: string; expires: number } | null = null
 
-export async function getSpotifyToken(): Promise<string> {
-  if (cachedToken && Date.now() < cachedToken.expires) return cachedToken.token
-
+async function fetchNewToken(): Promise<string> {
   const res = await fetch('https://accounts.spotify.com/api/token', {
     method: 'POST',
     headers: {
@@ -24,4 +22,37 @@ export async function getSpotifyToken(): Promise<string> {
     expires: Date.now() + (data.expires_in - 60) * 1000,
   }
   return cachedToken.token
+}
+
+export async function getSpotifyToken(forceFresh = false): Promise<string> {
+  if (!forceFresh && cachedToken && Date.now() < cachedToken.expires) {
+    return cachedToken.token
+  }
+  return fetchNewToken()
+}
+
+/** Drop the cached token. Call this when Spotify returns 401. */
+export function invalidateSpotifyToken() {
+  cachedToken = null
+}
+
+/**
+ * Wrapper around fetch() that auto-retries once with a fresh token if Spotify returns 401.
+ * Use this from any route that calls Spotify Web API endpoints.
+ */
+export async function spotifyFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  let token = await getSpotifyToken()
+  let res = await fetch(url, {
+    ...init,
+    headers: { ...(init.headers || {}), Authorization: `Bearer ${token}` },
+  })
+  if (res.status === 401) {
+    invalidateSpotifyToken()
+    token = await getSpotifyToken(true)
+    res = await fetch(url, {
+      ...init,
+      headers: { ...(init.headers || {}), Authorization: `Bearer ${token}` },
+    })
+  }
+  return res
 }

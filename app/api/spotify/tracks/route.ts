@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSpotifyToken } from '@/lib/spotify'
+import { spotifyFetch } from '@/lib/spotify'
 
 // GET /api/spotify/tracks?artistId=<id>&artistName=<name>&market=NO
 //
@@ -57,13 +57,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ tracks: [], error: 'Missing artistId' }, { status: 400 })
   }
 
-  const token = await getSpotifyToken()
-  const headers = { Authorization: `Bearer ${token}` }
-
   // 1) Try the official top-tracks endpoint.
-  const topRes = await fetch(
-    `https://api.spotify.com/v1/artists/${encodeURIComponent(artistId)}/top-tracks?market=${encodeURIComponent(market)}`,
-    { headers }
+  const topRes = await spotifyFetch(
+    `https://api.spotify.com/v1/artists/${encodeURIComponent(artistId)}/top-tracks?market=${encodeURIComponent(market)}`
   )
   if (topRes.ok) {
     const data = await topRes.json()
@@ -76,7 +72,7 @@ export async function GET(req: NextRequest) {
     const q = encodeURIComponent(`artist:"${artistName}"`)
     // Don't pass `limit` — Spotify's default is 20 and it has tightened validation on this param.
     const searchUrl = `https://api.spotify.com/v1/search?q=${q}&type=track&market=${encodeURIComponent(market)}`
-    const searchRes = await fetch(searchUrl, { headers })
+    const searchRes = await spotifyFetch(searchUrl)
     if (searchRes.ok) {
       const data = await searchRes.json()
       const items: any[] = data.tracks?.items || []
