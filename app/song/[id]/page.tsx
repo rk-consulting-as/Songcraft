@@ -3,6 +3,8 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { t, useLang, type Lang } from '@/lib/i18n'
+import { type AIProvider, getStoredProvider, setStoredProvider } from '@/lib/aiProvider'
+import AIProviderPicker from '@/components/AIProviderPicker'
 import Link from 'next/link'
 
 const PLATFORMS = ['TikTok', 'Instagram', 'Facebook', 'YouTube', 'X/Twitter']
@@ -46,7 +48,16 @@ export default function SongPage() {
   const [publishContent, setPublishContent] = useState<Record<string,string>>({})
   const [title, setTitle] = useState('')
 
-  useEffect(() => { setLangState(useLang()); fetchSong() }, [songId])
+  // AI provider (persisted in localStorage)
+  const [aiProvider, setAiProvider] = useState<AIProvider>('anthropic')
+
+  // AI image generation state
+  const [imageGenerating, setImageGenerating] = useState(false)
+  const [imageError, setImageError] = useState<string | null>(null)
+
+  useEffect(() => { setLangState(useLang()); setAiProvider(getStoredProvider()); fetchSong() }, [songId])
+
+  const pickProvider = (p: AIProvider) => { setAiProvider(p); setStoredProvider(p) }
 
   const tx = t[lang]
 
@@ -89,11 +100,56 @@ export default function SongPage() {
     const res = await fetch('/api/ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, system }),
+      body: JSON.stringify({ messages, system, provider: aiProvider }),
     })
     const data = await res.json()
     setAiLoading(false); setAiTarget('')
     return data.text || ''
+  }
+
+  // AI cover image generation: takes the prompt, calls /api/image, uploads base64 to Storage,
+  // then sets cover_image_url. Stays in the existing 'covers' Supabase Storage bucket.
+  const generateCoverImage = async () => {
+    if (!coverPrompt.trim()) return
+    setImageGenerating(true)
+    setImageError(null)
+    try {
+      const res = await fetch('/api/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: coverPrompt, size: '1024x1024', quality: 'medium' }),
+      })
+      const data = await res.json()
+      if (data.error) {
+        setImageError(data.error)
+        setImageGenerating(false)
+        return
+      }
+      // Decode base64 to a Blob and upload to Supabase Storage.
+      const b64: string = data.b64
+      const mime: string = data.mime || 'image/png'
+      const binStr = atob(b64)
+      const bytes = new Uint8Array(binStr.length)
+      for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i)
+      const blob = new Blob([bytes], { type: mime })
+      const supabase = createClient()
+      const path = `${songId}/cover-${Date.now()}.png`
+      const { error: upErr } = await supabase.storage.from('covers').upload(path, blob, {
+        upsert: true,
+        contentType: mime,
+      })
+      if (upErr) {
+        setImageError(upErr.message)
+        setImageGenerating(false)
+        return
+      }
+      const { data: urlData } = supabase.storage.from('covers').getPublicUrl(path)
+      setCoverImageUrl(urlData.publicUrl)
+      await save({ cover_image_url: urlData.publicUrl })
+    } catch (e: any) {
+      setImageError(e?.message || 'Image generation failed')
+    }
+    setImageGenerating(false)
   }
 
   const buildArtistContext = () => {
@@ -242,10 +298,14 @@ export default function SongPage() {
           <input value={title} onChange={e => updateTitle(e.target.value)}
             style={{ background: 'none', border: 'none', color: '#e8e0d0', fontSize: '16px', outline: 'none', width: '220px', padding: '4px 0' }} />
         </div>
-        <select value={song?.status || 'draft'} onChange={e => updateStatus(e.target.value)}
-          style={{ width: 'auto', padding: '6px 10px', fontSize: '12px' }}>
-          {statusOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ color: '#5a4a30', fontSize: 11, letterSpacing: 1 }}>{tx.aiProviderLabel}</span>
+          <AIProviderPicker value={aiProvider} onChange={pickProvider} disabled={aiLoading || imageGenerating} />
+          <select value={song?.status || 'draft'} onChange={e => updateStatus(e.target.value)}
+            style={{ width: 'auto', padding: '6px 10px', fontSize: '12px' }}>
+            {statusOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -441,7 +501,26 @@ export default function SongPage() {
                   <button className="btn-outline" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={() => copy(coverPrompt)}>📋 {tx.copy}</button>
                 </div>
                 <textarea value={coverPrompt} onChange={e => { setCoverPrompt(e.target.value); save({ cover_prompt: e.target.value }) }} rows={8} />
-                <p style={{ color: '#6a5a40', fontSize: '12px', marginBottom: 0 }}>
+
+                {/* AI image generation directly from the prompt */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0 6px' }}>
+                  <button
+                    className="btn-gold"
+                    onClick={generateCoverImage}
+                    disabled={imageGenerating || !coverPrompt.trim()}
+                    style={{ background: 'linear-gradient(135deg, #c07bd0, #9060c0)', borderColor: '#9060c0', color: '#fff' }}
+                  >
+                    {imageGenerating ? tx.coverImageGenerating : (coverImageUrl ? '↻ ' + tx.coverImageRegenerate : tx.coverImageGenerate)}
+                  </button>
+                  <span style={{ color: '#6a5a40', fontSize: 11 }}>{tx.coverImageHint}</span>
+                </div>
+                {imageError && (
+                  <div style={{ background: 'rgba(200,80,80,0.08)', border: '1px solid rgba(200,80,80,0.3)', color: '#c05050', padding: '8px 12px', borderRadius: 4, fontSize: 12, marginTop: 8 }}>
+                    {imageError}
+                  </div>
+                )}
+
+                <p style={{ color: '#6a5a40', fontSize: '12px', margin: '14px 0 0' }}>
                   {tx.coverHint} <a href="https://midjourney.com" target="_blank" rel="noopener noreferrer" style={{ color: '#9080c0' }}>Midjourney</a>, <a href="https://openai.com/dall-e" target="_blank" rel="noopener noreferrer" style={{ color: '#9080c0' }}>DALL-E</a>
                 </p>
               </div>

@@ -100,6 +100,30 @@ export const t = {
     importNoSpotifyArtist: 'Koble denne artisten til en Spotify-profil først for å importere låter.',
     spotifyPopularity: 'Popularity',
 
+    // AI provider
+    aiProviderLabel: 'AI:',
+
+    // Cover image generation
+    coverImageGenerate: '🎨 Generer cover-bilde',
+    coverImageRegenerate: 'Generer nytt cover-bilde',
+    coverImageGenerating: 'Genererer bilde...',
+    coverImageHint: 'Bruker OpenAI gpt-image-1 fra prompten over',
+
+    // Albums
+    albums: 'Album',
+    newAlbum: '+ Nytt album',
+    editAlbum: 'Rediger album',
+    deleteAlbum: 'Slett album',
+    noAlbums: 'Ingen album enda. Opprett et album og legg sangene inn der.',
+    albumTitle: 'Albumtittel',
+    albumTitlePlaceholder: 'Eks: Greatest hits',
+    albumDescription: 'Beskrivelse',
+    albumDescriptionPlaceholder: 'Konsept, liner notes...',
+    albumReleaseDate: 'Utgivelsesdato',
+    albumCoverUrl: 'Cover-bilde URL',
+    assignToAlbum: 'Tilordne album',
+    singleNoAlbum: 'Single (ingen)',
+
     // Song tabs
     lyrics: 'Sangtekst',
     suno: 'Suno',
@@ -257,6 +281,30 @@ export const t = {
     importPopularityHint: 'Popularity is Spotify\'s relative 0-100 score, not real stream counts',
     importNoSpotifyArtist: 'Link this artist to a Spotify profile first to import songs.',
     spotifyPopularity: 'Popularity',
+
+    // AI provider
+    aiProviderLabel: 'AI:',
+
+    // Cover image generation
+    coverImageGenerate: '🎨 Generate cover image',
+    coverImageRegenerate: 'Regenerate cover image',
+    coverImageGenerating: 'Generating image...',
+    coverImageHint: 'Uses OpenAI gpt-image-1 from the prompt above',
+
+    // Albums
+    albums: 'Albums',
+    newAlbum: '+ New album',
+    editAlbum: 'Edit album',
+    deleteAlbum: 'Delete album',
+    noAlbums: 'No albums yet. Create an album and assign songs to it.',
+    albumTitle: 'Album title',
+    albumTitlePlaceholder: 'E.g. Greatest hits',
+    albumDescription: 'Description',
+    albumDescriptionPlaceholder: 'Concept, liner notes...',
+    albumReleaseDate: 'Release date',
+    albumCoverUrl: 'Cover image URL',
+    assignToAlbum: 'Assign to album',
+    singleNoAlbum: 'Single (none)',
 
     // Song tabs
     lyrics: 'Lyrics',

@@ -3,18 +3,30 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { t, useLang, type Lang } from '@/lib/i18n'
+import { type AIProvider, getStoredProvider, setStoredProvider } from '@/lib/aiProvider'
+import AIProviderPicker from '@/components/AIProviderPicker'
 import Link from 'next/link'
 
 import type { SocialLinksMap } from '@/lib/socialLinks'
 
 type Song = {
   id: string; title: string; status: string; created_at: string; lyrics_instructions: string
+  album_id?: string | null
   spotify_track_id?: string | null
   spotify_url?: string | null
   spotify_popularity?: number | null
   spotify_release_date?: string | null
   spotify_album?: string | null
   spotify_cover_url?: string | null
+}
+type Album = {
+  id: string
+  artist_id: string
+  user_id: string
+  title: string
+  description?: string | null
+  cover_url?: string | null
+  release_date?: string | null
 }
 type Artist = {
   id: string; name: string; genre: string; description: string; song_structure: string
@@ -59,6 +71,19 @@ export default function ArtistPage() {
   const [saving, setSaving] = useState(false)
   const [useProfile, setUseProfile] = useState(true)
 
+  // AI provider
+  const [aiProvider, setAiProvider] = useState<AIProvider>('anthropic')
+  const pickProvider = (p: AIProvider) => { setAiProvider(p); setStoredProvider(p) }
+
+  // Albums
+  const [albums, setAlbums] = useState<Album[]>([])
+  const [showAlbumForm, setShowAlbumForm] = useState(false)
+  const [editingAlbum, setEditingAlbum] = useState<Album | null>(null)
+  const [albumForm, setAlbumForm] = useState<{ title: string; description: string; cover_url: string; release_date: string }>(
+    { title: '', description: '', cover_url: '', release_date: '' }
+  )
+  const [savingAlbum, setSavingAlbum] = useState(false)
+
   // Spotify import
   const [showImport, setShowImport] = useState(false)
   const [importLoading, setImportLoading] = useState(false)
@@ -67,7 +92,7 @@ export default function ArtistPage() {
   const [importError, setImportError] = useState<string | null>(null)
   const [selectedTrackIds, setSelectedTrackIds] = useState<Set<string>>(new Set())
 
-  useEffect(() => { setLangState(useLang()); fetchData() }, [artistId])
+  useEffect(() => { setLangState(useLang()); setAiProvider(getStoredProvider()); fetchData() }, [artistId])
   const tx = t[lang]
 
   const fetchData = async () => {
@@ -76,7 +101,63 @@ export default function ArtistPage() {
     if (a) setArtist(a)
     const { data: s } = await supabase.from('songs').select('*').eq('artist_id', artistId).order('created_at', { ascending: false })
     if (s) setSongs(s)
+    const { data: al } = await supabase.from('albums').select('*').eq('artist_id', artistId).order('release_date', { ascending: false, nullsFirst: false })
+    if (al) setAlbums(al)
     setLoading(false)
+  }
+
+  // Albums CRUD
+  const openAlbumCreate = () => {
+    setEditingAlbum(null)
+    setAlbumForm({ title: '', description: '', cover_url: '', release_date: '' })
+    setShowAlbumForm(true)
+  }
+  const openAlbumEdit = (al: Album) => {
+    setEditingAlbum(al)
+    setAlbumForm({
+      title: al.title || '',
+      description: al.description || '',
+      cover_url: al.cover_url || '',
+      release_date: al.release_date || '',
+    })
+    setShowAlbumForm(true)
+  }
+  const saveAlbum = async () => {
+    if (!albumForm.title.trim()) return
+    setSavingAlbum(true)
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const payload: any = {
+      title: albumForm.title.trim(),
+      description: albumForm.description.trim() || null,
+      cover_url: albumForm.cover_url.trim() || null,
+      release_date: albumForm.release_date || null,
+    }
+    if (editingAlbum) {
+      const { data } = await supabase.from('albums').update(payload).eq('id', editingAlbum.id).select().single()
+      if (data) setAlbums(albums.map(a => a.id === editingAlbum.id ? data : a))
+    } else {
+      const { data } = await supabase.from('albums').insert({ ...payload, artist_id: artistId, user_id: user?.id }).select().single()
+      if (data) setAlbums([data, ...albums])
+    }
+    setShowAlbumForm(false)
+    setSavingAlbum(false)
+  }
+  const deleteAlbum = async (al: Album) => {
+    if (!confirm(lang === 'no' ? `Slette albumet "${al.title}"? Sangene blir ikke slettet — de blir bare singles.` : `Delete album "${al.title}"? The songs are not deleted — they become singles.`)) return
+    const supabase = createClient()
+    await supabase.from('albums').delete().eq('id', al.id)
+    setAlbums(albums.filter(a => a.id !== al.id))
+    // Local songs view: clear album_id on songs that pointed to this album.
+    setSongs(songs.map(s => s.album_id === al.id ? { ...s, album_id: null } : s))
+    setShowAlbumForm(false)
+  }
+
+  // Assign / unassign album for a song.
+  const assignSongAlbum = async (songId: string, albumId: string | null) => {
+    const supabase = createClient()
+    const { data } = await supabase.from('songs').update({ album_id: albumId }).eq('id', songId).select().single()
+    if (data) setSongs(songs.map(s => s.id === songId ? { ...s, album_id: data.album_id } : s))
   }
 
   const buildArtistContext = () => {
@@ -98,6 +179,7 @@ export default function ArtistPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        provider: aiProvider,
         messages: [{ role: 'user', content: `${artistContext ? artistContext + '\n\n' : ''}User request: ${prompt}\n\nNumber of songs: ${count}` }],
         system: `You are a creative music producer and songwriter. The user describes a theme or concept for multiple songs. Your task: Create EXACTLY ${count} song proposals with title and instructions for a songwriter.\n\nRespond ONLY with valid JSON, no text around it:\n[\n  {\n    "title": "Song title here",\n    "instructions": "Detailed instructions for the songwriter: theme, mood, verse structure, specific images/metaphors, chorus idea, tone and style. At least 3-4 sentences.${artist?.song_structure && useProfile ? ' Follow the song structure profile provided.' : ''}"\n  }\n]`,
       }),
@@ -335,9 +417,12 @@ export default function ArtistPage() {
               </div>
             </div>
 
-            <button className="btn-gold" onClick={generateBatch} disabled={generating || !prompt.trim()} style={{ marginBottom: generatedSongs.length > 0 ? '28px' : '0' }}>
-              {generating ? tx.planningText.replace('{n}', String(count)) : tx.generateProposals.replace('{n}', String(count))}
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: generatedSongs.length > 0 ? '28px' : '0' }}>
+              <button className="btn-gold" onClick={generateBatch} disabled={generating || !prompt.trim()}>
+                {generating ? tx.planningText.replace('{n}', String(count)) : tx.generateProposals.replace('{n}', String(count))}
+              </button>
+              <AIProviderPicker value={aiProvider} onChange={pickProvider} disabled={generating} />
+            </div>
 
             {generating && (
               <div style={{ marginTop: '20px' }}>
@@ -501,6 +586,92 @@ export default function ArtistPage() {
           </div>
         )}
 
+        {/* Albums section */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', marginTop: '8px' }}>
+          <h2 style={{ margin: 0, color: '#d4a843', fontWeight: 'normal', fontSize: '16px' }}>
+            {tx.albums} ({albums.length})
+          </h2>
+          <button
+            onClick={openAlbumCreate}
+            style={{ background: 'rgba(212,168,67,0.08)', border: '1px solid rgba(212,168,67,0.25)', color: '#d4a843', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+          >
+            {tx.newAlbum}
+          </button>
+        </div>
+
+        {albums.length > 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', marginBottom: '28px' }}>
+            {albums.map(al => {
+              const albumSongs = songs.filter(s => s.album_id === al.id)
+              return (
+                <div key={al.id} className="card" style={{ padding: '12px', cursor: 'pointer', position: 'relative' }} onClick={() => openAlbumEdit(al)}>
+                  {al.cover_url ? (
+                    <img src={al.cover_url} alt={al.title} style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '4px', marginBottom: '10px' }} />
+                  ) : (
+                    <div style={{ width: '100%', aspectRatio: '1 / 1', borderRadius: '4px', background: 'rgba(212,168,67,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px', marginBottom: '10px' }}>💿</div>
+                  )}
+                  <div style={{ color: '#e8e0d0', fontSize: '14px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{al.title}</div>
+                  <div style={{ color: '#6a5a40', fontSize: '11px', marginTop: '2px' }}>
+                    {albumSongs.length} {albumSongs.length === 1 ? tx.song : tx.songs}
+                    {al.release_date ? ' · ' + al.release_date.slice(0, 4) : ''}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <p style={{ color: '#5a4a30', fontSize: '12px', marginBottom: '24px' }}>{tx.noAlbums}</p>
+        )}
+
+        {/* Album form modal */}
+        {showAlbumForm && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', overflowY: 'auto' }}>
+            <div className="card" style={{ width: '100%', maxWidth: '520px', maxHeight: '92vh', overflowY: 'auto', borderColor: 'rgba(212,168,67,0.4)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h3 style={{ margin: 0, color: '#d4a843', fontWeight: 'normal', fontSize: '18px' }}>
+                  {editingAlbum ? tx.editAlbum : tx.newAlbum}
+                </h3>
+                <button onClick={() => setShowAlbumForm(false)} style={{ background: 'none', border: 'none', color: '#6a5a40', cursor: 'pointer', fontSize: '22px' }}>×</button>
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.albumTitle.toUpperCase()} *</label>
+                <input value={albumForm.title} onChange={e => setAlbumForm({ ...albumForm, title: e.target.value })} placeholder={tx.albumTitlePlaceholder} />
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.albumReleaseDate.toUpperCase()}</label>
+                <input type="date" value={albumForm.release_date} onChange={e => setAlbumForm({ ...albumForm, release_date: e.target.value })} />
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.albumCoverUrl.toUpperCase()}</label>
+                <input value={albumForm.cover_url} onChange={e => setAlbumForm({ ...albumForm, cover_url: e.target.value })} placeholder="https://..." />
+                {albumForm.cover_url && <img src={albumForm.cover_url} alt="" style={{ width: '120px', height: '120px', objectFit: 'cover', borderRadius: '4px', marginTop: '8px' }} />}
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.albumDescription.toUpperCase()}</label>
+                <textarea value={albumForm.description} onChange={e => setAlbumForm({ ...albumForm, description: e.target.value })} placeholder={tx.albumDescriptionPlaceholder} rows={3} />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button className="btn-gold" onClick={saveAlbum} disabled={savingAlbum || !albumForm.title.trim()}>
+                    {savingAlbum ? tx.saving : tx.save}
+                  </button>
+                  <button className="btn-outline" onClick={() => setShowAlbumForm(false)}>{tx.cancel}</button>
+                </div>
+                {editingAlbum && (
+                  <button onClick={() => deleteAlbum(editingAlbum)} style={{ background: 'none', border: '1px solid rgba(200,80,80,0.3)', color: '#c05050', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>
+                    {tx.deleteAlbum}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <h2 style={{ margin: 0, color: '#d4a843', fontWeight: 'normal', fontSize: '16px' }}>{tx.songsCount} ({songs.length})</h2>
         </div>
@@ -555,6 +726,19 @@ export default function ArtistPage() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                      {/* Album picker */}
+                      <select
+                        value={song.album_id || ''}
+                        onClick={e => e.stopPropagation()}
+                        onChange={e => { e.stopPropagation(); assignSongAlbum(song.id, e.target.value || null) }}
+                        title={tx.assignToAlbum}
+                        style={{ width: 'auto', padding: '4px 8px', fontSize: 11, maxWidth: 140 }}
+                      >
+                        <option value="">{tx.singleNoAlbum}</option>
+                        {albums.map(al => (
+                          <option key={al.id} value={al.id}>{al.title}</option>
+                        ))}
+                      </select>
                       {isReleased && typeof song.spotify_popularity === 'number' && (
                         <div title={`${tx.spotifyPopularity}: ${song.spotify_popularity}/100`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
                           <div style={{ width: '60px', height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '2px', overflow: 'hidden' }}>
