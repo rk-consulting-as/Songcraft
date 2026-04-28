@@ -1,21 +1,22 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { t, useLang, setLang, type Lang } from '@/lib/i18n'
+import { searchGenres, MUSIC_GENRES } from '@/lib/genres'
 import Link from 'next/link'
 
 type Artist = {
-  id: string
-  name: string
-  genre: string
-  description: string
-  song_structure: string
-  avatar_url: string
-  song_count?: number
+  id: string; name: string; genre: string; description: string
+  song_structure: string; avatar_url: string; song_count?: number
+  spotify_id?: string; spotify_verified?: boolean
 }
-
-const emptyForm = { name: '', genre: '', description: '', song_structure: '' }
+type SpotifyArtist = {
+  id: string; name: string; followers: number; genres: string[]
+  popularity: number; image: string | null; smallImage: string | null
+  spotifyUrl: string | null
+}
+const emptyForm = { name: '', genre: '', description: '', song_structure: '', spotify_id: '', spotify_verified: false }
 
 export default function Dashboard() {
   const router = useRouter()
@@ -24,17 +25,32 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingArtist, setEditingArtist] = useState<Artist | null>(null)
-  const [form, setForm] = useState(emptyForm)
+  const [form, setForm] = useState<any>(emptyForm)
   const [saving, setSaving] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
+
+  // Spotify search
+  const [spotifyResults, setSpotifyResults] = useState<SpotifyArtist[]>([])
+  const [spotifyLoading, setSpotifyLoading] = useState(false)
+  const [selectedSpotify, setSelectedSpotify] = useState<SpotifyArtist | null>(null)
+  const [spotifySearched, setSpotifySearched] = useState(false)
+  const spotifyTimer = useRef<any>(null)
+
+  // Genre autocomplete
+  const [genreSuggestions, setGenreSuggestions] = useState<string[]>([])
+  const [showGenreDropdown, setShowGenreDropdown] = useState(false)
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([])
+  const genreRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => { setLangState(useLang()); checkAuth(); fetchArtists() }, [])
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (genreRef.current && !genreRef.current.contains(e.target as Node)) setShowGenreDropdown(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   const tx = t[lang]
-
-  useEffect(() => {
-    setLangState(useLang())
-    checkAuth()
-    fetchArtists()
-  }, [])
 
   const checkAuth = async () => {
     const supabase = createClient()
@@ -49,17 +65,90 @@ export default function Dashboard() {
     setLoading(false)
   }
 
+  // Spotify search with debounce
+  const searchSpotify = useCallback(async (name: string) => {
+    if (!name.trim() || name.length < 2) { setSpotifyResults([]); return }
+    setSpotifyLoading(true)
+    setSpotifySearched(false)
+    try {
+      const res = await fetch(`/api/spotify?q=${encodeURIComponent(name)}`)
+      const data = await res.json()
+      setSpotifyResults(data.artists || [])
+      setSpotifySearched(true)
+    } catch { setSpotifyResults([]) }
+    setSpotifyLoading(false)
+  }, [])
+
+  const onNameChange = (val: string) => {
+    setForm({ ...form, name: val })
+    setSelectedSpotify(null)
+    if (spotifyTimer.current) clearTimeout(spotifyTimer.current)
+    spotifyTimer.current = setTimeout(() => searchSpotify(val), 600)
+  }
+
+  const selectSpotifyArtist = (artist: SpotifyArtist) => {
+    setSelectedSpotify(artist)
+    setForm((f: any) => ({
+      ...f,
+      spotify_id: artist.id,
+      spotify_verified: false,
+      // Auto-fill genre if empty
+      genre: f.genre || artist.genres.slice(0, 3).map((g: string) =>
+        g.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+      ).join(', '),
+    }))
+    if (artist.genres.length > 0 && selectedGenres.length === 0) {
+      const formatted = artist.genres.slice(0, 3).map((g: string) =>
+        g.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+      )
+      setSelectedGenres(formatted)
+    }
+    setSpotifyResults([])
+  }
+
+  const confirmSpotifyOwnership = (confirmed: boolean) => {
+    setForm((f: any) => ({ ...f, spotify_verified: confirmed }))
+    if (!confirmed) {
+      setSelectedSpotify(null)
+      setForm((f: any) => ({ ...f, spotify_id: '', spotify_verified: false }))
+    }
+  }
+
+  // Genre autocomplete
+  const onGenreInput = (val: string) => {
+    const suggestions = searchGenres(val)
+    setGenreSuggestions(suggestions)
+    setShowGenreDropdown(suggestions.length > 0)
+  }
+
+  const addGenre = (genre: string) => {
+    if (!selectedGenres.includes(genre) && selectedGenres.length < 5) {
+      const updated = [...selectedGenres, genre]
+      setSelectedGenres(updated)
+      setForm((f: any) => ({ ...f, genre: updated.join(', ') }))
+    }
+    setShowGenreDropdown(false)
+  }
+
+  const removeGenre = (genre: string) => {
+    const updated = selectedGenres.filter(g => g !== genre)
+    setSelectedGenres(updated)
+    setForm((f: any) => ({ ...f, genre: updated.join(', ') }))
+  }
+
   const openCreate = () => {
-    setEditingArtist(null)
-    setForm(emptyForm)
+    setEditingArtist(null); setForm(emptyForm)
+    setSelectedGenres([]); setSelectedSpotify(null)
+    setSpotifyResults([]); setSpotifySearched(false)
     setShowForm(true)
   }
 
   const openEdit = (artist: Artist, e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
+    e.preventDefault(); e.stopPropagation()
     setEditingArtist(artist)
-    setForm({ name: artist.name, genre: artist.genre || '', description: artist.description || '', song_structure: artist.song_structure || '' })
+    setForm({ name: artist.name, genre: artist.genre || '', description: artist.description || '', song_structure: artist.song_structure || '', spotify_id: (artist as any).spotify_id || '', spotify_verified: (artist as any).spotify_verified || false })
+    setSelectedGenres(artist.genre ? artist.genre.split(', ').filter(Boolean) : [])
+    setSelectedSpotify(null); setSpotifyResults([]); setSpotifySearched(false)
     setShowForm(true)
   }
 
@@ -68,26 +157,25 @@ export default function Dashboard() {
     setSaving(true)
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-
+    const payload = { ...form, genre: selectedGenres.join(', ') || form.genre }
     if (editingArtist) {
-      const { data } = await supabase.from('artists').update(form).eq('id', editingArtist.id).select().single()
+      const { data } = await supabase.from('artists').update(payload).eq('id', editingArtist.id).select().single()
       if (data) setArtists(artists.map(a => a.id === editingArtist.id ? { ...a, ...data } : a))
     } else {
-      const { data } = await supabase.from('artists').insert({ ...form, user_id: user?.id }).select().single()
+      const { data } = await supabase.from('artists').insert({ ...payload, user_id: user?.id }).select().single()
       if (data) setArtists([{ ...data, song_count: 0 }, ...artists])
     }
-    setShowForm(false)
-    setForm(emptyForm)
+    setShowForm(false); setForm(emptyForm); setSelectedGenres([])
     setSaving(false)
   }
 
   const deleteArtist = async (id: string, e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
+    e.preventDefault(); e.stopPropagation()
     if (!confirm(tx.confirmDeleteArtist)) return
     const supabase = createClient()
     await supabase.from('artists').delete().eq('id', id)
     setArtists(artists.filter(a => a.id !== id))
+    setShowForm(false)
   }
 
   const logout = async () => {
@@ -96,13 +184,8 @@ export default function Dashboard() {
     router.push('/login')
   }
 
-  const changeLang = (l: Lang) => {
-    setLang(l)
-  }
-
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0a0f 0%, #12071e 50%, #0a0f0a 100%)' }}>
-      {/* Header */}
       <div style={{ borderBottom: '1px solid rgba(180,140,80,0.2)', padding: '20px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span style={{ fontSize: '28px' }}>🎼</span>
@@ -132,7 +215,6 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Artists header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2 style={{ margin: 0, color: '#d4a843', fontWeight: 'normal', fontSize: '18px' }}>{tx.yourArtists}</h2>
           <button className="btn-gold" onClick={openCreate}>{tx.newArtist}</button>
@@ -140,24 +222,144 @@ export default function Dashboard() {
 
         {/* Artist form modal */}
         {showForm && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-            <div className="card" style={{ width: '100%', maxWidth: '580px', maxHeight: '90vh', overflowY: 'auto', borderColor: 'rgba(212,168,67,0.4)' }}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', overflowY: 'auto' }}>
+            <div className="card" style={{ width: '100%', maxWidth: '620px', maxHeight: '92vh', overflowY: 'auto', borderColor: 'rgba(212,168,67,0.4)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                 <h3 style={{ margin: 0, color: '#d4a843', fontWeight: 'normal', fontSize: '18px' }}>
                   {editingArtist ? tx.editArtist : tx.createArtist}
                 </h3>
-                <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', color: '#6a5a40', cursor: 'pointer', fontSize: '20px' }}>×</button>
+                <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', color: '#6a5a40', cursor: 'pointer', fontSize: '22px' }}>×</button>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.artistName.toUpperCase()} *</label>
-                  <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder={tx.artistNamePlaceholder} />
+              {/* Artist name + Spotify search */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.artistName.toUpperCase()} *</label>
+                <input value={form.name} onChange={e => onNameChange(e.target.value)} placeholder={tx.artistNamePlaceholder} />
+
+                {/* Spotify loading */}
+                {spotifyLoading && (
+                  <p style={{ color: '#6a5a40', fontSize: '12px', margin: '8px 0 0' }}>🔍 {lang === 'no' ? 'Søker på Spotify...' : 'Searching Spotify...'}</p>
+                )}
+
+                {/* Spotify results */}
+                {spotifyResults.length > 0 && !selectedSpotify && (
+                  <div style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(30,215,96,0.3)', borderRadius: '6px', marginTop: '8px', overflow: 'hidden' }}>
+                    <p style={{ color: '#1ed760', fontSize: '11px', letterSpacing: '1px', padding: '10px 14px 6px', margin: 0 }}>
+                      🎵 {lang === 'no' ? 'FUNDET PÅ SPOTIFY – KJENNER DU IGJEN ARTISTEN?' : 'FOUND ON SPOTIFY – DO YOU RECOGNISE THIS ARTIST?'}
+                    </p>
+                    {spotifyResults.map(a => (
+                      <div key={a.id} onClick={() => selectSpotifyArtist(a)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', cursor: 'pointer', borderTop: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.15s' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(30,215,96,0.08)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                        {a.smallImage
+                          ? <img src={a.smallImage} alt={a.name} style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                          : <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'rgba(30,215,96,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '20px' }}>🎤</div>
+                        }
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ color: '#e8e0d0', fontSize: '14px', fontWeight: '500' }}>{a.name}</div>
+                          <div style={{ color: '#6a5a40', fontSize: '12px' }}>
+                            {a.followers.toLocaleString()} {lang === 'no' ? 'følgere' : 'followers'}
+                            {a.genres.length > 0 && ` · ${a.genres.slice(0, 2).join(', ')}`}
+                          </div>
+                        </div>
+                        <div style={{ color: '#1ed760', fontSize: '12px', flexShrink: 0 }}>
+                          {'★'.repeat(Math.round(a.popularity / 20))}
+                        </div>
+                      </div>
+                    ))}
+                    {spotifySearched && (
+                      <div style={{ padding: '8px 14px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                        <button onClick={() => setSpotifyResults([])} style={{ background: 'none', border: 'none', color: '#5a4a30', fontSize: '12px', cursor: 'pointer' }}>
+                          {lang === 'no' ? 'Ingen av disse – fortsett uten Spotify' : 'None of these – continue without Spotify'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Selected Spotify artist preview */}
+                {selectedSpotify && (
+                  <div style={{ background: 'rgba(30,215,96,0.05)', border: '1px solid rgba(30,215,96,0.25)', borderRadius: '8px', padding: '14px', marginTop: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                      {selectedSpotify.image
+                        ? <img src={selectedSpotify.image} alt={selectedSpotify.name} style={{ width: '64px', height: '64px', borderRadius: '8px', objectFit: 'cover' }} />
+                        : <div style={{ width: '64px', height: '64px', borderRadius: '8px', background: 'rgba(30,215,96,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>🎤</div>
+                      }
+                      <div>
+                        <div style={{ color: '#1ed760', fontSize: '15px', fontWeight: '500' }}>{selectedSpotify.name}</div>
+                        <div style={{ color: '#6a5a40', fontSize: '12px', marginTop: '2px' }}>{selectedSpotify.followers.toLocaleString()} {lang === 'no' ? 'følgere' : 'followers'} · {selectedSpotify.popularity}/100</div>
+                        {selectedSpotify.genres.length > 0 && <div style={{ color: '#5a7a5a', fontSize: '12px', marginTop: '2px' }}>{selectedSpotify.genres.slice(0, 4).join(' · ')}</div>}
+                      </div>
+                    </div>
+
+                    {/* Ownership confirmation */}
+                    {!form.spotify_verified ? (
+                      <div>
+                        <p style={{ color: '#8a7a60', fontSize: '13px', margin: '0 0 10px' }}>
+                          {lang === 'no' ? 'Er dette din artist eller en samarbeidspartner?' : 'Is this your artist or a collaborator?'}
+                        </p>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button onClick={() => confirmSpotifyOwnership(true)} style={{ padding: '8px 16px', background: 'rgba(30,215,96,0.15)', border: '1px solid rgba(30,215,96,0.4)', color: '#1ed760', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>
+                            ✓ {lang === 'no' ? 'Ja, dette er artisten min' : 'Yes, this is my artist'}
+                          </button>
+                          <button onClick={() => confirmSpotifyOwnership(false)} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid rgba(180,140,80,0.2)', color: '#6a5a40', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>
+                            {lang === 'no' ? 'Nei, feil artist' : 'No, wrong artist'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: '#1ed760', fontSize: '13px' }}>✓ {lang === 'no' ? 'Spotify-artist bekreftet' : 'Spotify artist confirmed'}</span>
+                        <a href={selectedSpotify.spotifyUrl || '#'} target="_blank" rel="noopener noreferrer"
+                          style={{ color: '#1ed760', fontSize: '12px', textDecoration: 'none', border: '1px solid rgba(30,215,96,0.3)', padding: '4px 10px', borderRadius: '4px' }}>
+                          Åpne i Spotify ↗
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Genre with autocomplete */}
+              <div style={{ marginBottom: '12px' }} ref={genreRef}>
+                <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.genre.toUpperCase()}</label>
+
+                {/* Selected genre tags */}
+                {selectedGenres.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                    {selectedGenres.map(g => (
+                      <span key={g} style={{ background: 'rgba(212,168,67,0.15)', border: '1px solid rgba(212,168,67,0.3)', borderRadius: '20px', padding: '3px 10px', fontSize: '12px', color: '#d4a843', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {g}
+                        <button onClick={() => removeGenre(g)} style={{ background: 'none', border: 'none', color: '#8a7a60', cursor: 'pointer', fontSize: '14px', padding: 0, lineHeight: 1 }}>×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{ position: 'relative' }}>
+                  <input
+                    placeholder={selectedGenres.length > 0 ? (lang === 'no' ? 'Legg til flere...' : 'Add more...') : tx.genrePlaceholder}
+                    onChange={e => onGenreInput(e.target.value)}
+                    onFocus={() => genreSuggestions.length > 0 && setShowGenreDropdown(true)}
+                    disabled={selectedGenres.length >= 5}
+                  />
+                  {showGenreDropdown && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#1a1520', border: '1px solid rgba(212,168,67,0.3)', borderRadius: '6px', zIndex: 100, maxHeight: '200px', overflowY: 'auto', marginTop: '4px' }}>
+                      {genreSuggestions.map(g => (
+                        <div key={g} onClick={() => addGenre(g)}
+                          style={{ padding: '8px 14px', cursor: 'pointer', fontSize: '13px', color: '#c8c0b0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(212,168,67,0.1)')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                          {g}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.genre.toUpperCase()}</label>
-                  <input value={form.genre} onChange={e => setForm({ ...form, genre: e.target.value })} placeholder={tx.genrePlaceholder} />
-                </div>
+                <p style={{ color: '#5a4a30', fontSize: '11px', margin: '4px 0 0' }}>
+                  {lang === 'no' ? 'Søk og velg opptil 5 sjangere' : 'Search and select up to 5 genres'}
+                </p>
               </div>
 
               <div style={{ marginBottom: '12px' }}>
@@ -166,11 +368,9 @@ export default function Dashboard() {
               </div>
 
               <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>
-                  {tx.songStructure.toUpperCase()}
-                </label>
-                <textarea value={form.song_structure} onChange={e => setForm({ ...form, song_structure: e.target.value })} placeholder={tx.songStructurePlaceholder} rows={6} />
-                <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#5a4a30', lineHeight: '1.5' }}>💡 {tx.songStructureHint}</p>
+                <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.songStructure.toUpperCase()}</label>
+                <textarea value={form.song_structure} onChange={e => setForm({ ...form, song_structure: e.target.value })} placeholder={tx.songStructurePlaceholder} rows={5} />
+                <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#5a4a30' }}>💡 {tx.songStructureHint}</p>
               </div>
 
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'space-between' }}>
@@ -181,7 +381,7 @@ export default function Dashboard() {
                   <button className="btn-outline" onClick={() => setShowForm(false)}>{tx.cancel}</button>
                 </div>
                 {editingArtist && (
-                  <button onClick={e => { deleteArtist(editingArtist.id, e); setShowForm(false) }} style={{ background: 'none', border: '1px solid rgba(200,80,80,0.3)', color: '#c05050', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>
+                  <button onClick={e => deleteArtist(editingArtist.id, e)} style={{ background: 'none', border: '1px solid rgba(200,80,80,0.3)', color: '#c05050', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>
                     {tx.deleteArtist}
                   </button>
                 )}
@@ -206,38 +406,28 @@ export default function Dashboard() {
                 <div className="card" style={{ cursor: 'pointer', transition: 'border-color 0.2s', position: 'relative' }}
                   onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(212,168,67,0.5)')}
                   onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(180,140,80,0.2)')}>
-
-                  {/* Edit button */}
                   <button onClick={e => openEdit(artist, e)} style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(180,140,80,0.2)', color: '#6a5a40', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
                     onMouseEnter={e => e.currentTarget.style.color = '#d4a843'}
-                    onMouseLeave={e => e.currentTarget.style.color = '#6a5a40'}>
-                    ✏️
-                  </button>
-
+                    onMouseLeave={e => e.currentTarget.style.color = '#6a5a40'}>✏️</button>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
                     <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(212,168,67,0.15)', border: '1px solid rgba(212,168,67,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', flexShrink: 0 }}>🎤</div>
                     <div>
-                      <div style={{ color: '#e8e0d0', fontWeight: '500', fontSize: '16px' }}>{artist.name}</div>
-                      {artist.genre && <div style={{ color: '#8a7a60', fontSize: '12px', marginTop: '2px' }}>{artist.genre}</div>}
+                      <div style={{ color: '#e8e0d0', fontWeight: '500', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {artist.name}
+                        {(artist as any).spotify_verified && <span style={{ color: '#1ed760', fontSize: '11px' }}>🎵</span>}
+                      </div>
+                      {artist.genre && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                          {artist.genre.split(', ').slice(0, 3).map(g => (
+                            <span key={g} style={{ background: 'rgba(212,168,67,0.08)', border: '1px solid rgba(212,168,67,0.15)', borderRadius: '10px', padding: '1px 7px', fontSize: '11px', color: '#8a7a60' }}>{g}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
-
-                  {artist.description && (
-                    <p style={{ color: '#6a5a40', fontSize: '13px', margin: '0 0 10px', lineHeight: '1.5' }}>
-                      {artist.description.length > 80 ? artist.description.slice(0, 80) + '...' : artist.description}
-                    </p>
-                  )}
-
-                  {artist.song_structure && (
-                    <div style={{ background: 'rgba(212,168,67,0.05)', border: '1px solid rgba(212,168,67,0.1)', borderRadius: '4px', padding: '6px 10px', marginBottom: '10px' }}>
-                      <span style={{ color: '#6a5a40', fontSize: '11px' }}>🎸 {artist.song_structure.length > 60 ? artist.song_structure.slice(0, 60) + '...' : artist.song_structure}</span>
-                    </div>
-                  )}
-
+                  {artist.description && <p style={{ color: '#6a5a40', fontSize: '13px', margin: '0 0 10px', lineHeight: '1.5' }}>{artist.description.length > 80 ? artist.description.slice(0, 80) + '...' : artist.description}</p>}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#d4a843', fontSize: '12px' }}>
-                      {artist.song_count} {artist.song_count === 1 ? tx.song : tx.songs}
-                    </span>
+                    <span style={{ color: '#d4a843', fontSize: '12px' }}>{artist.song_count} {artist.song_count === 1 ? tx.song : tx.songs}</span>
                     <span style={{ color: '#6a5a40', fontSize: '12px' }}>{tx.openArtist}</span>
                   </div>
                 </div>
