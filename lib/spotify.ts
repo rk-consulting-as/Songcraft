@@ -39,6 +39,8 @@ export function invalidateSpotifyToken() {
 /**
  * Wrapper around fetch() that auto-retries once with a fresh token if Spotify returns 401.
  * Use this from any route that calls Spotify Web API endpoints.
+ *
+ * Logs to server console so issues are visible in `npm run dev` output.
  */
 export async function spotifyFetch(url: string, init: RequestInit = {}): Promise<Response> {
   let token = await getSpotifyToken()
@@ -47,12 +49,18 @@ export async function spotifyFetch(url: string, init: RequestInit = {}): Promise
     headers: { ...(init.headers || {}), Authorization: `Bearer ${token}` },
   })
   if (res.status === 401) {
+    console.warn('[spotifyFetch] 401 with cached token — invalidating and refreshing')
     invalidateSpotifyToken()
     token = await getSpotifyToken(true)
     res = await fetch(url, {
       ...init,
       headers: { ...(init.headers || {}), Authorization: `Bearer ${token}` },
     })
+    if (res.status === 401) {
+      console.error('[spotifyFetch] STILL 401 after fresh token — likely invalid SPOTIFY_CLIENT_ID/SECRET')
+    } else {
+      console.log('[spotifyFetch] retry succeeded with fresh token')
+    }
   }
   return res
 }
