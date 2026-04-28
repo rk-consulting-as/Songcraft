@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { t, useLang, type Lang } from '@/lib/i18n'
 import { type AIProvider, getStoredProvider, setStoredProvider } from '@/lib/aiProvider'
 import AIProviderPicker from '@/components/AIProviderPicker'
+import ZoomableImage from '@/components/ZoomableImage'
 import Link from 'next/link'
 
 const PLATFORMS = ['TikTok', 'Instagram', 'Facebook', 'YouTube', 'X/Twitter']
@@ -481,7 +482,14 @@ export default function SongPage() {
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>{tx.coverTitle}</h2>
             <div className="card" style={{ marginBottom: '24px' }}>
               <p style={{ color: '#8a7a60', fontSize: '12px', letterSpacing: '1px', marginTop: 0 }}>{tx.uploadCover}</p>
-              {coverImageUrl && <img src={coverImageUrl} alt="cover" style={{ width: '180px', height: '180px', objectFit: 'cover', borderRadius: '8px', marginBottom: '12px', display: 'block' }} />}
+              {coverImageUrl && (
+                <ZoomableImage
+                  src={coverImageUrl}
+                  alt={title || 'cover'}
+                  caption={title || undefined}
+                  style={{ width: '180px', height: '180px', objectFit: 'cover', borderRadius: '8px', marginBottom: '12px', display: 'block' }}
+                />
+              )}
               <input type="file" ref={fileRef} accept="image/*" style={{ display: 'none' }} onChange={e => e.target.files?.[0] && uploadCover(e.target.files[0])} />
               <button className="btn-outline" onClick={() => fileRef.current?.click()} disabled={uploadingCover}>
                 {uploadingCover ? tx.saving : coverImageUrl ? '↻ ' + tx.edit : '📁 ' + (lang === 'no' ? 'Velg bilde' : 'Choose image')}

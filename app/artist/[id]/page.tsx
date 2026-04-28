@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { t, useLang, type Lang } from '@/lib/i18n'
 import { type AIProvider, getStoredProvider, setStoredProvider } from '@/lib/aiProvider'
 import AIProviderPicker from '@/components/AIProviderPicker'
+import ZoomableImage from '@/components/ZoomableImage'
 import Link from 'next/link'
 
 import type { SocialLinksMap } from '@/lib/socialLinks'
@@ -606,7 +607,12 @@ export default function ArtistPage() {
               return (
                 <div key={al.id} className="card" style={{ padding: '12px', cursor: 'pointer', position: 'relative' }} onClick={() => openAlbumEdit(al)}>
                   {al.cover_url ? (
-                    <img src={al.cover_url} alt={al.title} style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '4px', marginBottom: '10px' }} />
+                    <ZoomableImage
+                      src={al.cover_url}
+                      alt={al.title}
+                      caption={al.title}
+                      style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '4px', marginBottom: '10px' }}
+                    />
                   ) : (
                     <div style={{ width: '100%', aspectRatio: '1 / 1', borderRadius: '4px', background: 'rgba(212,168,67,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px', marginBottom: '10px' }}>💿</div>
                   )}
@@ -693,7 +699,12 @@ export default function ArtistPage() {
                     onMouseLeave={e => (e.currentTarget.style.borderColor = isReleased ? 'rgba(30,215,96,0.2)' : 'rgba(180,140,80,0.2)')}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0 }}>
                       {song.spotify_cover_url ? (
-                        <img src={song.spotify_cover_url} alt="" style={{ width: '44px', height: '44px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }} />
+                        <ZoomableImage
+                          src={song.spotify_cover_url}
+                          alt={song.title}
+                          caption={`${song.title}${song.spotify_album ? ' — ' + song.spotify_album : ''}`}
+                          style={{ width: '44px', height: '44px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }}
+                        />
                       ) : (
                         <span style={{ color: '#3a3530', fontSize: '13px', minWidth: '28px', textAlign: 'center' }}>#{i + 1}</span>
                       )}
