@@ -292,7 +292,7 @@ export default function SongPage() {
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0a0f 0%, #12071e 50%, #0a0f0a 100%)' }}>
       {/* Header */}
-      <div style={{ borderBottom: '1px solid rgba(180,140,80,0.2)', padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="app-header" data-header="page" style={{ borderBottom: '1px solid rgba(180,140,80,0.2)', padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Link href={`/artist/${artist?.id}`} style={{ color: '#6a5a40', textDecoration: 'none', fontSize: '13px' }}>← {artist?.name}</Link>
           <span style={{ color: '#3a3530' }}>|</span>
@@ -321,7 +321,7 @@ export default function SongPage() {
         ))}
       </div>
 
-      <div style={{ padding: '32px', maxWidth: '800px', margin: '0 auto' }}>
+      <div className="page-pad" style={{ padding: '32px', maxWidth: '800px', margin: '0 auto' }}>
 
         {/* LYRICS TAB */}
         {tab === 'lyrics' && (

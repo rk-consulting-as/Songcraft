@@ -59,3 +59,67 @@ input, textarea, select {
 input:focus, textarea:focus, select:focus {
   border-color: rgba(212,168,67,0.5);
 }
+
+/* ============================================================
+   Mobile responsiveness — applied automatically on narrow viewports.
+   The app uses lots of inline styles, so we override with classes
+   and high-specificity attribute selectors here.
+   ============================================================ */
+@media (max-width: 700px) {
+  /* Stack page header bars vertically and reduce padding */
+  body .app-header,
+  body [data-header="page"] {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    padding: 14px 16px !important;
+  }
+
+  /* Reduce horizontal padding on main content containers */
+  body .page-pad {
+    padding: 16px !important;
+  }
+
+  /* Cards: tighter padding on mobile */
+  .card {
+    padding: 14px;
+  }
+
+  /* Song row: stack the right cluster below the left, full width, wrapped */
+  .song-row {
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+  }
+  .song-row .song-row-left {
+    width: 100%;
+    min-width: 0;
+  }
+  .song-row .song-row-right {
+    width: 100%;
+    justify-content: flex-start !important;
+    margin-top: 6px;
+    flex-wrap: wrap !important;
+  }
+  .song-row .song-row-right select {
+    flex: 1 1 auto;
+    min-width: 110px;
+    max-width: 200px !important;
+  }
+
+  /* Stats grid: stack on mobile */
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Modal padding tighter */
+  .modal-overlay {
+    padding: 10px !important;
+  }
+}
+
+/* Slightly larger tap targets on touch devices */
+@media (pointer: coarse) {
+  button, select, input[type="checkbox"], input[type="radio"] {
+    min-height: 36px;
+  }
+}

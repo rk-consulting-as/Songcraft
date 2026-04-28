@@ -81,10 +81,13 @@ export default function ArtistPage() {
   const [albums, setAlbums] = useState<Album[]>([])
   const [showAlbumForm, setShowAlbumForm] = useState(false)
   const [editingAlbum, setEditingAlbum] = useState<Album | null>(null)
-  const [albumForm, setAlbumForm] = useState<{ title: string; description: string; cover_url: string; release_date: string }>(
-    { title: '', description: '', cover_url: '', release_date: '' }
+  const [albumForm, setAlbumForm] = useState<{ title: string; description: string; cover_url: string; release_date: string; cover_prompt: string }>(
+    { title: '', description: '', cover_url: '', release_date: '', cover_prompt: '' }
   )
   const [savingAlbum, setSavingAlbum] = useState(false)
+  const [albumPromptLoading, setAlbumPromptLoading] = useState(false)
+  const [albumImageLoading, setAlbumImageLoading] = useState(false)
+  const [albumImageError, setAlbumImageError] = useState<string | null>(null)
 
   // Spotify import
   const [showImport, setShowImport] = useState(false)
@@ -111,7 +114,8 @@ export default function ArtistPage() {
   // Albums CRUD
   const openAlbumCreate = () => {
     setEditingAlbum(null)
-    setAlbumForm({ title: '', description: '', cover_url: '', release_date: '' })
+    setAlbumForm({ title: '', description: '', cover_url: '', release_date: '', cover_prompt: '' })
+    setAlbumImageError(null)
     setShowAlbumForm(true)
   }
   const openAlbumEdit = (al: Album) => {
@@ -121,8 +125,82 @@ export default function ArtistPage() {
       description: al.description || '',
       cover_url: al.cover_url || '',
       release_date: al.release_date || '',
+      cover_prompt: '',
     })
+    setAlbumImageError(null)
     setShowAlbumForm(true)
+  }
+
+  // Generate AI cover prompt for the album (using current AI provider).
+  const generateAlbumCoverPrompt = async () => {
+    if (!albumForm.title.trim()) return
+    setAlbumPromptLoading(true)
+    try {
+      const albumSongs = songs.filter(s => editingAlbum && s.album_id === editingAlbum.id)
+      const songTitles = albumSongs.length ? albumSongs.map(s => '- ' + s.title).join('\n') : ''
+      const userContent = [
+        `Album title: ${albumForm.title}`,
+        artist?.genre ? `Genre: ${artist.genre}` : '',
+        artist?.description ? `Artist description: ${artist.description}` : '',
+        albumForm.description ? `Album description: ${albumForm.description}` : '',
+        songTitles ? `Songs in this album:\n${songTitles}` : '',
+      ].filter(Boolean).join('\n\n')
+
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: aiProvider,
+          system: 'You are an expert in AI image generation (Midjourney, DALL-E, Stable Diffusion). Create a detailed ALBUM cover image prompt for the given album. Include subject, style, colors, mood, lighting, composition. Format: Subject → Style → Colors → Mood → Technical. Album covers are 1:1 square. Write in English, max 150 words.',
+          messages: [{ role: 'user', content: userContent }],
+        }),
+      })
+      const data = await res.json()
+      if (data.text) setAlbumForm(f => ({ ...f, cover_prompt: data.text }))
+    } catch (e: any) {
+      setAlbumImageError(e?.message || 'Prompt generation failed')
+    }
+    setAlbumPromptLoading(false)
+  }
+
+  // Generate album cover image from current prompt and upload to Supabase Storage.
+  const generateAlbumCoverImage = async () => {
+    if (!albumForm.cover_prompt.trim()) return
+    setAlbumImageLoading(true)
+    setAlbumImageError(null)
+    try {
+      const res = await fetch('/api/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: albumForm.cover_prompt, size: '1024x1024', quality: 'medium' }),
+      })
+      const data = await res.json()
+      if (data.error) {
+        setAlbumImageError(data.error)
+        setAlbumImageLoading(false)
+        return
+      }
+      const b64: string = data.b64
+      const mime: string = data.mime || 'image/png'
+      const binStr = atob(b64)
+      const bytes = new Uint8Array(binStr.length)
+      for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i)
+      const blob = new Blob([bytes], { type: mime })
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      const path = `albums/${user?.id || 'anon'}/${Date.now()}.png`
+      const { error: upErr } = await supabase.storage.from('covers').upload(path, blob, { upsert: true, contentType: mime })
+      if (upErr) {
+        setAlbumImageError(upErr.message)
+        setAlbumImageLoading(false)
+        return
+      }
+      const { data: urlData } = supabase.storage.from('covers').getPublicUrl(path)
+      setAlbumForm(f => ({ ...f, cover_url: urlData.publicUrl }))
+    } catch (e: any) {
+      setAlbumImageError(e?.message || 'Image generation failed')
+    }
+    setAlbumImageLoading(false)
   }
   const saveAlbum = async () => {
     if (!albumForm.title.trim()) return
@@ -308,7 +386,7 @@ export default function ArtistPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0a0f 0%, #12071e 50%, #0a0f0a 100%)' }}>
-      <div style={{ borderBottom: '1px solid rgba(180,140,80,0.2)', padding: '20px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="app-header" data-header="page" style={{ borderBottom: '1px solid rgba(180,140,80,0.2)', padding: '20px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <Link href="/dashboard" style={{ color: '#6a5a40', textDecoration: 'none', fontSize: '13px' }}>← {tx.dashboard}</Link>
           <span style={{ color: '#3a3530' }}>|</span>
@@ -372,7 +450,7 @@ export default function ArtistPage() {
         </div>
       </div>
 
-      <div style={{ padding: '32px', maxWidth: '900px', margin: '0 auto' }}>
+      <div className="page-pad" style={{ padding: '32px', maxWidth: '900px', margin: '0 auto' }}>
         {showGenerator && (
           <div className="card" style={{ marginBottom: '32px', borderColor: 'rgba(212,168,67,0.4)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -632,7 +710,7 @@ export default function ArtistPage() {
 
         {/* Album form modal */}
         {showAlbumForm && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', overflowY: 'auto' }}>
+          <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', overflowY: 'auto' }}>
             <div className="card" style={{ width: '100%', maxWidth: '520px', maxHeight: '92vh', overflowY: 'auto', borderColor: 'rgba(212,168,67,0.4)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h3 style={{ margin: 0, color: '#d4a843', fontWeight: 'normal', fontSize: '18px' }}>
@@ -654,7 +732,60 @@ export default function ArtistPage() {
               <div style={{ marginBottom: '12px' }}>
                 <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.albumCoverUrl.toUpperCase()}</label>
                 <input value={albumForm.cover_url} onChange={e => setAlbumForm({ ...albumForm, cover_url: e.target.value })} placeholder="https://..." />
-                {albumForm.cover_url && <img src={albumForm.cover_url} alt="" style={{ width: '120px', height: '120px', objectFit: 'cover', borderRadius: '4px', marginTop: '8px' }} />}
+                {albumForm.cover_url && (
+                  <div style={{ marginTop: '8px' }}>
+                    <ZoomableImage
+                      src={albumForm.cover_url}
+                      alt={albumForm.title || 'cover'}
+                      caption={albumForm.title || undefined}
+                      style={{ width: '120px', height: '120px', objectFit: 'cover', borderRadius: '4px', display: 'block' }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* AI cover generation for the album */}
+              <div style={{ marginBottom: '16px', padding: '12px 14px', borderRadius: '6px', background: 'rgba(160,100,200,0.06)', border: '1px solid rgba(160,100,200,0.25)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+                  <span style={{ color: '#c07bd0', fontSize: 11, letterSpacing: 1 }}>{tx.albumCoverAi.toUpperCase()}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ color: '#5a4a30', fontSize: 10 }}>AI:</span>
+                    <AIProviderPicker value={aiProvider} onChange={pickProvider} disabled={albumPromptLoading || albumImageLoading} />
+                  </div>
+                </div>
+
+                <textarea
+                  value={albumForm.cover_prompt}
+                  onChange={e => setAlbumForm({ ...albumForm, cover_prompt: e.target.value })}
+                  placeholder={tx.albumCoverPromptPlaceholder}
+                  rows={4}
+                  style={{ marginBottom: 8 }}
+                />
+
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={generateAlbumCoverPrompt}
+                    disabled={albumPromptLoading || !albumForm.title.trim()}
+                    style={{ background: 'rgba(212,168,67,0.12)', border: '1px solid rgba(212,168,67,0.3)', color: '#d4a843', padding: '7px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
+                  >
+                    {albumPromptLoading ? tx.generating : tx.albumCoverPromptGenerate}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={generateAlbumCoverImage}
+                    disabled={albumImageLoading || !albumForm.cover_prompt.trim()}
+                    style={{ background: 'linear-gradient(135deg, #c07bd0, #9060c0)', border: '1px solid #9060c0', color: '#fff', padding: '7px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 12, fontWeight: 500 }}
+                  >
+                    {albumImageLoading ? tx.coverImageGenerating : (albumForm.cover_url ? tx.coverImageRegenerate : tx.coverImageGenerate)}
+                  </button>
+                </div>
+
+                {albumImageError && (
+                  <div style={{ background: 'rgba(200,80,80,0.08)', border: '1px solid rgba(200,80,80,0.3)', color: '#c05050', padding: '6px 10px', borderRadius: 4, fontSize: 12, marginTop: 8 }}>
+                    {albumImageError}
+                  </div>
+                )}
               </div>
 
               <div style={{ marginBottom: '20px' }}>
@@ -699,63 +830,62 @@ export default function ArtistPage() {
                 ? `${song.title} — ${song.spotify_album}`
                 : song.title
               return (
-                <Link key={song.id} href={`/song/${song.id}`} style={{ textDecoration: 'none' }}>
-                  <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '16px 20px', transition: 'border-color 0.2s', borderColor: isReleased ? 'rgba(30,215,96,0.2)' : undefined }}
-                    onMouseEnter={e => (e.currentTarget.style.borderColor = isReleased ? 'rgba(30,215,96,0.5)' : 'rgba(212,168,67,0.5)')}
-                    onMouseLeave={e => (e.currentTarget.style.borderColor = isReleased ? 'rgba(30,215,96,0.2)' : 'rgba(180,140,80,0.2)')}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0 }}>
-                      {thumbUrl ? (
-                        <ZoomableImage
-                          src={thumbUrl}
-                          alt={song.title}
-                          caption={thumbCaption}
-                          style={{ width: '44px', height: '44px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }}
-                        />
-                      ) : (
-                        <span style={{ color: '#3a3530', fontSize: '13px', minWidth: '28px', textAlign: 'center' }}>#{i + 1}</span>
-                      )}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ color: '#e8e0d0', fontSize: '15px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{song.title}</span>
-                          {isReleased && song.spotify_url && (
-                            <a
-                              href={song.spotify_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={e => { e.preventDefault(); e.stopPropagation(); window.open(song.spotify_url!, '_blank') }}
-                              title={lang === 'no' ? 'Åpne i Spotify' : 'Open in Spotify'}
-                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '18px', height: '18px', borderRadius: '50%', background: '#1ed760', color: '#000', fontSize: '10px', textDecoration: 'none', fontWeight: 'bold', flexShrink: 0 }}
-                            >
-                              ♪
-                            </a>
-                          )}
-                        </div>
-                        {isReleased ? (
-                          <div style={{ color: '#5a7a5a', fontSize: '12px', lineHeight: '1.4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {song.spotify_album}
-                            {song.spotify_release_date ? ' · ' + song.spotify_release_date.slice(0, 4) : ''}
-                          </div>
-                        ) : song.lyrics_instructions ? (
-                          <div style={{ color: '#5a4a30', fontSize: '12px', lineHeight: '1.4' }}>
-                            {song.lyrics_instructions.length > 100 ? song.lyrics_instructions.slice(0, 100) + '...' : song.lyrics_instructions}
-                          </div>
-                        ) : null}
+                <div key={song.id} className="song-row card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', transition: 'border-color 0.2s', borderColor: isReleased ? 'rgba(30,215,96,0.2)' : undefined, gap: 10 }}
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = isReleased ? 'rgba(30,215,96,0.5)' : 'rgba(212,168,67,0.5)')}
+                  onMouseLeave={e => (e.currentTarget.style.borderColor = isReleased ? 'rgba(30,215,96,0.2)' : 'rgba(180,140,80,0.2)')}>
+                  {/* Left side IS the navigation target. Right side cluster is sibling, NOT a link. */}
+                  <Link href={`/song/${song.id}`} className="song-row-left" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0, color: 'inherit', cursor: 'pointer' }}>
+                    {thumbUrl ? (
+                      <ZoomableImage
+                        src={thumbUrl}
+                        alt={song.title}
+                        caption={thumbCaption}
+                        style={{ width: '44px', height: '44px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }}
+                      />
+                    ) : (
+                      <span style={{ color: '#3a3530', fontSize: '13px', minWidth: '28px', textAlign: 'center' }}>#{i + 1}</span>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ color: '#e8e0d0', fontSize: '15px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{song.title}</span>
+                        {isReleased && song.spotify_url && (
+                          <a
+                            href={song.spotify_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={e => { e.preventDefault(); e.stopPropagation(); window.open(song.spotify_url!, '_blank') }}
+                            title={lang === 'no' ? 'Åpne i Spotify' : 'Open in Spotify'}
+                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '18px', height: '18px', borderRadius: '50%', background: '#1ed760', color: '#000', fontSize: '10px', textDecoration: 'none', fontWeight: 'bold', flexShrink: 0 }}
+                          >
+                            ♪
+                          </a>
+                        )}
                       </div>
+                      {isReleased ? (
+                        <div style={{ color: '#5a7a5a', fontSize: '12px', lineHeight: '1.4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {song.spotify_album}
+                          {song.spotify_release_date ? ' · ' + song.spotify_release_date.slice(0, 4) : ''}
+                        </div>
+                      ) : song.lyrics_instructions ? (
+                        <div style={{ color: '#5a4a30', fontSize: '12px', lineHeight: '1.4' }}>
+                          {song.lyrics_instructions.length > 100 ? song.lyrics_instructions.slice(0, 100) + '...' : song.lyrics_instructions}
+                        </div>
+                      ) : null}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
-                      {/* Album picker */}
-                      <select
-                        value={song.album_id || ''}
-                        onClick={e => e.stopPropagation()}
-                        onChange={e => { e.stopPropagation(); assignSongAlbum(song.id, e.target.value || null) }}
-                        title={tx.assignToAlbum}
-                        style={{ width: 'auto', padding: '4px 8px', fontSize: 11, maxWidth: 140 }}
-                      >
-                        <option value="">{tx.singleNoAlbum}</option>
-                        {albums.map(al => (
-                          <option key={al.id} value={al.id}>{al.title}</option>
-                        ))}
-                      </select>
+                  </Link>
+                  <div className="song-row-right" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {/* Album picker — separate from Link, so taps go straight to the dropdown. */}
+                    <select
+                      value={song.album_id || ''}
+                      onChange={e => assignSongAlbum(song.id, e.target.value || null)}
+                      title={tx.assignToAlbum}
+                      style={{ width: 'auto', padding: '4px 8px', fontSize: 11, maxWidth: 140 }}
+                    >
+                      <option value="">{tx.singleNoAlbum}</option>
+                      {albums.map(al => (
+                        <option key={al.id} value={al.id}>{al.title}</option>
+                      ))}
+                    </select>
                       {isReleased && typeof song.spotify_popularity === 'number' && (
                         <div title={`${tx.spotifyPopularity}: ${song.spotify_popularity}/100`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
                           <div style={{ width: '60px', height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '2px', overflow: 'hidden' }}>
@@ -767,11 +897,10 @@ export default function ArtistPage() {
                       <span style={{ fontSize: '11px', letterSpacing: '1px', color: STATUS_COLORS[song.status] || '#8a7a60', border: `1px solid ${STATUS_COLORS[song.status] || '#8a7a60'}40`, padding: '3px 10px', borderRadius: '20px' }}>
                         {statusLabel(song.status)}
                       </span>
-                      <button onClick={e => deleteSong(song.id, e)} style={{ background: 'none', border: 'none', color: '#3a3530', cursor: 'pointer', fontSize: '18px', padding: '4px 8px' }}>×</button>
-                      <span style={{ color: '#6a5a40', fontSize: '13px' }}>→</span>
-                    </div>
+                    <button onClick={e => deleteSong(song.id, e)} style={{ background: 'none', border: 'none', color: '#3a3530', cursor: 'pointer', fontSize: '18px', padding: '4px 8px' }}>×</button>
+                    <span style={{ color: '#6a5a40', fontSize: '13px' }}>→</span>
                   </div>
-                </Link>
+                </div>
               )
             })}
           </div>

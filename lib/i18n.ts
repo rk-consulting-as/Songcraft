@@ -123,6 +123,9 @@ export const t = {
     albumCoverUrl: 'Cover-bilde URL',
     assignToAlbum: 'Tilordne album',
     singleNoAlbum: 'Single (ingen)',
+    albumCoverAi: 'Generer cover med AI',
+    albumCoverPromptGenerate: '✨ Lag prompt med AI',
+    albumCoverPromptPlaceholder: 'Beskriv hvordan album-coveret skal se ut, eller la AI lage en prompt fra album-tittel og artistinfo over.',
 
     // Song tabs
     lyrics: 'Sangtekst',
@@ -305,6 +308,9 @@ export const t = {
     albumCoverUrl: 'Cover image URL',
     assignToAlbum: 'Assign to album',
     singleNoAlbum: 'Single (none)',
+    albumCoverAi: 'Generate cover with AI',
+    albumCoverPromptGenerate: '✨ Generate prompt with AI',
+    albumCoverPromptPlaceholder: 'Describe how the album cover should look, or let AI create a prompt from the album title and artist info above.',
 
     // Song tabs
     lyrics: 'Lyrics',
