@@ -97,6 +97,13 @@ export default function ArtistPage() {
   const [importError, setImportError] = useState<string | null>(null)
   const [selectedTrackIds, setSelectedTrackIds] = useState<Set<string>>(new Set())
 
+  // Spotify import via URL (single track)
+  const [urlInput, setUrlInput] = useState('')
+  const [urlLoading, setUrlLoading] = useState(false)
+  const [urlError, setUrlError] = useState<string | null>(null)
+  const [urlPreview, setUrlPreview] = useState<(SpotifyTrack & { artists?: { id: string; name: string }[] }) | null>(null)
+  const [urlImporting, setUrlImporting] = useState(false)
+
   useEffect(() => { setLangState(useLang()); setAiProvider(getStoredProvider()); fetchData() }, [artistId])
   const tx = t[lang]
 
@@ -351,6 +358,60 @@ export default function ArtistPage() {
     return null
   }
 
+  // Fetch a single Spotify track from a pasted URL/URI/ID and show a preview.
+  const fetchUrlPreview = async () => {
+    if (!urlInput.trim()) return
+    setUrlLoading(true)
+    setUrlError(null)
+    setUrlPreview(null)
+    try {
+      const res = await fetch(`/api/spotify/track-by-url?url=${encodeURIComponent(urlInput.trim())}`)
+      const data = await res.json()
+      if (data.error || !data.track) {
+        setUrlError(data.error || 'No track returned')
+      } else {
+        setUrlPreview(data.track)
+      }
+    } catch (e: any) {
+      setUrlError(e?.message || 'Failed to fetch')
+    }
+    setUrlLoading(false)
+  }
+
+  // Import the previewed track as a 'released' song under the current artist.
+  const importUrlTrack = async () => {
+    if (!urlPreview) return
+    if (isAlreadyImported(urlPreview.id)) {
+      setUrlError(tx.importAlreadyImported)
+      return
+    }
+    setUrlImporting(true)
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const row = {
+      artist_id: artistId,
+      user_id: user?.id,
+      title: urlPreview.title,
+      lyrics_instructions: '',
+      status: 'released',
+      spotify_track_id: urlPreview.id,
+      spotify_url: urlPreview.spotifyUrl,
+      spotify_popularity: urlPreview.popularity,
+      spotify_release_date: normalizeReleaseDate(urlPreview.releaseDate),
+      spotify_album: urlPreview.album || null,
+      spotify_cover_url: urlPreview.coverUrl,
+    }
+    const { data, error } = await supabase.from('songs').insert(row).select().single()
+    if (error) {
+      setUrlError(error.message)
+    } else if (data) {
+      setSongs([data, ...songs])
+      setUrlInput('')
+      setUrlPreview(null)
+    }
+    setUrlImporting(false)
+  }
+
   const importSelected = async () => {
     if (selectedTrackIds.size === 0) return
     setImporting(true)
@@ -548,6 +609,66 @@ export default function ArtistPage() {
                 <p style={{ margin: '4px 0 0', color: '#6a5a40', fontSize: '12px' }}>{tx.importSubtitle}</p>
               </div>
               <button className="btn-outline" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => setShowImport(false)}>{tx.close}</button>
+            </div>
+
+            {/* Single track via URL/ID */}
+            <div style={{ background: 'rgba(30,215,96,0.04)', border: '1px solid rgba(30,215,96,0.2)', borderRadius: 6, padding: 12, marginBottom: 18 }}>
+              <p style={{ margin: '0 0 8px', color: '#1ed760', fontSize: 11, letterSpacing: 1 }}>
+                {tx.importByUrlLabel}
+              </p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <input
+                  value={urlInput}
+                  onChange={e => setUrlInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') fetchUrlPreview() }}
+                  placeholder={tx.importByUrlPlaceholder}
+                  style={{ flex: '1 1 220px', minWidth: 0 }}
+                />
+                <button
+                  type="button"
+                  onClick={fetchUrlPreview}
+                  disabled={urlLoading || !urlInput.trim()}
+                  style={{ background: 'rgba(30,215,96,0.15)', border: '1px solid rgba(30,215,96,0.4)', color: '#1ed760', padding: '8px 16px', borderRadius: 4, cursor: 'pointer', fontSize: 12, fontWeight: 500 }}
+                >
+                  {urlLoading ? '...' : tx.importByUrlFetch}
+                </button>
+              </div>
+              {urlError && (
+                <div style={{ background: 'rgba(200,80,80,0.08)', border: '1px solid rgba(200,80,80,0.3)', color: '#c05050', padding: '6px 10px', borderRadius: 4, fontSize: 12, marginTop: 8 }}>
+                  {urlError}
+                </div>
+              )}
+              {urlPreview && (
+                <div style={{ marginTop: 12, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(30,215,96,0.25)', borderRadius: 6, padding: 12, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  {urlPreview.coverUrl ? (
+                    <img src={urlPreview.coverUrl} alt={urlPreview.title} style={{ width: 56, height: 56, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} />
+                  ) : (
+                    <div style={{ width: 56, height: 56, borderRadius: 4, background: 'rgba(30,215,96,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>🎵</div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ color: '#e8e0d0', fontSize: 14, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{urlPreview.title}</div>
+                    <div style={{ color: '#6a5a40', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {(urlPreview.artists || []).map(a => a.name).join(', ')}
+                      {urlPreview.album ? ' · ' + urlPreview.album : ''}
+                      {urlPreview.releaseDate ? ' · ' + urlPreview.releaseDate.slice(0, 4) : ''}
+                    </div>
+                    {/* Warn if the linked artist's spotify_id isn't in the track's artists */}
+                    {artist?.spotify_id && urlPreview.artists && !urlPreview.artists.some(a => a.id === artist.spotify_id) && (
+                      <div style={{ color: '#e0a050', fontSize: 11, marginTop: 4 }}>
+                        ⚠ {tx.importByUrlArtistMismatch}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={importUrlTrack}
+                    disabled={urlImporting || isAlreadyImported(urlPreview.id)}
+                    style={{ background: '#1ed760', borderColor: '#1ed760', border: 'none', color: '#000', padding: '8px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 12, fontWeight: 600, flexShrink: 0 }}
+                  >
+                    {isAlreadyImported(urlPreview.id) ? '✓ ' + tx.importAlreadyImported : urlImporting ? tx.importing : tx.importByUrlImport}
+                  </button>
+                </div>
+              )}
             </div>
 
             {importLoading && <p style={{ color: '#6a5a40', fontSize: '13px' }}>🔍 {tx.importLoading}</p>}
