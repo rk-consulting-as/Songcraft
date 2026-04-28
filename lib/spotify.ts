@@ -4,18 +4,35 @@
 let cachedToken: { token: string; expires: number } | null = null
 
 async function fetchNewToken(): Promise<string> {
+  const cid = process.env.SPOTIFY_CLIENT_ID
+  const sec = process.env.SPOTIFY_CLIENT_SECRET
+  if (!cid || !sec) {
+    console.error('[spotify] SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET is missing in env')
+    throw new Error('SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET is not set on the server')
+  }
+  // Trim accidentally-included whitespace/quotes from env (common Vercel paste mistake).
+  const cleanCid = cid.trim().replace(/^['"]|['"]$/g, '')
+  const cleanSec = sec.trim().replace(/^['"]|['"]$/g, '')
+  console.log(`[spotify] Token request — client_id="${cleanCid.slice(0, 8)}..." (len ${cleanCid.length}), secret len ${cleanSec.length}`)
+
   const res = await fetch('https://accounts.spotify.com/api/token', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: 'Basic ' + Buffer.from(
-        process.env.SPOTIFY_CLIENT_ID + ':' + process.env.SPOTIFY_CLIENT_SECRET
-      ).toString('base64'),
+      Authorization: 'Basic ' + Buffer.from(cleanCid + ':' + cleanSec).toString('base64'),
     },
     body: 'grant_type=client_credentials',
   })
-  if (!res.ok) throw new Error(`Spotify auth failed: ${res.status}`)
-  const data = await res.json()
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    console.error('[spotify] Token endpoint rejected credentials:', res.status, data)
+    throw new Error(`Spotify auth failed: ${res.status} ${data.error_description || data.error || ''}`)
+  }
+  if (!data.access_token) {
+    console.error('[spotify] Token endpoint returned 200 but no access_token:', data)
+    throw new Error('Spotify returned no access_token')
+  }
+  console.log(`[spotify] Got token, expires_in=${data.expires_in}s, token_type=${data.token_type}`)
   cachedToken = {
     token: data.access_token,
     // Expire 60s early so we never use a token in its last second.
