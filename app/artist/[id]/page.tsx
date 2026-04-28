@@ -5,11 +5,14 @@ import { createClient } from '@/lib/supabase'
 import { t, useLang, type Lang } from '@/lib/i18n'
 import Link from 'next/link'
 
+import type { SocialLinksMap } from '@/lib/socialLinks'
+
 type Song = { id: string; title: string; status: string; created_at: string; lyrics_instructions: string }
 type Artist = {
   id: string; name: string; genre: string; description: string; song_structure: string
   avatar_url?: string | null
   spotify_url?: string | null; spotify_verified?: boolean
+  social_links?: SocialLinksMap | null
 }
 
 const STATUS_COLORS: Record<string, string> = { draft: '#8a7a60', in_progress: '#d4a843', complete: '#7bc87b' }
@@ -126,6 +129,28 @@ export default function ArtistPage() {
                     style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', background: '#1ed760', color: '#000', fontSize: '12px', textDecoration: 'none', fontWeight: 'bold' }}
                   >
                     ♪
+                  </a>
+                )}
+                {artist?.social_links?.youtube?.url && (
+                  <a
+                    href={artist.social_links.youtube.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={lang === 'no' ? 'Åpne på YouTube' : 'Open on YouTube'}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', background: '#ff0000', color: '#fff', fontSize: '11px', textDecoration: 'none', fontWeight: 'bold' }}
+                  >
+                    ▶
+                  </a>
+                )}
+                {artist?.social_links?.instagram?.url && (
+                  <a
+                    href={artist.social_links.instagram.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={lang === 'no' ? 'Åpne på Instagram' : 'Open on Instagram'}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', background: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)', color: '#fff', fontSize: '12px', textDecoration: 'none', fontWeight: 'bold' }}
+                  >
+                    ◎
                   </a>
                 )}
               </h1>

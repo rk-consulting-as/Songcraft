@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { t, useLang, setLang, type Lang } from '@/lib/i18n'
 import { searchGenres, MUSIC_GENRES } from '@/lib/genres'
+import { parseYoutube, parseInstagram, type SocialLinksMap } from '@/lib/socialLinks'
 import Link from 'next/link'
 
 type Artist = {
@@ -13,7 +14,7 @@ type Artist = {
   spotify_url?: string | null; spotify_image_url?: string | null
   spotify_followers?: number | null; spotify_popularity?: number | null
   spotify_genres?: string[] | null
-  social_links?: Record<string, { url?: string; handle?: string }> | null
+  social_links?: SocialLinksMap | null
 }
 type SpotifyArtist = {
   id: string; name: string; followers: number; genres: string[]
@@ -28,6 +29,7 @@ const emptyForm = {
   spotify_followers: null as number | null,
   spotify_popularity: null as number | null,
   spotify_genres: [] as string[],
+  social_links: {} as SocialLinksMap,
 }
 
 // Title-case a Spotify genre string (e.g. "swamp country rock" -> "Swamp Country Rock")
@@ -56,6 +58,9 @@ export default function Dashboard() {
   const [showGenreDropdown, setShowGenreDropdown] = useState(false)
   const [selectedGenres, setSelectedGenres] = useState<string[]>([])
   const genreRef = useRef<HTMLDivElement>(null)
+
+  // Social links: raw input strings the user is editing (parsed result lives in form.social_links).
+  const [socialInputs, setSocialInputs] = useState<{ youtube: string; instagram: string }>({ youtube: '', instagram: '' })
 
   useEffect(() => { setLangState(useLang()); checkAuth(); fetchArtists() }, [])
   useEffect(() => {
@@ -171,10 +176,23 @@ export default function Dashboard() {
     setForm((f: any) => ({ ...f, genre: updated.join(', ') }))
   }
 
+  // Social links: parse raw input on every change; clear that platform when input is empty/invalid.
+  const onSocialChange = (platform: 'youtube' | 'instagram', val: string) => {
+    setSocialInputs(s => ({ ...s, [platform]: val }))
+    const parsed = !val.trim() ? null : platform === 'youtube' ? parseYoutube(val) : parseInstagram(val)
+    setForm((f: any) => {
+      const links: SocialLinksMap = { ...(f.social_links || {}) }
+      if (parsed) links[platform] = parsed
+      else delete links[platform]
+      return { ...f, social_links: links }
+    })
+  }
+
   const openCreate = () => {
     setEditingArtist(null); setForm(emptyForm)
     setSelectedGenres([]); setSelectedSpotify(null)
     setSpotifyResults([]); setSpotifySearched(false)
+    setSocialInputs({ youtube: '', instagram: '' })
     setShowForm(true)
   }
 
@@ -194,8 +212,13 @@ export default function Dashboard() {
       spotify_followers: artist.spotify_followers ?? null,
       spotify_popularity: artist.spotify_popularity ?? null,
       spotify_genres: artist.spotify_genres || [],
+      social_links: artist.social_links || {},
     })
     setSelectedGenres(artist.genre ? artist.genre.split(', ').filter(Boolean) : [])
+    setSocialInputs({
+      youtube: artist.social_links?.youtube?.url || '',
+      instagram: artist.social_links?.instagram?.url || '',
+    })
     // If the artist already has a confirmed Spotify link, pre-fill the preview card
     // so the user can open it / un-link without having to re-search.
     if (artist.spotify_id && artist.spotify_url) {
@@ -431,6 +454,47 @@ export default function Dashboard() {
                 <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder={tx.descriptionPlaceholder} rows={3} />
               </div>
 
+              {/* Social links */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '8px' }}>
+                  {lang === 'no' ? 'SOSIALE LENKER' : 'SOCIAL LINKS'}
+                </label>
+
+                {/* YouTube */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '6px', background: '#ff0000', color: '#fff', fontSize: '14px', fontWeight: 'bold', flexShrink: 0 }}>▶</span>
+                  <div style={{ flex: 1 }}>
+                    <input
+                      value={socialInputs.youtube}
+                      onChange={e => onSocialChange('youtube', e.target.value)}
+                      placeholder={lang === 'no' ? 'YouTube URL eller @kanal' : 'YouTube URL or @channel'}
+                    />
+                    {socialInputs.youtube.trim() && (
+                      form.social_links?.youtube
+                        ? <p style={{ margin: '3px 0 0', fontSize: '11px', color: '#1ed760' }}>✓ {form.social_links.youtube.handle ? '@' + form.social_links.youtube.handle : form.social_links.youtube.url}</p>
+                        : <p style={{ margin: '3px 0 0', fontSize: '11px', color: '#c05050' }}>{lang === 'no' ? 'Sjekk URL — kunne ikke gjenkjennes' : 'Check URL — could not be parsed'}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Instagram */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '6px', background: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)', color: '#fff', fontSize: '14px', fontWeight: 'bold', flexShrink: 0 }}>◎</span>
+                  <div style={{ flex: 1 }}>
+                    <input
+                      value={socialInputs.instagram}
+                      onChange={e => onSocialChange('instagram', e.target.value)}
+                      placeholder={lang === 'no' ? 'Instagram URL eller @brukernavn' : 'Instagram URL or @handle'}
+                    />
+                    {socialInputs.instagram.trim() && (
+                      form.social_links?.instagram
+                        ? <p style={{ margin: '3px 0 0', fontSize: '11px', color: '#1ed760' }}>✓ @{form.social_links.instagram.handle}</p>
+                        : <p style={{ margin: '3px 0 0', fontSize: '11px', color: '#c05050' }}>{lang === 'no' ? 'Sjekk URL — kunne ikke gjenkjennes' : 'Check URL — could not be parsed'}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.songStructure.toUpperCase()}</label>
                 <textarea value={form.song_structure} onChange={e => setForm({ ...form, song_structure: e.target.value })} placeholder={tx.songStructurePlaceholder} rows={5} />
@@ -492,6 +556,30 @@ export default function Dashboard() {
                             style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', borderRadius: '50%', background: '#1ed760', color: '#000', fontSize: '11px', textDecoration: 'none', fontWeight: 'bold' }}
                           >
                             ♪
+                          </a>
+                        )}
+                        {artist.social_links?.youtube?.url && (
+                          <a
+                            href={artist.social_links.youtube.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            title={lang === 'no' ? 'Åpne på YouTube' : 'Open on YouTube'}
+                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', borderRadius: '50%', background: '#ff0000', color: '#fff', fontSize: '10px', textDecoration: 'none', fontWeight: 'bold' }}
+                          >
+                            ▶
+                          </a>
+                        )}
+                        {artist.social_links?.instagram?.url && (
+                          <a
+                            href={artist.social_links.instagram.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            title={lang === 'no' ? 'Åpne på Instagram' : 'Open on Instagram'}
+                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', borderRadius: '50%', background: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)', color: '#fff', fontSize: '11px', textDecoration: 'none', fontWeight: 'bold' }}
+                          >
+                            ◎
                           </a>
                         )}
                       </div>
