@@ -13,6 +13,7 @@ import type { SocialLinksMap } from '@/lib/socialLinks'
 type Song = {
   id: string; title: string; status: string; created_at: string; lyrics_instructions: string
   album_id?: string | null
+  cover_image_url?: string | null
   spotify_track_id?: string | null
   spotify_url?: string | null
   spotify_popularity?: number | null
@@ -692,17 +693,22 @@ export default function ArtistPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {songs.map((song, i) => {
               const isReleased = song.status === 'released'
+              // Prefer Spotify album cover for imported tracks; fall back to user's own cover image.
+              const thumbUrl = song.spotify_cover_url || song.cover_image_url || null
+              const thumbCaption = song.spotify_album
+                ? `${song.title} — ${song.spotify_album}`
+                : song.title
               return (
                 <Link key={song.id} href={`/song/${song.id}`} style={{ textDecoration: 'none' }}>
                   <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '16px 20px', transition: 'border-color 0.2s', borderColor: isReleased ? 'rgba(30,215,96,0.2)' : undefined }}
                     onMouseEnter={e => (e.currentTarget.style.borderColor = isReleased ? 'rgba(30,215,96,0.5)' : 'rgba(212,168,67,0.5)')}
                     onMouseLeave={e => (e.currentTarget.style.borderColor = isReleased ? 'rgba(30,215,96,0.2)' : 'rgba(180,140,80,0.2)')}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0 }}>
-                      {song.spotify_cover_url ? (
+                      {thumbUrl ? (
                         <ZoomableImage
-                          src={song.spotify_cover_url}
+                          src={thumbUrl}
                           alt={song.title}
-                          caption={`${song.title}${song.spotify_album ? ' — ' + song.spotify_album : ''}`}
+                          caption={thumbCaption}
                           style={{ width: '44px', height: '44px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }}
                         />
                       ) : (
