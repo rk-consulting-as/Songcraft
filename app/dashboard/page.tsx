@@ -10,13 +10,29 @@ type Artist = {
   id: string; name: string; genre: string; description: string
   song_structure: string; avatar_url: string; song_count?: number
   spotify_id?: string; spotify_verified?: boolean
+  spotify_url?: string | null; spotify_image_url?: string | null
+  spotify_followers?: number | null; spotify_popularity?: number | null
+  spotify_genres?: string[] | null
+  social_links?: Record<string, { url?: string; handle?: string }> | null
 }
 type SpotifyArtist = {
   id: string; name: string; followers: number; genres: string[]
   popularity: number; image: string | null; smallImage: string | null
   spotifyUrl: string | null
 }
-const emptyForm = { name: '', genre: '', description: '', song_structure: '', spotify_id: '', spotify_verified: false }
+const emptyForm = {
+  name: '', genre: '', description: '', song_structure: '',
+  avatar_url: '',
+  spotify_id: '', spotify_verified: false,
+  spotify_url: '', spotify_image_url: '',
+  spotify_followers: null as number | null,
+  spotify_popularity: null as number | null,
+  spotify_genres: [] as string[],
+}
+
+// Title-case a Spotify genre string (e.g. "swamp country rock" -> "Swamp Country Rock")
+const titleCase = (s: string) =>
+  s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 
 export default function Dashboard() {
   const router = useRouter()
@@ -88,29 +104,48 @@ export default function Dashboard() {
 
   const selectSpotifyArtist = (artist: SpotifyArtist) => {
     setSelectedSpotify(artist)
+
+    // Merge Spotify genres into the user's selected list (deduped, capped at 5).
+    const formattedSpotifyGenres = artist.genres.map(titleCase)
+    const mergedGenres = [...selectedGenres]
+    for (const g of formattedSpotifyGenres) {
+      if (!mergedGenres.includes(g) && mergedGenres.length < 5) mergedGenres.push(g)
+    }
+    setSelectedGenres(mergedGenres)
+
     setForm((f: any) => ({
       ...f,
       spotify_id: artist.id,
       spotify_verified: false,
-      // Auto-fill genre if empty
-      genre: f.genre || artist.genres.slice(0, 3).map((g: string) =>
-        g.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
-      ).join(', '),
+      spotify_url: artist.spotifyUrl || '',
+      spotify_image_url: artist.image || '',
+      spotify_followers: artist.followers,
+      spotify_popularity: artist.popularity,
+      spotify_genres: artist.genres,
+      // Use Spotify image as the primary avatar (user can change later)
+      avatar_url: artist.image || f.avatar_url || '',
+      genre: mergedGenres.join(', '),
     }))
-    if (artist.genres.length > 0 && selectedGenres.length === 0) {
-      const formatted = artist.genres.slice(0, 3).map((g: string) =>
-        g.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
-      )
-      setSelectedGenres(formatted)
-    }
     setSpotifyResults([])
   }
 
   const confirmSpotifyOwnership = (confirmed: boolean) => {
-    setForm((f: any) => ({ ...f, spotify_verified: confirmed }))
-    if (!confirmed) {
+    if (confirmed) {
+      setForm((f: any) => ({ ...f, spotify_verified: true }))
+    } else {
+      // Clear all Spotify-derived fields and the avatar (since it came from Spotify).
       setSelectedSpotify(null)
-      setForm((f: any) => ({ ...f, spotify_id: '', spotify_verified: false }))
+      setForm((f: any) => ({
+        ...f,
+        spotify_id: '',
+        spotify_verified: false,
+        spotify_url: '',
+        spotify_image_url: '',
+        spotify_followers: null,
+        spotify_popularity: null,
+        spotify_genres: [],
+        avatar_url: f.spotify_image_url && f.avatar_url === f.spotify_image_url ? '' : f.avatar_url,
+      }))
     }
   }
 
@@ -146,9 +181,38 @@ export default function Dashboard() {
   const openEdit = (artist: Artist, e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation()
     setEditingArtist(artist)
-    setForm({ name: artist.name, genre: artist.genre || '', description: artist.description || '', song_structure: artist.song_structure || '', spotify_id: (artist as any).spotify_id || '', spotify_verified: (artist as any).spotify_verified || false })
+    setForm({
+      name: artist.name,
+      genre: artist.genre || '',
+      description: artist.description || '',
+      song_structure: artist.song_structure || '',
+      avatar_url: artist.avatar_url || '',
+      spotify_id: artist.spotify_id || '',
+      spotify_verified: artist.spotify_verified || false,
+      spotify_url: artist.spotify_url || '',
+      spotify_image_url: artist.spotify_image_url || '',
+      spotify_followers: artist.spotify_followers ?? null,
+      spotify_popularity: artist.spotify_popularity ?? null,
+      spotify_genres: artist.spotify_genres || [],
+    })
     setSelectedGenres(artist.genre ? artist.genre.split(', ').filter(Boolean) : [])
-    setSelectedSpotify(null); setSpotifyResults([]); setSpotifySearched(false)
+    // If the artist already has a confirmed Spotify link, pre-fill the preview card
+    // so the user can open it / un-link without having to re-search.
+    if (artist.spotify_id && artist.spotify_url) {
+      setSelectedSpotify({
+        id: artist.spotify_id,
+        name: artist.name,
+        followers: artist.spotify_followers ?? 0,
+        genres: artist.spotify_genres || [],
+        popularity: artist.spotify_popularity ?? 0,
+        image: artist.spotify_image_url || null,
+        smallImage: artist.spotify_image_url || null,
+        spotifyUrl: artist.spotify_url || null,
+      })
+    } else {
+      setSelectedSpotify(null)
+    }
+    setSpotifyResults([]); setSpotifySearched(false)
     setShowForm(true)
   }
 
@@ -410,11 +474,26 @@ export default function Dashboard() {
                     onMouseEnter={e => e.currentTarget.style.color = '#d4a843'}
                     onMouseLeave={e => e.currentTarget.style.color = '#6a5a40'}>✏️</button>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
-                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(212,168,67,0.15)', border: '1px solid rgba(212,168,67,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', flexShrink: 0 }}>🎤</div>
+                    {artist.avatar_url ? (
+                      <img src={artist.avatar_url} alt={artist.name} style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(212,168,67,0.3)', flexShrink: 0 }} />
+                    ) : (
+                      <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(212,168,67,0.15)', border: '1px solid rgba(212,168,67,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', flexShrink: 0 }}>🎤</div>
+                    )}
                     <div>
                       <div style={{ color: '#e8e0d0', fontWeight: '500', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         {artist.name}
-                        {(artist as any).spotify_verified && <span style={{ color: '#1ed760', fontSize: '11px' }}>🎵</span>}
+                        {artist.spotify_verified && artist.spotify_url && (
+                          <a
+                            href={artist.spotify_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            title={lang === 'no' ? 'Åpne i Spotify' : 'Open in Spotify'}
+                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', borderRadius: '50%', background: '#1ed760', color: '#000', fontSize: '11px', textDecoration: 'none', fontWeight: 'bold' }}
+                          >
+                            ♪
+                          </a>
+                        )}
                       </div>
                       {artist.genre && (
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>

@@ -6,7 +6,11 @@ import { t, useLang, type Lang } from '@/lib/i18n'
 import Link from 'next/link'
 
 type Song = { id: string; title: string; status: string; created_at: string; lyrics_instructions: string }
-type Artist = { id: string; name: string; genre: string; description: string; song_structure: string }
+type Artist = {
+  id: string; name: string; genre: string; description: string; song_structure: string
+  avatar_url?: string | null
+  spotify_url?: string | null; spotify_verified?: boolean
+}
 
 const STATUS_COLORS: Record<string, string> = { draft: '#8a7a60', in_progress: '#d4a843', complete: '#7bc87b' }
 
@@ -105,9 +109,26 @@ export default function ArtistPage() {
           <Link href="/dashboard" style={{ color: '#6a5a40', textDecoration: 'none', fontSize: '13px' }}>← {tx.dashboard}</Link>
           <span style={{ color: '#3a3530' }}>|</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '24px' }}>🎤</span>
+            {artist?.avatar_url ? (
+              <img src={artist.avatar_url} alt={artist.name} style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(212,168,67,0.3)' }} />
+            ) : (
+              <span style={{ fontSize: '24px' }}>🎤</span>
+            )}
             <div>
-              <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 'normal', color: '#d4a843' }}>{artist?.name}</h1>
+              <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 'normal', color: '#d4a843', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {artist?.name}
+                {artist?.spotify_verified && artist?.spotify_url && (
+                  <a
+                    href={artist.spotify_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={lang === 'no' ? 'Åpne i Spotify' : 'Open in Spotify'}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', background: '#1ed760', color: '#000', fontSize: '12px', textDecoration: 'none', fontWeight: 'bold' }}
+                  >
+                    ♪
+                  </a>
+                )}
+              </h1>
               {artist?.genre && <p style={{ margin: 0, fontSize: '11px', color: '#6a5a40', letterSpacing: '1px' }}>{artist.genre.toUpperCase()}</p>}
             </div>
           </div>
