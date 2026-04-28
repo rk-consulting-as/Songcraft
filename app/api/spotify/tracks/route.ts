@@ -74,8 +74,8 @@ export async function GET(req: NextRequest) {
   // 2) Fallback for 403 (development-mode quota restrictions).
   if (topRes.status === 403 && artistName) {
     const q = encodeURIComponent(`artist:"${artistName}"`)
-    // Spotify's search API caps `limit` at 20 (was 50 in older docs).
-    const searchUrl = `https://api.spotify.com/v1/search?q=${q}&type=track&limit=20&market=${encodeURIComponent(market)}`
+    // Don't pass `limit` — Spotify's default is 20 and it has tightened validation on this param.
+    const searchUrl = `https://api.spotify.com/v1/search?q=${q}&type=track&market=${encodeURIComponent(market)}`
     const searchRes = await fetch(searchUrl, { headers })
     if (searchRes.ok) {
       const data = await searchRes.json()
