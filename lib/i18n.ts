@@ -97,6 +97,11 @@ export const t = {
     importing: 'Importerer...',
     importAlreadyImported: 'Allerede importert',
     importPopularityHint: 'Popularity er Spotifys relative score 0-100, ikke ekte stream-tall',
+    importByUrlLabel: 'IMPORTER VIA URL',
+    importByUrlPlaceholder: 'Lim inn Spotify-link til en sang',
+    importByUrlFetch: 'Hent',
+    importByUrlImport: 'Importer',
+    importByUrlArtistMismatch: 'Denne sangens artist matcher ikke den linkede Spotify-profilen — sjekk at det er riktig sang.',
     importNoSpotifyArtist: 'Koble denne artisten til en Spotify-profil først for å importere låter.',
     spotifyPopularity: 'Popularity',
 
@@ -282,6 +287,11 @@ export const t = {
     importing: 'Importing...',
     importAlreadyImported: 'Already imported',
     importPopularityHint: 'Popularity is Spotify\'s relative 0-100 score, not real stream counts',
+    importByUrlLabel: 'IMPORT VIA URL',
+    importByUrlPlaceholder: 'Paste a Spotify track link',
+    importByUrlFetch: 'Fetch',
+    importByUrlImport: 'Import',
+    importByUrlArtistMismatch: 'This track\'s artist does not match the linked Spotify profile — make sure it\'s the right song.',
     importNoSpotifyArtist: 'Link this artist to a Spotify profile first to import songs.',
     spotifyPopularity: 'Popularity',
 
