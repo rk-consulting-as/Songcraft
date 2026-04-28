@@ -136,21 +136,29 @@ export default function ArtistPage() {
   }
 
   // Spotify import
+  const [importSource, setImportSource] = useState<string | null>(null)
+
   const openImport = async () => {
     if (!artist?.spotify_id) return
     setShowImport(true)
     setImportLoading(true)
     setImportError(null)
+    setImportSource(null)
     setSpotifyTracks([])
     setSelectedTrackIds(new Set())
     try {
-      const res = await fetch(`/api/spotify/tracks?artistId=${encodeURIComponent(artist.spotify_id)}`)
+      const params = new URLSearchParams({
+        artistId: artist.spotify_id,
+        artistName: artist.name || '',
+      })
+      const res = await fetch(`/api/spotify/tracks?${params.toString()}`)
       const data = await res.json()
       if (data.error) {
         setImportError(data.error)
       } else {
         const tracks = (data.tracks || []) as SpotifyTrack[]
         setSpotifyTracks(tracks)
+        setImportSource(data.source || null)
         // Pre-select tracks that are NOT already imported.
         const alreadyImported = new Set(songs.map(s => s.spotify_track_id).filter(Boolean) as string[])
         setSelectedTrackIds(new Set(tracks.filter(t => !alreadyImported.has(t.id)).map(t => t.id)))
@@ -404,6 +412,14 @@ export default function ArtistPage() {
                   </button>
                   <span style={{ color: '#5a4a30', fontSize: '11px' }}>💡 {tx.importPopularityHint}</span>
                 </div>
+
+                {importSource === 'search-fallback' && (
+                  <p style={{ color: '#8a7a60', fontSize: '11px', margin: '0 0 10px', fontStyle: 'italic' }}>
+                    {lang === 'no'
+                      ? 'ℹ️ Top-tracks-API ikke tilgjengelig — viser tracks via søk, sortert etter popularity.'
+                      : 'ℹ️ Top-tracks API not available — showing tracks via search, sorted by popularity.'}
+                  </p>
+                )}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
                   {spotifyTracks.map(track => {
