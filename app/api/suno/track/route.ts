@@ -58,11 +58,11 @@ function nextData(html: string): any {
 
 /** Extract first JSON-LD block (often MusicRecording schema for songs). */
 function jsonLd(html: string): any {
-  const matches = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/g)]
-  for (const m of matches) {
+  const re = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(html)) !== null) {
     try {
       const parsed = JSON.parse(m[1])
-      // Could be array or object
       if (Array.isArray(parsed)) {
         const rec = parsed.find(p => p?.['@type'] === 'MusicRecording' || p?.['@type'] === 'AudioObject')
         if (rec) return rec
