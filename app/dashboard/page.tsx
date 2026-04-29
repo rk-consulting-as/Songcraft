@@ -316,7 +316,7 @@ export default function Dashboard() {
       // Empty string -> null for the slug column (unique constraint allows multiple nulls).
       page_slug: form.page_enabled ? (form.page_slug || '').trim() || null : null,
     }
-    let res
+    let res: { data: any; error: any }
     if (editingArtist) {
       res = await supabase.from('artists').update(payload).eq('id', editingArtist.id).select().single()
       if (res.data) setArtists(artists.map(a => a.id === editingArtist.id ? { ...a, ...res.data } : a))
