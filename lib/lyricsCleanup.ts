@@ -15,28 +15,32 @@ const SECTION_LABEL_RE = new RegExp(
   'i'
 )
 
+/** Strip markdown emphasis (bold, italic) but keep the words. */
+function stripMarkdown(line: string): string {
+  return line
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    // Conservative single-underscore italic: only when surrounded by spaces / punctuation.
+    .replace(/(^|\s)_([^_\s][^_]*?)_(?=$|\s|[.,!?;:])/g, '$1$2')
+}
+
 export function cleanLyricsText(raw: string): string {
   if (!raw) return ''
   return raw
     .split(/\r?\n/)
+    // Strip markdown FIRST so the filter below sees `[Intro]` / `(Instrumental)` even when
+    // they were wrapped in **bold** or *italic* markers in the source.
+    .map(stripMarkdown)
     .filter(line => {
       const t = line.trim()
       if (!t) return true                        // keep blank lines for paragraph spacing
-      if (/^\[[^\]]+\]$/.test(t)) return false   // [Verse 1], [Chorus], [Bridge]
-      if (/^\([^)]+\)$/.test(t)) return false    // (Verse 1), (Chorus)
-      if (/^#+\s/.test(t)) return false          // markdown headers
+      if (/^\[[^\]]+\]$/.test(t)) return false   // [Verse 1], [Chorus], [Bridge], [Intro — ...]
+      if (/^\([^)]+\)$/.test(t)) return false    // (Verse 1), (Chorus), (Instrumental — ...)
+      if (/^#+\s/.test(t)) return false          // markdown headers (# Title)
       if (SECTION_LABEL_RE.test(t)) return false // "Verse 1:", "Chorus", etc.
       return true
     })
-    .map(line =>
-      line
-        // Strip markdown emphasis but keep the words.
-        .replace(/\*\*([^*]+)\*\*/g, '$1')
-        .replace(/__([^_]+)__/g, '$1')
-        .replace(/\*([^*]+)\*/g, '$1')
-        // Single-underscore italics — be conservative, only when surrounded by spaces.
-        .replace(/(^|\s)_([^_\s][^_]*?)_(?=$|\s|[.,!?;:])/g, '$1$2')
-    )
     .join('\n')
     // Collapse 3+ blank lines to a single blank line.
     .replace(/\n{3,}/g, '\n\n')
