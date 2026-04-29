@@ -13,6 +13,7 @@ import type { SocialLinksMap } from '@/lib/socialLinks'
 type Song = {
   id: string; title: string; status: string; created_at: string; lyrics_instructions: string
   album_id?: string | null
+  position?: number | null
   cover_image_url?: string | null
   spotify_track_id?: string | null
   spotify_url?: string | null
@@ -104,6 +105,15 @@ export default function ArtistPage() {
   const [urlPreview, setUrlPreview] = useState<(SpotifyTrack & { artists?: { id: string; name: string }[] }) | null>(null)
   const [urlImporting, setUrlImporting] = useState(false)
 
+  // Filtering + search for the song list
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [albumFilter, setAlbumFilter] = useState<string>('all')
+  const [songSearch, setSongSearch] = useState('')
+
+  // Drag & drop reorder
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+
   useEffect(() => { setLangState(useLang()); setAiProvider(getStoredProvider()); fetchData() }, [artistId])
   const tx = t[lang]
 
@@ -111,7 +121,13 @@ export default function ArtistPage() {
     const supabase = createClient()
     const { data: a } = await supabase.from('artists').select('*').eq('id', artistId).single()
     if (a) setArtist(a)
-    const { data: s } = await supabase.from('songs').select('*').eq('artist_id', artistId).order('created_at', { ascending: false })
+    // Order by manual position first (NULLS LAST), then by creation date as fallback.
+    const { data: s } = await supabase
+      .from('songs')
+      .select('*')
+      .eq('artist_id', artistId)
+      .order('position', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: false })
     if (s) setSongs(s)
     const { data: al } = await supabase.from('albums').select('*').eq('artist_id', artistId).order('release_date', { ascending: false, nullsFirst: false })
     if (al) setAlbums(al)
@@ -246,6 +262,64 @@ export default function ArtistPage() {
     const { data } = await supabase.from('songs').update({ album_id: albumId }).eq('id', songId).select().single()
     if (data) setSongs(songs.map(s => s.id === songId ? { ...s, album_id: data.album_id } : s))
   }
+
+  // Apply filters + search to get the visible song list. Reorder operates on UNFILTERED list,
+  // so we look up indices via song id.
+  const visibleSongs = songs.filter(s => {
+    if (statusFilter !== 'all' && s.status !== statusFilter) return false
+    if (albumFilter === 'none' && s.album_id) return false
+    if (albumFilter !== 'all' && albumFilter !== 'none' && s.album_id !== albumFilter) return false
+    if (songSearch.trim()) {
+      const q = songSearch.toLowerCase()
+      const hay = `${s.title} ${s.lyrics_instructions || ''} ${s.spotify_album || ''}`.toLowerCase()
+      if (!hay.includes(q)) return false
+    }
+    return true
+  })
+
+  // Reorder: persist new positions to Supabase, optimistically update local state.
+  const persistOrder = async (ordered: Song[]) => {
+    setSongs(ordered)
+    const supabase = createClient()
+    // Update each song's position. Renumber from 1.
+    await Promise.all(
+      ordered.map((s, i) => supabase.from('songs').update({ position: i + 1 }).eq('id', s.id))
+    )
+  }
+
+  const moveSong = (songId: string, dir: -1 | 1) => {
+    const idx = songs.findIndex(s => s.id === songId)
+    if (idx < 0) return
+    const target = idx + dir
+    if (target < 0 || target >= songs.length) return
+    const next = [...songs]
+    ;[next[idx], next[target]] = [next[target], next[idx]]
+    persistOrder(next)
+  }
+
+  const onDragStart = (e: React.DragEvent, index: number) => {
+    setDragIndex(index)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', String(index))
+  }
+  const onDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (dragOverIndex !== index) setDragOverIndex(index)
+  }
+  const onDragLeave = () => setDragOverIndex(null)
+  const onDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault()
+    if (dragIndex === null || dragIndex === dropIndex) {
+      setDragIndex(null); setDragOverIndex(null); return
+    }
+    const next = [...songs]
+    const [moved] = next.splice(dragIndex, 1)
+    next.splice(dropIndex, 0, moved)
+    persistOrder(next)
+    setDragIndex(null); setDragOverIndex(null)
+  }
+  const onDragEnd = () => { setDragIndex(null); setDragOverIndex(null) }
 
   const buildArtistContext = () => {
     if (!artist || !useProfile) return ''
@@ -931,29 +1005,134 @@ export default function ArtistPage() {
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h2 style={{ margin: 0, color: '#d4a843', fontWeight: 'normal', fontSize: '16px' }}>{tx.songsCount} ({songs.length})</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: 8 }}>
+          <h2 style={{ margin: 0, color: '#d4a843', fontWeight: 'normal', fontSize: '16px' }}>
+            {tx.songsCount} ({visibleSongs.length}{visibleSongs.length !== songs.length ? ` / ${songs.length}` : ''})
+          </h2>
         </div>
 
-        {songs.length === 0 && !showGenerator ? (
+        {/* Filters + search */}
+        {songs.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 14 }}>
+            {/* Status chips */}
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+              {[
+                { v: 'all', label: tx.filterAll },
+                { v: 'draft', label: tx.draft, color: STATUS_COLORS.draft },
+                { v: 'in_progress', label: tx.inProgress, color: STATUS_COLORS.in_progress },
+                { v: 'complete', label: tx.complete, color: STATUS_COLORS.complete },
+                { v: 'released', label: tx.released, color: STATUS_COLORS.released },
+              ].map(opt => {
+                const active = statusFilter === opt.v
+                return (
+                  <button
+                    key={opt.v}
+                    onClick={() => setStatusFilter(opt.v)}
+                    style={{
+                      padding: '5px 12px', borderRadius: 14, fontSize: 11, cursor: 'pointer',
+                      border: `1px solid ${active ? (opt.color || '#d4a843') : 'rgba(180,140,80,0.2)'}`,
+                      background: active ? `${opt.color || '#d4a843'}22` : 'transparent',
+                      color: active ? (opt.color || '#d4a843') : '#6a5a40',
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
+            {/* Album filter */}
+            {albums.length > 0 && (
+              <select
+                value={albumFilter}
+                onChange={e => setAlbumFilter(e.target.value)}
+                style={{ width: 'auto', padding: '5px 10px', fontSize: 12 }}
+              >
+                <option value="all">{tx.filterAllAlbums}</option>
+                <option value="none">{tx.filterSinglesOnly}</option>
+                {albums.map(a => <option key={a.id} value={a.id}>{a.title}</option>)}
+              </select>
+            )}
+            {/* Search */}
+            <input
+              value={songSearch}
+              onChange={e => setSongSearch(e.target.value)}
+              placeholder={tx.filterSearchPlaceholder}
+              style={{ flex: '1 1 180px', minWidth: 0, maxWidth: 280, padding: '6px 12px', fontSize: 13 }}
+            />
+            {(statusFilter !== 'all' || albumFilter !== 'all' || songSearch) && (
+              <button
+                onClick={() => { setStatusFilter('all'); setAlbumFilter('all'); setSongSearch('') }}
+                style={{ background: 'none', border: 'none', color: '#6a5a40', fontSize: 12, cursor: 'pointer' }}
+              >
+                {tx.filterClear}
+              </button>
+            )}
+          </div>
+        )}
+
+        {visibleSongs.length === 0 && !showGenerator ? (
           <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
             <div style={{ fontSize: '40px', marginBottom: '16px' }}>🎵</div>
-            <p style={{ color: '#8a7a60', marginBottom: '20px' }}>{tx.noSongs}</p>
-            <button className="btn-gold" onClick={() => setShowGenerator(true)}>{tx.generateWithAI}</button>
+            <p style={{ color: '#8a7a60', marginBottom: '20px' }}>{songs.length === 0 ? tx.noSongs : tx.filterNoMatch}</p>
+            {songs.length === 0 && <button className="btn-gold" onClick={() => setShowGenerator(true)}>{tx.generateWithAI}</button>}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {songs.map((song, i) => {
+            {visibleSongs.map((song) => {
+              // Use the song's index in the FULL list (not the filtered list) for reordering.
+              const i = songs.findIndex(s => s.id === song.id)
+              const reorderEnabled = statusFilter === 'all' && albumFilter === 'all' && !songSearch
+              const isFirst = i === 0
+              const isLast = i === songs.length - 1
               const isReleased = song.status === 'released'
               // Prefer Spotify album cover for imported tracks; fall back to user's own cover image.
               const thumbUrl = song.spotify_cover_url || song.cover_image_url || null
               const thumbCaption = song.spotify_album
                 ? `${song.title} — ${song.spotify_album}`
                 : song.title
+              const isDragOver = dragOverIndex === i && dragIndex !== null && dragIndex !== i
               return (
-                <div key={song.id} className="song-row card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', transition: 'border-color 0.2s', borderColor: isReleased ? 'rgba(30,215,96,0.2)' : undefined, gap: 10 }}
+                <div key={song.id} className="song-row card"
+                  onDragOver={reorderEnabled ? (e => onDragOver(e, i)) : undefined}
+                  onDragLeave={reorderEnabled ? onDragLeave : undefined}
+                  onDrop={reorderEnabled ? (e => onDrop(e, i)) : undefined}
+                  style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '16px 20px', transition: 'border-color 0.2s, transform 0.15s',
+                    borderColor: isDragOver ? '#d4a843' : isReleased ? 'rgba(30,215,96,0.2)' : undefined,
+                    transform: isDragOver ? 'scale(1.01)' : undefined,
+                    opacity: dragIndex === i ? 0.5 : 1,
+                    gap: 10,
+                  }}
                   onMouseEnter={e => (e.currentTarget.style.borderColor = isReleased ? 'rgba(30,215,96,0.5)' : 'rgba(212,168,67,0.5)')}
                   onMouseLeave={e => (e.currentTarget.style.borderColor = isReleased ? 'rgba(30,215,96,0.2)' : 'rgba(180,140,80,0.2)')}>
+                  {/* Drag handle (desktop) + up/down buttons (everywhere). Reorder disabled when filtering. */}
+                  {reorderEnabled && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flexShrink: 0, color: '#6a5a40' }}>
+                      <span
+                        draggable
+                        onDragStart={e => onDragStart(e, i)}
+                        onDragEnd={onDragEnd}
+                        title={tx.dragToReorder}
+                        style={{ cursor: 'grab', userSelect: 'none', fontSize: 14, lineHeight: 1, padding: '0 4px' }}
+                      >⋮⋮</span>
+                      <div style={{ display: 'flex', gap: 1 }}>
+                        <button
+                          onClick={() => moveSong(song.id, -1)}
+                          disabled={isFirst}
+                          title={tx.moveUp}
+                          style={{ background: 'none', border: 'none', color: isFirst ? '#3a3530' : '#6a5a40', cursor: isFirst ? 'default' : 'pointer', fontSize: 14, padding: '0 4px', lineHeight: 1 }}
+                        >▲</button>
+                        <button
+                          onClick={() => moveSong(song.id, 1)}
+                          disabled={isLast}
+                          title={tx.moveDown}
+                          style={{ background: 'none', border: 'none', color: isLast ? '#3a3530' : '#6a5a40', cursor: isLast ? 'default' : 'pointer', fontSize: 14, padding: '0 4px', lineHeight: 1 }}
+                        >▼</button>
+                      </div>
+                    </div>
+                  )}
                   {/* Left side IS the navigation target. Right side cluster is sibling, NOT a link. */}
                   <Link href={`/song/${song.id}`} className="song-row-left" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0, color: 'inherit', cursor: 'pointer' }}>
                     {thumbUrl ? (

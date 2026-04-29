@@ -6,6 +6,7 @@ import { t, useLang, type Lang } from '@/lib/i18n'
 import { type AIProvider, getStoredProvider, setStoredProvider } from '@/lib/aiProvider'
 import AIProviderPicker from '@/components/AIProviderPicker'
 import ZoomableImage from '@/components/ZoomableImage'
+import { cleanLyricsText } from '@/lib/lyricsCleanup'
 import Link from 'next/link'
 
 const PLATFORMS = ['TikTok', 'Instagram', 'Facebook', 'YouTube', 'X/Twitter']
@@ -55,6 +56,9 @@ export default function SongPage() {
   // AI image generation state
   const [imageGenerating, setImageGenerating] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
+
+  // Lyrics history viewer
+  const [showHistory, setShowHistory] = useState(false)
 
   useEffect(() => { setLangState(useLang()); setAiProvider(getStoredProvider()); fetchSong() }, [songId])
 
@@ -361,12 +365,104 @@ export default function SongPage() {
             {lyrics && (
               <>
                 <div className="card" style={{ marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: 8 }}>
                     <span style={{ color: '#d4a843', fontSize: '11px', letterSpacing: '1px' }}>{tx.lyricsLabel}</span>
-                    <button className="btn-outline" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={() => copy(lyrics)}>📋 {tx.copy}</button>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {lyricsHistory.filter(m => m.role === 'assistant').length > 1 && (
+                        <button
+                          className="btn-outline"
+                          style={{ padding: '4px 12px', fontSize: '12px' }}
+                          onClick={() => setShowHistory(true)}
+                          title={tx.historyHint}
+                        >
+                          📜 {tx.historyButton} ({lyricsHistory.filter(m => m.role === 'assistant').length})
+                        </button>
+                      )}
+                      <button
+                        className="btn-outline"
+                        style={{ padding: '4px 12px', fontSize: '12px' }}
+                        onClick={() => copy(cleanLyricsText(lyrics))}
+                        title={tx.copyCleanHint}
+                      >
+                        📄 {tx.copyClean}
+                      </button>
+                      <button className="btn-outline" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={() => copy(lyrics)}>
+                        📋 {tx.copy}
+                      </button>
+                    </div>
                   </div>
                   <textarea value={lyrics} onChange={e => { setLyrics(e.target.value); save({ lyrics_text: e.target.value }) }} rows={16} />
                 </div>
+
+                {/* Lyrics history modal */}
+                {showHistory && (
+                  <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, overflowY: 'auto' }}
+                    onClick={() => setShowHistory(false)}
+                  >
+                    <div className="card" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 720, maxHeight: '90vh', overflowY: 'auto', borderColor: 'rgba(212,168,67,0.4)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                        <h3 style={{ margin: 0, color: '#d4a843', fontWeight: 'normal', fontSize: 17 }}>📜 {tx.historyTitle}</h3>
+                        <button onClick={() => setShowHistory(false)} style={{ background: 'none', border: 'none', color: '#6a5a40', cursor: 'pointer', fontSize: 22 }}>×</button>
+                      </div>
+                      {(() => {
+                        const versions: { index: number; content: string; userPrompt?: string }[] = []
+                        for (let i = 0; i < lyricsHistory.length; i++) {
+                          const m = lyricsHistory[i]
+                          if (m.role !== 'assistant') continue
+                          // Find the latest user message before this assistant message
+                          let userPrompt: string | undefined
+                          for (let j = i - 1; j >= 0; j--) {
+                            if (lyricsHistory[j].role === 'user') { userPrompt = lyricsHistory[j].content; break }
+                          }
+                          versions.push({ index: versions.length + 1, content: m.content, userPrompt })
+                        }
+                        if (versions.length === 0) {
+                          return <p style={{ color: '#6a5a40', fontSize: 13 }}>{tx.historyEmpty}</p>
+                        }
+                        // Show newest first.
+                        return versions.reverse().map(v => {
+                          const isCurrent = v.content === lyrics
+                          return (
+                            <div key={v.index} style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${isCurrent ? 'rgba(212,168,67,0.4)' : 'rgba(180,140,80,0.15)'}`, borderRadius: 6, padding: 14, marginBottom: 12 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+                                <span style={{ color: isCurrent ? '#d4a843' : '#8a7a60', fontSize: 12, fontWeight: 500 }}>
+                                  {tx.historyVersion} {v.index}{isCurrent ? ` · ${tx.historyCurrent}` : ''}
+                                </span>
+                                <div style={{ display: 'flex', gap: 6 }}>
+                                  <button
+                                    className="btn-outline"
+                                    style={{ padding: '4px 12px', fontSize: 11 }}
+                                    onClick={() => { copy(v.content) }}
+                                  >📋 {tx.copy}</button>
+                                  {!isCurrent && (
+                                    <button
+                                      className="btn-outline"
+                                      style={{ padding: '4px 12px', fontSize: 11, color: '#d4a843', borderColor: 'rgba(212,168,67,0.4)' }}
+                                      onClick={() => {
+                                        if (!confirm(tx.historyRestoreConfirm)) return
+                                        setLyrics(v.content)
+                                        save({ lyrics_text: v.content })
+                                        setShowHistory(false)
+                                      }}
+                                    >↩ {tx.historyRestore}</button>
+                                  )}
+                                </div>
+                              </div>
+                              {v.userPrompt && (
+                                <div style={{ color: '#6a5a40', fontSize: 11, marginBottom: 6, fontStyle: 'italic' }}>
+                                  💬 {v.userPrompt.length > 140 ? v.userPrompt.slice(0, 140) + '...' : v.userPrompt}
+                                </div>
+                              )}
+                              <pre style={{ color: '#a09080', fontSize: 12, lineHeight: 1.5, whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0, maxHeight: 200, overflowY: 'auto', background: 'rgba(0,0,0,0.2)', padding: 8, borderRadius: 4 }}>
+                                {v.content}
+                              </pre>
+                            </div>
+                          )
+                        })
+                      })()}
+                    </div>
+                  </div>
+                )}
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <input value={lyricsChat} onChange={e => setLyricsChat(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && refineLyrics()}

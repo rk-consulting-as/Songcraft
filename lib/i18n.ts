@@ -132,6 +132,37 @@ export const t = {
     albumCoverPromptGenerate: '✨ Lag prompt med AI',
     albumCoverPromptPlaceholder: 'Beskriv hvordan album-coveret skal se ut, eller la AI lage en prompt fra album-tittel og artistinfo over.',
 
+    // Filter / search on artist page
+    filterAll: 'Alle',
+    filterAllAlbums: 'Alle album',
+    filterSinglesOnly: 'Kun singles',
+    filterSearchPlaceholder: 'Søk i sanger…',
+    filterClear: 'Nullstill',
+    filterNoMatch: 'Ingen sanger matcher filtrene.',
+    dragToReorder: 'Dra for å endre rekkefølge',
+    moveUp: 'Flytt opp',
+    moveDown: 'Flytt ned',
+
+    // Lyrics extras
+    copyClean: 'Kopier ren tekst',
+    copyCleanHint: 'Kopierer kun sangteksten — uten [Vers], (Refreng), markdown osv.',
+    historyButton: 'Versjoner',
+    historyTitle: 'Tidligere versjoner av sangteksten',
+    historyHint: 'Se og gjenopprett tidligere AI-genererte versjoner',
+    historyVersion: 'Versjon',
+    historyCurrent: 'gjeldende',
+    historyEmpty: 'Ingen lagrede versjoner.',
+    historyRestore: 'Gjenopprett',
+    historyRestoreConfirm: 'Erstatt nåværende sangtekst med denne versjonen?',
+
+    // Global search
+    searchPlaceholder: 'Søk på artister og sanger…',
+    searchClear: 'Tøm søk',
+    searching: 'Søker…',
+    searchNoResults: 'Ingen treff.',
+    searchArtistsLabel: 'ARTISTER',
+    searchSongsLabel: 'SANGER',
+
     // Song tabs
     lyrics: 'Sangtekst',
     suno: 'Suno',
@@ -321,6 +352,37 @@ export const t = {
     albumCoverAi: 'Generate cover with AI',
     albumCoverPromptGenerate: '✨ Generate prompt with AI',
     albumCoverPromptPlaceholder: 'Describe how the album cover should look, or let AI create a prompt from the album title and artist info above.',
+
+    // Filter / search on artist page
+    filterAll: 'All',
+    filterAllAlbums: 'All albums',
+    filterSinglesOnly: 'Singles only',
+    filterSearchPlaceholder: 'Search songs…',
+    filterClear: 'Clear',
+    filterNoMatch: 'No songs match the filters.',
+    dragToReorder: 'Drag to reorder',
+    moveUp: 'Move up',
+    moveDown: 'Move down',
+
+    // Lyrics extras
+    copyClean: 'Copy clean text',
+    copyCleanHint: 'Copies just the lyrics — no [Verse], (Chorus), markdown etc.',
+    historyButton: 'Versions',
+    historyTitle: 'Previous lyric versions',
+    historyHint: 'View and restore previous AI-generated versions',
+    historyVersion: 'Version',
+    historyCurrent: 'current',
+    historyEmpty: 'No saved versions.',
+    historyRestore: 'Restore',
+    historyRestoreConfirm: 'Replace current lyrics with this version?',
+
+    // Global search
+    searchPlaceholder: 'Search artists and songs…',
+    searchClear: 'Clear search',
+    searching: 'Searching…',
+    searchNoResults: 'No matches.',
+    searchArtistsLabel: 'ARTISTS',
+    searchSongsLabel: 'SONGS',
 
     // Song tabs
     lyrics: 'Lyrics',

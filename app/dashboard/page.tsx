@@ -62,6 +62,15 @@ export default function Dashboard() {
   // Social links: raw input strings the user is editing (parsed result lives in form.social_links).
   const [socialInputs, setSocialInputs] = useState<{ youtube: string; instagram: string }>({ youtube: '', instagram: '' })
 
+  // Global search across artists + songs
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<{
+    artists: Artist[]
+    songs: { id: string; title: string; status: string; artist_id: string; artists?: { name?: string } | null }[]
+  }>({ artists: [], songs: [] })
+  const [searching, setSearching] = useState(false)
+  const searchTimer = useRef<any>(null)
+
   useEffect(() => { setLangState(useLang()); checkAuth(); fetchArtists() }, [])
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -84,6 +93,33 @@ export default function Dashboard() {
     const { data } = await supabase.from('artists').select('*, songs(count)').order('created_at', { ascending: false })
     if (data) setArtists(data.map((a: any) => ({ ...a, song_count: a.songs?.[0]?.count ?? 0 })))
     setLoading(false)
+  }
+
+  // Global search (debounced).
+  const runSearch = async (q: string) => {
+    if (!q.trim() || q.trim().length < 2) {
+      setSearchResults({ artists: [], songs: [] })
+      setSearching(false)
+      return
+    }
+    setSearching(true)
+    const supabase = createClient()
+    const term = `%${q.trim()}%`
+    const [artistsRes, songsRes] = await Promise.all([
+      supabase.from('artists').select('*').or(`name.ilike.${term},genre.ilike.${term}`).limit(10),
+      supabase.from('songs').select('id,title,status,artist_id,artists(name)').or(`title.ilike.${term},lyrics_instructions.ilike.${term},spotify_album.ilike.${term}`).limit(20),
+    ])
+    setSearchResults({
+      artists: (artistsRes.data || []) as Artist[],
+      songs: (songsRes.data || []) as any,
+    })
+    setSearching(false)
+  }
+
+  const onSearchChange = (val: string) => {
+    setSearchQuery(val)
+    if (searchTimer.current) clearTimeout(searchTimer.current)
+    searchTimer.current = setTimeout(() => runSearch(val), 300)
   }
 
   // Spotify search with debounce
@@ -301,6 +337,82 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
+
+        {/* Global search */}
+        <div style={{ marginBottom: 24, position: 'relative' }}>
+          <input
+            value={searchQuery}
+            onChange={e => onSearchChange(e.target.value)}
+            placeholder={tx.searchPlaceholder}
+            style={{ paddingLeft: 40, fontSize: 14 }}
+          />
+          <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#6a5a40', fontSize: 16, pointerEvents: 'none' }}>🔍</span>
+          {searchQuery && (
+            <button
+              onClick={() => { setSearchQuery(''); setSearchResults({ artists: [], songs: [] }) }}
+              style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#6a5a40', cursor: 'pointer', fontSize: 18, padding: 4 }}
+              title={tx.searchClear}
+            >×</button>
+          )}
+        </div>
+
+        {/* Search results — replaces the artist grid when active */}
+        {searchQuery.trim().length >= 2 ? (
+          <div style={{ marginBottom: 28 }}>
+            {searching && <p style={{ color: '#6a5a40', fontSize: 13 }}>{tx.searching}</p>}
+            {!searching && searchResults.artists.length === 0 && searchResults.songs.length === 0 && (
+              <p style={{ color: '#6a5a40', fontSize: 13 }}>{tx.searchNoResults}</p>
+            )}
+            {searchResults.artists.length > 0 && (
+              <div style={{ marginBottom: 22 }}>
+                <p style={{ color: '#8a7a60', fontSize: 11, letterSpacing: 1, marginBottom: 10 }}>
+                  {tx.searchArtistsLabel} ({searchResults.artists.length})
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+                  {searchResults.artists.map(a => (
+                    <Link key={a.id} href={`/artist/${a.id}`} style={{ textDecoration: 'none' }}>
+                      <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 12, cursor: 'pointer' }}>
+                        {a.avatar_url ? (
+                          <img src={a.avatar_url} alt={a.name} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                        ) : (
+                          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(212,168,67,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>🎤</div>
+                        )}
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ color: '#e8e0d0', fontSize: 14, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
+                          {a.genre && <div style={{ color: '#6a5a40', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.genre}</div>}
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+            {searchResults.songs.length > 0 && (
+              <div>
+                <p style={{ color: '#8a7a60', fontSize: 11, letterSpacing: 1, marginBottom: 10 }}>
+                  {tx.searchSongsLabel} ({searchResults.songs.length})
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {searchResults.songs.map(s => (
+                    <Link key={s.id} href={`/song/${s.id}`} style={{ textDecoration: 'none' }}>
+                      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', cursor: 'pointer', gap: 10 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ color: '#e8e0d0', fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.title}</div>
+                          {s.artists?.name && (
+                            <div style={{ color: '#6a5a40', fontSize: 11 }}>{s.artists.name}</div>
+                          )}
+                        </div>
+                        <span style={{ fontSize: 10, letterSpacing: 1, color: '#8a7a60', border: '1px solid rgba(180,140,80,0.2)', padding: '2px 8px', borderRadius: 12, flexShrink: 0 }}>
+                          {{ draft: tx.draft, in_progress: tx.inProgress, complete: tx.complete, released: tx.released }[s.status] || s.status}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2 style={{ margin: 0, color: '#d4a843', fontWeight: 'normal', fontSize: '18px' }}>{tx.yourArtists}</h2>
