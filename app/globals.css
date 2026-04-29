@@ -60,6 +60,19 @@ input:focus, textarea:focus, select:focus {
   border-color: rgba(212,168,67,0.5);
 }
 
+/* Dropdown options inherit OS styling by default (often white background, light text).
+   Force a dark theme that matches the rest of the UI. Browser support varies, but most
+   modern Chromium/Firefox/Safari respect these. */
+select option,
+select optgroup {
+  background-color: #1a1520;
+  color: #e8e0d0;
+}
+select option:checked {
+  background: #d4a843 linear-gradient(0deg, #d4a843, #d4a843);
+  color: #0a0a0f;
+}
+
 /* ============================================================
    Mobile responsiveness — applied automatically on narrow viewports.
    The app uses lots of inline styles, so we override with classes

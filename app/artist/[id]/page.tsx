@@ -21,6 +21,8 @@ type Song = {
   spotify_release_date?: string | null
   spotify_album?: string | null
   spotify_cover_url?: string | null
+  suno_url?: string | null
+  media_links?: { platform: string; url: string; label?: string }[] | null
 }
 type Album = {
   id: string
@@ -1305,6 +1307,45 @@ export default function ArtistPage() {
                             ♪
                           </a>
                         )}
+                        {/* Media-link icons (YouTube, Apple Music, SoundCloud, etc.) */}
+                        {(song.media_links || []).map((ml, idx) => {
+                          const p = (ml.platform || '').toLowerCase()
+                          // Skip Spotify here — already shown above from spotify_url.
+                          if (p === 'spotify' || !ml.url) return null
+                          let bg = '#3a3530', color = '#fff', icon = '🔗', label = ml.platform
+                          if (p === 'youtube')        { bg = '#ff0000'; icon = '▶' }
+                          else if (p === 'tiktok')    { bg = '#000';    icon = '♪'; color = '#fff' }
+                          else if (p === 'instagram') { bg = 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)'; icon = '◎' }
+                          else if (p === 'facebook')  { bg = '#1877f2'; icon = 'f' }
+                          else if (p === 'apple music' || p === 'apple-music' || p === 'apple_music') { bg = '#fa233b'; icon = '' }
+                          else if (p === 'soundcloud'){ bg = '#ff5500'; icon = '☁' }
+                          return (
+                            <a
+                              key={`${p}-${idx}`}
+                              href={ml.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={e => { e.preventDefault(); e.stopPropagation(); window.open(ml.url, '_blank') }}
+                              title={lang === 'no' ? `Åpne på ${label}` : `Open on ${label}`}
+                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18, borderRadius: '50%', background: bg, color, fontSize: 10, textDecoration: 'none', fontWeight: 'bold', flexShrink: 0 }}
+                            >
+                              {icon}
+                            </a>
+                          )
+                        })}
+                        {/* Suno indicator if a Suno track is linked to this song */}
+                        {song.suno_url && (
+                          <a
+                            href={song.suno_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={e => { e.preventDefault(); e.stopPropagation(); window.open(song.suno_url!, '_blank') }}
+                            title={lang === 'no' ? 'Åpne på Suno' : 'Open on Suno'}
+                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18, borderRadius: '50%', background: '#7bc87b', color: '#000', fontSize: 10, textDecoration: 'none', fontWeight: 'bold', flexShrink: 0 }}
+                          >
+                            ♫
+                          </a>
+                        )}
                       </div>
                       {isReleased ? (
                         <div style={{ color: '#5a7a5a', fontSize: '12px', lineHeight: '1.4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1343,7 +1384,6 @@ export default function ArtistPage() {
                         {statusLabel(song.status)}
                       </span>
                     <button onClick={e => deleteSong(song.id, e)} style={{ background: 'none', border: 'none', color: '#3a3530', cursor: 'pointer', fontSize: '18px', padding: '4px 8px' }}>×</button>
-                    <span style={{ color: '#6a5a40', fontSize: '13px' }}>→</span>
                   </div>
                 </div>
               )
