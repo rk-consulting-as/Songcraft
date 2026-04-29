@@ -137,6 +137,25 @@ export const t = {
     albumCoverFromSpotifyPlaceholder: 'Lim inn Spotify-album-link',
     albumCoverFromSpotifyFetch: 'Hent',
 
+    // Public artist page
+    publicPageLabel: 'Offentlig artistside',
+    publicPageHint: 'Generer en hjemmeside for artisten på /p/{slug}',
+    publicPageSlug: 'URL-SLUG',
+    publicPagePreview: 'Forhåndsvisning:',
+    publicPageSections: 'SEKSJONER PÅ SIDEN',
+    publicPageYoutubeVideos: 'FREMHEVEDE YOUTUBE-VIDEOER',
+    publicPageYoutubeVideosPlaceholder: 'Lim inn YouTube-lenker, én per linje',
+    publicPageYoutubeVideosHint: 'Hver lenke embeddes som en spiller på siden.',
+    publicPageSlugRequired: 'Du må sette en URL-slug før du kan publisere siden.',
+    publicPageSlugTaken: 'Den URL-slugen er allerede i bruk. Prøv en annen.',
+    publicSectionHero: 'Hero',
+    publicSectionSocial: 'Sosiale lenker',
+    publicSectionBio: 'Beskrivelse',
+    publicSectionSpotify: 'Spotify-spiller',
+    publicSectionYoutube: 'YouTube-videoer',
+    publicSectionAlbums: 'Album',
+    publicSectionSongs: 'Sanger',
+
     // Filter / search on artist page
     filterAll: 'Alle',
     filterAllAlbums: 'Alle album',
@@ -370,6 +389,25 @@ export const t = {
     albumCoverFromSpotify: 'FETCH FROM SPOTIFY',
     albumCoverFromSpotifyPlaceholder: 'Paste a Spotify album link',
     albumCoverFromSpotifyFetch: 'Fetch',
+
+    // Public artist page
+    publicPageLabel: 'Public artist page',
+    publicPageHint: 'Generate a homepage for the artist at /p/{slug}',
+    publicPageSlug: 'URL SLUG',
+    publicPagePreview: 'Preview:',
+    publicPageSections: 'PAGE SECTIONS',
+    publicPageYoutubeVideos: 'FEATURED YOUTUBE VIDEOS',
+    publicPageYoutubeVideosPlaceholder: 'Paste YouTube links, one per line',
+    publicPageYoutubeVideosHint: 'Each link will be embedded as a player on the page.',
+    publicPageSlugRequired: 'You must set a URL slug before you can publish the page.',
+    publicPageSlugTaken: 'That URL slug is already in use. Try another.',
+    publicSectionHero: 'Hero',
+    publicSectionSocial: 'Social links',
+    publicSectionBio: 'Description',
+    publicSectionSpotify: 'Spotify player',
+    publicSectionYoutube: 'YouTube videos',
+    publicSectionAlbums: 'Albums',
+    publicSectionSongs: 'Songs',
 
     // Filter / search on artist page
     filterAll: 'All',

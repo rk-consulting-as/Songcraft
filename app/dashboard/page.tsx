@@ -15,12 +15,21 @@ type Artist = {
   spotify_followers?: number | null; spotify_popularity?: number | null
   spotify_genres?: string[] | null
   social_links?: SocialLinksMap | null
+  page_enabled?: boolean
+  page_slug?: string | null
+  page_settings?: any
 }
 type SpotifyArtist = {
   id: string; name: string; followers: number; genres: string[]
   popularity: number; image: string | null; smallImage: string | null
   spotifyUrl: string | null
 }
+const DEFAULT_PAGE_SETTINGS = {
+  sections: { hero: true, spotify: true, youtube: true, albums: true, songs: true, bio: true, social: true },
+  accent_color: '#d4a843',
+  youtube_videos: [] as string[],
+}
+
 const emptyForm = {
   name: '', genre: '', description: '', song_structure: '',
   avatar_url: '',
@@ -30,6 +39,19 @@ const emptyForm = {
   spotify_popularity: null as number | null,
   spotify_genres: [] as string[],
   social_links: {} as SocialLinksMap,
+  page_enabled: false,
+  page_slug: '',
+  page_settings: DEFAULT_PAGE_SETTINGS as any,
+}
+
+/** URL-safe slug from arbitrary text. */
+function slugify(s: string): string {
+  return s.toLowerCase().trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 60)
 }
 
 // Title-case a Spotify genre string (e.g. "swamp country rock" -> "Swamp Country Rock")
@@ -249,6 +271,9 @@ export default function Dashboard() {
       spotify_popularity: artist.spotify_popularity ?? null,
       spotify_genres: artist.spotify_genres || [],
       social_links: artist.social_links || {},
+      page_enabled: artist.page_enabled || false,
+      page_slug: artist.page_slug || '',
+      page_settings: { ...DEFAULT_PAGE_SETTINGS, ...(artist.page_settings || {}), sections: { ...DEFAULT_PAGE_SETTINGS.sections, ...((artist.page_settings as any)?.sections || {}) } },
     })
     setSelectedGenres(artist.genre ? artist.genre.split(', ').filter(Boolean) : [])
     setSocialInputs({
@@ -277,16 +302,37 @@ export default function Dashboard() {
 
   const saveArtist = async () => {
     if (!form.name.trim()) return
+    // If publishing, the slug becomes required.
+    if (form.page_enabled && !(form.page_slug || '').trim()) {
+      alert(tx.publicPageSlugRequired)
+      return
+    }
     setSaving(true)
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    const payload = { ...form, genre: selectedGenres.join(', ') || form.genre }
+    const payload: any = {
+      ...form,
+      genre: selectedGenres.join(', ') || form.genre,
+      // Empty string -> null for the slug column (unique constraint allows multiple nulls).
+      page_slug: form.page_enabled ? (form.page_slug || '').trim() || null : null,
+    }
+    let res
     if (editingArtist) {
-      const { data } = await supabase.from('artists').update(payload).eq('id', editingArtist.id).select().single()
-      if (data) setArtists(artists.map(a => a.id === editingArtist.id ? { ...a, ...data } : a))
+      res = await supabase.from('artists').update(payload).eq('id', editingArtist.id).select().single()
+      if (res.data) setArtists(artists.map(a => a.id === editingArtist.id ? { ...a, ...res.data } : a))
     } else {
-      const { data } = await supabase.from('artists').insert({ ...payload, user_id: user?.id }).select().single()
-      if (data) setArtists([{ ...data, song_count: 0 }, ...artists])
+      res = await supabase.from('artists').insert({ ...payload, user_id: user?.id }).select().single()
+      if (res.data) setArtists([{ ...res.data, song_count: 0 }, ...artists])
+    }
+    if (res.error) {
+      // Common case: slug already taken (unique violation, code 23505).
+      if (res.error.code === '23505' && /page_slug/.test(res.error.message || '')) {
+        alert(tx.publicPageSlugTaken)
+      } else {
+        alert(res.error.message || 'Save failed')
+      }
+      setSaving(false)
+      return
     }
     setShowForm(false); setForm(emptyForm); setSelectedGenres([])
     setSaving(false)
@@ -611,6 +657,116 @@ export default function Dashboard() {
                 <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.songStructure.toUpperCase()}</label>
                 <textarea value={form.song_structure} onChange={e => setForm({ ...form, song_structure: e.target.value })} placeholder={tx.songStructurePlaceholder} rows={5} />
                 <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#5a4a30' }}>💡 {tx.songStructureHint}</p>
+              </div>
+
+              {/* Public artist page */}
+              <div style={{ marginBottom: 20, padding: 14, borderRadius: 6, background: 'rgba(212,168,67,0.04)', border: '1px solid rgba(212,168,67,0.2)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginBottom: form.page_enabled ? 14 : 0 }}>
+                  <input type="checkbox" checked={!!form.page_enabled}
+                    onChange={e => {
+                      const enabled = e.target.checked
+                      setForm((f: any) => ({
+                        ...f,
+                        page_enabled: enabled,
+                        // Auto-suggest a slug from the artist name when first enabled.
+                        page_slug: enabled && !f.page_slug ? slugify(f.name || '') : f.page_slug,
+                      }))
+                    }}
+                    style={{ width: 16, height: 16, accentColor: '#d4a843', cursor: 'pointer' }} />
+                  <div>
+                    <span style={{ color: form.page_enabled ? '#d4a843' : '#8a7a60', fontSize: 13, fontWeight: 500 }}>
+                      🌐 {tx.publicPageLabel}
+                    </span>
+                    <span style={{ color: '#5a4a30', fontSize: 12, marginLeft: 8 }}>
+                      — {tx.publicPageHint}
+                    </span>
+                  </div>
+                </label>
+
+                {form.page_enabled && (
+                  <>
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={{ display: 'block', color: '#8a7a60', fontSize: 10, letterSpacing: 1, marginBottom: 4 }}>{tx.publicPageSlug}</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ color: '#5a4a30', fontSize: 12 }}>/p/</span>
+                        <input
+                          value={form.page_slug}
+                          onChange={e => setForm({ ...form, page_slug: slugify(e.target.value) })}
+                          placeholder={slugify(form.name) || 'mitt-artistnavn'}
+                          style={{ flex: 1, padding: '6px 10px', fontSize: 13 }}
+                        />
+                      </div>
+                      {form.page_slug && (
+                        <p style={{ color: '#6a5a40', fontSize: 11, margin: '4px 0 0' }}>
+                          {tx.publicPagePreview}{' '}
+                          <a href={`/p/${form.page_slug}`} target="_blank" rel="noopener noreferrer" style={{ color: '#d4a843' }}>
+                            /p/{form.page_slug} ↗
+                          </a>
+                        </p>
+                      )}
+                    </div>
+
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={{ display: 'block', color: '#8a7a60', fontSize: 10, letterSpacing: 1, marginBottom: 6 }}>{tx.publicPageSections}</label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {([
+                          ['hero', tx.publicSectionHero],
+                          ['social', tx.publicSectionSocial],
+                          ['bio', tx.publicSectionBio],
+                          ['spotify', tx.publicSectionSpotify],
+                          ['youtube', tx.publicSectionYoutube],
+                          ['albums', tx.publicSectionAlbums],
+                          ['songs', tx.publicSectionSongs],
+                        ] as const).map(([key, label]) => {
+                          const active = form.page_settings?.sections?.[key] !== false
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() =>
+                                setForm((f: any) => ({
+                                  ...f,
+                                  page_settings: {
+                                    ...f.page_settings,
+                                    sections: { ...(f.page_settings?.sections || {}), [key]: !active },
+                                  },
+                                }))
+                              }
+                              style={{
+                                padding: '4px 12px', borderRadius: 14, fontSize: 11, cursor: 'pointer',
+                                border: `1px solid ${active ? 'rgba(212,168,67,0.5)' : 'rgba(180,140,80,0.2)'}`,
+                                background: active ? 'rgba(212,168,67,0.15)' : 'transparent',
+                                color: active ? '#d4a843' : '#5a4a30',
+                              }}
+                            >
+                              {active ? '✓' : '○'} {label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', color: '#8a7a60', fontSize: 10, letterSpacing: 1, marginBottom: 4 }}>{tx.publicPageYoutubeVideos}</label>
+                      <textarea
+                        value={(form.page_settings?.youtube_videos || []).join('\n')}
+                        onChange={e =>
+                          setForm((f: any) => ({
+                            ...f,
+                            page_settings: {
+                              ...f.page_settings,
+                              youtube_videos: e.target.value.split(/\r?\n/).map(s => s.trim()).filter(Boolean),
+                            },
+                          }))
+                        }
+                        placeholder={tx.publicPageYoutubeVideosPlaceholder}
+                        rows={3}
+                        style={{ fontSize: 12 }}
+                      />
+                      <p style={{ color: '#5a4a30', fontSize: 11, margin: '4px 0 0' }}>{tx.publicPageYoutubeVideosHint}</p>
+                    </div>
+                  </>
+                )}
               </div>
 
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'space-between' }}>
