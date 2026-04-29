@@ -33,13 +33,23 @@ type PageSettings = {
 }
 
 async function fetchPageData(slug: string) {
-  const { data: artist } = await sb.from('artists').select('*').eq('page_slug', slug).eq('page_enabled', true).maybeSingle()
-  if (!artist) return null
-  const { data: songs } = await sb.from('songs').select('*').eq('artist_id', artist.id)
+  console.log(`[public-page] Fetching slug="${slug}"`)
+  const { data: artist, error: artistErr } = await sb.from('artists').select('*').eq('page_slug', slug).eq('page_enabled', true).maybeSingle()
+  if (artistErr) {
+    console.error('[public-page] artist query error:', artistErr)
+  }
+  if (!artist) {
+    console.warn(`[public-page] No artist found for slug="${slug}" (page_enabled=true)`)
+    return null
+  }
+  console.log(`[public-page] Found artist: ${artist.name} (id=${artist.id})`)
+  const { data: songs, error: songsErr } = await sb.from('songs').select('*').eq('artist_id', artist.id)
     .order('position', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: false })
-  const { data: albums } = await sb.from('albums').select('*').eq('artist_id', artist.id)
+  if (songsErr) console.error('[public-page] songs query error:', songsErr)
+  const { data: albums, error: albumsErr } = await sb.from('albums').select('*').eq('artist_id', artist.id)
     .order('release_date', { ascending: false, nullsFirst: false })
+  if (albumsErr) console.error('[public-page] albums query error:', albumsErr)
   return { artist, songs: songs || [], albums: albums || [] }
 }
 
