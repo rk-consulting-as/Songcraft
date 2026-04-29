@@ -193,6 +193,14 @@ export const t = {
     sunoLabel: 'SUNO PROMPT (ENGELSK)',
     sunoCopy: '📋 Kopier til Suno',
     sunoHint: 'Gå til suno.ai → Create → Custom → lim inn sangteksten under "Lyrics" og prompten under "Style of Music".',
+    sunoImportLabel: 'IMPORTER FERDIG SUNO-LÅT',
+    sunoImportPlaceholder: 'Lim inn Suno-link til en låt du har generert',
+    sunoImportFetch: 'Hent',
+    sunoImportSave: 'Lagre på sangen',
+    sunoImportSaveWithLyrics: 'Lagre + bruk Suno-tekst',
+    sunoImportSaved: 'Suno-låt koblet til denne sangen',
+    sunoImportClear: 'Fjern',
+    sunoImportClearConfirm: 'Fjerne den koblede Suno-låten fra denne sangen?',
 
     // Captions tab
     captionsTitle: 'Social Media Captions',
@@ -414,6 +422,14 @@ export const t = {
     sunoLabel: 'SUNO PROMPT (ENGLISH)',
     sunoCopy: '📋 Copy to Suno',
     sunoHint: 'Go to suno.ai → Create → Custom → paste lyrics under "Lyrics" and the prompt under "Style of Music".',
+    sunoImportLabel: 'IMPORT FINISHED SUNO TRACK',
+    sunoImportPlaceholder: 'Paste a Suno link to a track you generated',
+    sunoImportFetch: 'Fetch',
+    sunoImportSave: 'Save to song',
+    sunoImportSaveWithLyrics: 'Save + use Suno lyrics',
+    sunoImportSaved: 'Suno track linked to this song',
+    sunoImportClear: 'Remove',
+    sunoImportClearConfirm: 'Remove the linked Suno track from this song?',
 
     // Captions tab
     captionsTitle: 'Social Media Captions',

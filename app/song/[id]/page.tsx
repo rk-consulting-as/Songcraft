@@ -60,6 +60,23 @@ export default function SongPage() {
   // Lyrics history viewer
   const [showHistory, setShowHistory] = useState(false)
 
+  // Suno import
+  type SunoPreview = {
+    id: string | null
+    sunoUrl: string
+    title: string | null
+    coverUrl: string | null
+    audioUrl: string | null
+    description: string | null
+    tags: string | null
+    lyrics: string | null
+  }
+  const [sunoUrlInput, setSunoUrlInput] = useState('')
+  const [sunoFetching, setSunoFetching] = useState(false)
+  const [sunoError, setSunoError] = useState<string | null>(null)
+  const [sunoPreview, setSunoPreview] = useState<SunoPreview | null>(null)
+  const [sunoSaving, setSunoSaving] = useState(false)
+
   useEffect(() => { setLangState(useLang()); setAiProvider(getStoredProvider()); fetchSong() }, [songId])
 
   const pickProvider = (p: AIProvider) => { setAiProvider(p); setStoredProvider(p) }
@@ -188,6 +205,64 @@ export default function SongPage() {
     const updatedHistory = [...newHistory, { role: 'assistant', content: result }]
     setLyrics(result); setLyricsHistory(updatedHistory); setLyricsChat('')
     await save({ lyrics_text: result, lyrics_history: updatedHistory })
+  }
+
+  // Fetch metadata for a Suno song URL via our server route.
+  const fetchSunoTrack = async () => {
+    if (!sunoUrlInput.trim()) return
+    setSunoFetching(true)
+    setSunoError(null)
+    setSunoPreview(null)
+    try {
+      const res = await fetch(`/api/suno/track?url=${encodeURIComponent(sunoUrlInput.trim())}`)
+      const data = await res.json()
+      if (data.error) {
+        setSunoError(data.error)
+      } else {
+        setSunoPreview(data as SunoPreview)
+      }
+    } catch (e: any) {
+      setSunoError(e?.message || 'Failed to fetch')
+    }
+    setSunoFetching(false)
+  }
+
+  // Persist the Suno track on the current song. Optionally pull cover/lyrics if missing.
+  const saveSunoToSong = async (opts: { useCover: boolean; useLyrics: boolean }) => {
+    if (!sunoPreview) return
+    setSunoSaving(true)
+    const updates: any = {
+      suno_url: sunoPreview.sunoUrl,
+      suno_audio_url: sunoPreview.audioUrl,
+      suno_track_id: sunoPreview.id,
+    }
+    if (opts.useCover && sunoPreview.coverUrl && !coverImageUrl) {
+      updates.cover_image_url = sunoPreview.coverUrl
+    }
+    if (opts.useLyrics && sunoPreview.lyrics && !lyrics) {
+      updates.lyrics_text = sunoPreview.lyrics
+    }
+    // Also append to media_links so it shows in the Media tab.
+    const next = [
+      ...mediaLinks.filter(l => l.url !== sunoPreview.sunoUrl),
+      { platform: 'Suno', url: sunoPreview.sunoUrl, label: sunoPreview.title || 'Suno track' },
+    ]
+    updates.media_links = next
+    await save(updates)
+    setSong({ ...song, ...updates })
+    if (updates.cover_image_url) setCoverImageUrl(updates.cover_image_url)
+    if (updates.lyrics_text) setLyrics(updates.lyrics_text)
+    setMediaLinks(next)
+    setSunoUrlInput('')
+    setSunoPreview(null)
+    setSunoSaving(false)
+  }
+
+  const clearSunoFromSong = async () => {
+    if (!confirm(tx.sunoImportClearConfirm)) return
+    const updates = { suno_url: null, suno_audio_url: null, suno_track_id: null }
+    await save(updates)
+    setSong({ ...song, ...updates })
   }
 
   const generateSuno = async () => {
@@ -480,6 +555,103 @@ export default function SongPage() {
         {tab === 'suno' && (
           <div>
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>{tx.sunoTitle}</h2>
+
+            {/* Import-section: paste URL of a finished Suno track */}
+            <div style={{ background: 'rgba(80,160,80,0.05)', border: '1px solid rgba(80,160,80,0.25)', borderRadius: 6, padding: 14, marginBottom: 22 }}>
+              <p style={{ margin: '0 0 8px', color: '#7bc87b', fontSize: 11, letterSpacing: 1 }}>
+                {tx.sunoImportLabel}
+              </p>
+
+              {/* Already-saved Suno track on this song */}
+              {song?.suno_url && !sunoPreview && (
+                <div style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(80,160,80,0.3)', borderRadius: 6, padding: 12, marginBottom: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ color: '#7bc87b', fontSize: 12, fontWeight: 500 }}>✓ {tx.sunoImportSaved}</div>
+                      <a href={song.suno_url} target="_blank" rel="noopener noreferrer" style={{ color: '#a09080', fontSize: 11, textDecoration: 'none', wordBreak: 'break-all' }}>{song.suno_url}</a>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button className="btn-outline" style={{ padding: '4px 12px', fontSize: 11 }} onClick={clearSunoFromSong}>{tx.sunoImportClear}</button>
+                    </div>
+                  </div>
+                  {song?.suno_audio_url && (
+                    <audio src={song.suno_audio_url} controls style={{ width: '100%', marginTop: 10 }} />
+                  )}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <input
+                  value={sunoUrlInput}
+                  onChange={e => setSunoUrlInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') fetchSunoTrack() }}
+                  placeholder={tx.sunoImportPlaceholder}
+                  style={{ flex: '1 1 220px', minWidth: 0 }}
+                />
+                <button
+                  type="button"
+                  onClick={fetchSunoTrack}
+                  disabled={sunoFetching || !sunoUrlInput.trim()}
+                  style={{ background: 'rgba(80,160,80,0.18)', border: '1px solid rgba(80,160,80,0.45)', color: '#7bc87b', padding: '8px 16px', borderRadius: 4, cursor: 'pointer', fontSize: 12, fontWeight: 500 }}
+                >
+                  {sunoFetching ? '...' : tx.sunoImportFetch}
+                </button>
+              </div>
+
+              {sunoError && (
+                <div style={{ background: 'rgba(200,80,80,0.08)', border: '1px solid rgba(200,80,80,0.3)', color: '#c05050', padding: '6px 10px', borderRadius: 4, fontSize: 12, marginTop: 8 }}>
+                  {sunoError}
+                </div>
+              )}
+
+              {sunoPreview && (
+                <div style={{ marginTop: 14, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(80,160,80,0.3)', borderRadius: 6, padding: 14 }}>
+                  <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+                    {sunoPreview.coverUrl ? (
+                      <img src={sunoPreview.coverUrl} alt={sunoPreview.title || ''} style={{ width: 100, height: 100, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                    ) : (
+                      <div style={{ width: 100, height: 100, borderRadius: 6, background: 'rgba(80,160,80,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, flexShrink: 0 }}>🎵</div>
+                    )}
+                    <div style={{ flex: '1 1 240px', minWidth: 0 }}>
+                      <div style={{ color: '#e8e0d0', fontSize: 15, fontWeight: 500, marginBottom: 4 }}>{sunoPreview.title || '(untitled)'}</div>
+                      {sunoPreview.tags && (
+                        <div style={{ color: '#6a5a40', fontSize: 11, marginBottom: 6 }}>{sunoPreview.tags}</div>
+                      )}
+                      {sunoPreview.description && (
+                        <div style={{ color: '#8a7a60', fontSize: 12, lineHeight: 1.4, marginBottom: 8, maxHeight: 60, overflow: 'auto' }}>
+                          {sunoPreview.description}
+                        </div>
+                      )}
+                      {sunoPreview.audioUrl && (
+                        <audio src={sunoPreview.audioUrl} controls style={{ width: '100%' }} />
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+                    <button
+                      className="btn-gold"
+                      onClick={() => saveSunoToSong({ useCover: true, useLyrics: false })}
+                      disabled={sunoSaving}
+                      style={{ background: '#7bc87b', borderColor: '#7bc87b', color: '#0a0f0a' }}
+                    >
+                      {sunoSaving ? tx.saving : tx.sunoImportSave}
+                    </button>
+                    {sunoPreview.lyrics && !lyrics && (
+                      <button
+                        className="btn-outline"
+                        onClick={() => saveSunoToSong({ useCover: true, useLyrics: true })}
+                        disabled={sunoSaving}
+                      >
+                        {tx.sunoImportSaveWithLyrics}
+                      </button>
+                    )}
+                    <button className="btn-outline" onClick={() => { setSunoPreview(null); setSunoUrlInput('') }}>{tx.cancel}</button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {!lyrics && <p style={{ color: '#e07070', fontSize: '13px' }}>{tx.sunoNoLyrics}</p>}
             <button className="btn-gold" onClick={generateSuno} disabled={aiLoading || !lyrics} style={{ marginBottom: '24px' }}>
               {isLoading('suno') ? tx.generating : sunoPrompt ? tx.sunoRegenerate : tx.sunoGenerate}
