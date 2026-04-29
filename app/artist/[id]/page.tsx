@@ -37,6 +37,8 @@ type Artist = {
   spotify_id?: string | null
   spotify_url?: string | null; spotify_verified?: boolean
   social_links?: SocialLinksMap | null
+  page_enabled?: boolean
+  page_slug?: string | null
 }
 
 type SpotifyTrack = {
@@ -637,6 +639,17 @@ export default function ArtistPage() {
                 )}
               </h1>
               {artist?.genre && <p style={{ margin: 0, fontSize: '11px', color: '#6a5a40', letterSpacing: '1px' }}>{artist.genre.toUpperCase()}</p>}
+              {artist?.page_enabled && artist?.page_slug && (
+                <a
+                  href={`/p/${artist.page_slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={lang === 'no' ? 'Åpne offentlig artistside' : 'Open public artist page'}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, color: '#d4a843', fontSize: 11, textDecoration: 'none', fontWeight: 500, padding: '2px 8px', borderRadius: 12, background: 'rgba(212,168,67,0.1)', border: '1px solid rgba(212,168,67,0.3)' }}
+                >
+                  🌐 /p/{artist.page_slug} ↗
+                </a>
+              )}
             </div>
           </div>
         </div>
