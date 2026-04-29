@@ -131,6 +131,11 @@ export const t = {
     albumCoverAi: 'Generer cover med AI',
     albumCoverPromptGenerate: '✨ Lag prompt med AI',
     albumCoverPromptPlaceholder: 'Beskriv hvordan album-coveret skal se ut, eller la AI lage en prompt fra album-tittel og artistinfo over.',
+    albumCoverUpload: 'Last opp bilde',
+    albumCoverRemove: 'Fjern bilde',
+    albumCoverFromSpotify: 'HENT FRA SPOTIFY',
+    albumCoverFromSpotifyPlaceholder: 'Lim inn Spotify-album-link',
+    albumCoverFromSpotifyFetch: 'Hent',
 
     // Filter / search on artist page
     filterAll: 'Alle',
@@ -360,6 +365,11 @@ export const t = {
     albumCoverAi: 'Generate cover with AI',
     albumCoverPromptGenerate: '✨ Generate prompt with AI',
     albumCoverPromptPlaceholder: 'Describe how the album cover should look, or let AI create a prompt from the album title and artist info above.',
+    albumCoverUpload: 'Upload image',
+    albumCoverRemove: 'Remove image',
+    albumCoverFromSpotify: 'FETCH FROM SPOTIFY',
+    albumCoverFromSpotifyPlaceholder: 'Paste a Spotify album link',
+    albumCoverFromSpotifyFetch: 'Fetch',
 
     // Filter / search on artist page
     filterAll: 'All',

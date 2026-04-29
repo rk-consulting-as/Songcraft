@@ -117,6 +117,17 @@ input:focus, textarea:focus, select:focus {
   }
 }
 
+/* Modal overlay: stronger backdrop dim + the inner card gets a solid panel
+   colour so content behind the modal doesn't bleed through. */
+.modal-overlay {
+  background: rgba(0, 0, 0, 0.92) !important;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay > .card {
+  background: #14101a;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
 /* Slightly larger tap targets on touch devices */
 @media (pointer: coarse) {
   button, select, input[type="checkbox"], input[type="radio"] {

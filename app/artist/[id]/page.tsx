@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { t, useLang, type Lang } from '@/lib/i18n'
@@ -89,6 +89,12 @@ export default function ArtistPage() {
   const [albumPromptLoading, setAlbumPromptLoading] = useState(false)
   const [albumImageLoading, setAlbumImageLoading] = useState(false)
   const [albumImageError, setAlbumImageError] = useState<string | null>(null)
+  const [albumCoverUploading, setAlbumCoverUploading] = useState(false)
+  const albumCoverFileRef = useRef<HTMLInputElement | null>(null)
+  // Spotify album fetch (within album modal)
+  const [albumSpotifyUrl, setAlbumSpotifyUrl] = useState('')
+  const [albumSpotifyLoading, setAlbumSpotifyLoading] = useState(false)
+  const [albumSpotifyError, setAlbumSpotifyError] = useState<string | null>(null)
 
   // Spotify import
   const [showImport, setShowImport] = useState(false)
@@ -139,6 +145,7 @@ export default function ArtistPage() {
     setEditingAlbum(null)
     setAlbumForm({ title: '', description: '', cover_url: '', release_date: '', cover_prompt: '' })
     setAlbumImageError(null)
+    setAlbumSpotifyUrl(''); setAlbumSpotifyError(null)
     setShowAlbumForm(true)
   }
   const openAlbumEdit = (al: Album) => {
@@ -151,6 +158,7 @@ export default function ArtistPage() {
       cover_prompt: '',
     })
     setAlbumImageError(null)
+    setAlbumSpotifyUrl(''); setAlbumSpotifyError(null)
     setShowAlbumForm(true)
   }
 
@@ -184,6 +192,66 @@ export default function ArtistPage() {
       setAlbumImageError(e?.message || 'Prompt generation failed')
     }
     setAlbumPromptLoading(false)
+  }
+
+  // Upload an image file from disk to Supabase Storage (covers bucket) and set cover_url.
+  const uploadAlbumCoverFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      setAlbumImageError(lang === 'no' ? 'Filen er ikke et bilde' : 'File is not an image')
+      return
+    }
+    setAlbumCoverUploading(true)
+    setAlbumImageError(null)
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase()
+      const path = `albums/${user?.id || 'anon'}/${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('covers').upload(path, file, {
+        upsert: true,
+        contentType: file.type,
+      })
+      if (upErr) {
+        setAlbumImageError(upErr.message)
+      } else {
+        const { data: urlData } = supabase.storage.from('covers').getPublicUrl(path)
+        setAlbumForm(f => ({ ...f, cover_url: urlData.publicUrl }))
+      }
+    } catch (e: any) {
+      setAlbumImageError(e?.message || 'Upload failed')
+    }
+    setAlbumCoverUploading(false)
+  }
+
+  // Fetch a Spotify album by URL and prefill cover/title/release_date in the album form.
+  const fetchSpotifyAlbum = async () => {
+    if (!albumSpotifyUrl.trim()) return
+    setAlbumSpotifyLoading(true)
+    setAlbumSpotifyError(null)
+    try {
+      const res = await fetch(`/api/spotify/album-by-url?url=${encodeURIComponent(albumSpotifyUrl.trim())}`)
+      const data = await res.json()
+      if (data.error || !data.album) {
+        setAlbumSpotifyError(data.error || 'No album returned')
+      } else {
+        const a = data.album
+        setAlbumForm(f => ({
+          ...f,
+          title: a.title || f.title,
+          cover_url: a.coverUrl || f.cover_url,
+          release_date: a.releaseDate ? (
+            /^\d{4}-\d{2}-\d{2}$/.test(a.releaseDate) ? a.releaseDate :
+            /^\d{4}-\d{2}$/.test(a.releaseDate) ? a.releaseDate + '-01' :
+            /^\d{4}$/.test(a.releaseDate) ? a.releaseDate + '-01-01' :
+            f.release_date
+          ) : f.release_date,
+        }))
+        setAlbumSpotifyUrl('')
+      }
+    } catch (e: any) {
+      setAlbumSpotifyError(e?.message || 'Failed to fetch')
+    }
+    setAlbumSpotifyLoading(false)
   }
 
   // Generate album cover image from current prompt and upload to Supabase Storage.
@@ -927,8 +995,72 @@ export default function ArtistPage() {
               <div style={{ marginBottom: '12px' }}>
                 <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.albumCoverUrl.toUpperCase()}</label>
                 <input value={albumForm.cover_url} onChange={e => setAlbumForm({ ...albumForm, cover_url: e.target.value })} placeholder="https://..." />
+
+                <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                  <input
+                    type="file"
+                    ref={albumCoverFileRef}
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={e => {
+                      const f = e.target.files?.[0]
+                      if (f) uploadAlbumCoverFile(f)
+                      // reset so selecting the same file again still triggers onChange
+                      if (e.target) e.target.value = ''
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="btn-outline"
+                    style={{ padding: '6px 14px', fontSize: 12 }}
+                    onClick={() => albumCoverFileRef.current?.click()}
+                    disabled={albumCoverUploading}
+                  >
+                    {albumCoverUploading ? tx.saving : '📁 ' + tx.albumCoverUpload}
+                  </button>
+                  {albumForm.cover_url && (
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      style={{ padding: '6px 14px', fontSize: 12, color: '#c05050', borderColor: 'rgba(200,80,80,0.25)' }}
+                      onClick={() => setAlbumForm(f => ({ ...f, cover_url: '' }))}
+                    >
+                      {tx.albumCoverRemove}
+                    </button>
+                  )}
+                </div>
+
+                {/* Spotify album fetch */}
+                <div style={{ marginTop: 10, background: 'rgba(30,215,96,0.04)', border: '1px solid rgba(30,215,96,0.2)', borderRadius: 6, padding: 10 }}>
+                  <p style={{ margin: '0 0 6px', color: '#1ed760', fontSize: 10, letterSpacing: 1 }}>
+                    {tx.albumCoverFromSpotify}
+                  </p>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <input
+                      value={albumSpotifyUrl}
+                      onChange={e => setAlbumSpotifyUrl(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); fetchSpotifyAlbum() } }}
+                      placeholder={tx.albumCoverFromSpotifyPlaceholder}
+                      style={{ flex: '1 1 200px', minWidth: 0, padding: '6px 10px', fontSize: 12 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={fetchSpotifyAlbum}
+                      disabled={albumSpotifyLoading || !albumSpotifyUrl.trim()}
+                      style={{ background: 'rgba(30,215,96,0.15)', border: '1px solid rgba(30,215,96,0.4)', color: '#1ed760', padding: '6px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
+                    >
+                      {albumSpotifyLoading ? '...' : tx.albumCoverFromSpotifyFetch}
+                    </button>
+                  </div>
+                  {albumSpotifyError && (
+                    <div style={{ background: 'rgba(200,80,80,0.08)', border: '1px solid rgba(200,80,80,0.3)', color: '#c05050', padding: '5px 8px', borderRadius: 4, fontSize: 11, marginTop: 6 }}>
+                      {albumSpotifyError}
+                    </div>
+                  )}
+                </div>
+
                 {albumForm.cover_url && (
-                  <div style={{ marginTop: '8px' }}>
+                  <div style={{ marginTop: 10 }}>
                     <ZoomableImage
                       src={albumForm.cover_url}
                       alt={albumForm.title || 'cover'}
