@@ -6,6 +6,10 @@ import type { Metadata } from 'next'
 // Public artist landing page. Server-rendered, anonymous Supabase client (RLS gates by page_enabled).
 // URL: /p/{slug}
 
+// Always render fresh — never cache the 404 or stale data.
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
