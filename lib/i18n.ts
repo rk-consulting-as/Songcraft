@@ -155,6 +155,10 @@ export const t = {
     publicSectionYoutube: 'YouTube-videoer',
     publicSectionAlbums: 'Album',
     publicSectionSongs: 'Sanger',
+    publicPageFavicon: 'FAVICON (NETTLESERIKON)',
+    publicPageFaviconUpload: 'Last opp favicon',
+    publicPageFaviconRemove: 'Fjern',
+    publicPageFaviconHint: 'Lite kvadratisk bilde (PNG/SVG, helst 32×32 eller 64×64). Vises i nettleserfanen for /p/{slug}.',
 
     // Studio / manager page
     studioPageNav: 'Studio-side',
@@ -176,6 +180,10 @@ export const t = {
     studioHeroImage: 'Hero-bakgrunnsbilde URL',
     studioHeroUpload: 'Last opp bilde',
     studioAccentColor: 'Aksentfarge',
+    studioFavicon: 'Favicon (nettleserikon)',
+    studioFaviconUpload: 'Last opp favicon',
+    studioFaviconRemove: 'Fjern',
+    studioFaviconHint: 'Vises i nettleserfanen — både på /studio/{slug} og når du selv er logget inn i Songcraft. Anbefalt: 32×32 eller 64×64 PNG.',
     studioSectionHero: 'Hero',
     studioSectionBio: 'Om oss',
     studioBioHint: 'Markdown støttes: **fet**, *kursiv*, # header, [lenke](url), - liste',
@@ -458,6 +466,10 @@ export const t = {
     publicSectionYoutube: 'YouTube videos',
     publicSectionAlbums: 'Albums',
     publicSectionSongs: 'Songs',
+    publicPageFavicon: 'FAVICON (BROWSER ICON)',
+    publicPageFaviconUpload: 'Upload favicon',
+    publicPageFaviconRemove: 'Remove',
+    publicPageFaviconHint: 'Small square image (PNG/SVG, ideally 32×32 or 64×64). Shows in the browser tab for /p/{slug}.',
 
     // Studio / manager page
     studioPageNav: 'Studio page',
@@ -479,6 +491,10 @@ export const t = {
     studioHeroImage: 'Hero background image URL',
     studioHeroUpload: 'Upload image',
     studioAccentColor: 'Accent color',
+    studioFavicon: 'Favicon (browser icon)',
+    studioFaviconUpload: 'Upload favicon',
+    studioFaviconRemove: 'Remove',
+    studioFaviconHint: 'Shows in the browser tab — both on /studio/{slug} and when you yourself are logged into Songcraft. Recommended: 32×32 or 64×64 PNG.',
     studioSectionHero: 'Hero',
     studioSectionBio: 'About',
     studioBioHint: 'Markdown supported: **bold**, *italic*, # header, [link](url), - list',
