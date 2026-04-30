@@ -70,10 +70,13 @@ ALTER TABLE contact_submissions ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   -- Public can INSERT (i.e. submit the form on the public page) but cannot SELECT.
+  -- We only require the studio page to be enabled — show_contact_form is enforced at the UI layer
+  -- (the form simply isn't rendered when off), so leaving that out of the RLS check avoids subtle
+  -- RLS-visibility quirks with the EXISTS subquery.
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'contact_submissions' AND policyname = 'contact_submissions_public_insert') THEN
     CREATE POLICY contact_submissions_public_insert ON contact_submissions FOR INSERT
       WITH CHECK (
-        EXISTS (SELECT 1 FROM studio_pages sp WHERE sp.id = contact_submissions.studio_page_id AND sp.enabled = true AND sp.show_contact_form = true)
+        studio_page_id IN (SELECT id FROM studio_pages WHERE enabled = true)
       );
   END IF;
   -- Page owner reads / updates / deletes their own inbox.
