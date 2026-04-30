@@ -93,6 +93,9 @@ export default function Dashboard() {
   const [searching, setSearching] = useState(false)
   const searchTimer = useRef<any>(null)
 
+  // Studio page status — used to decide whether the dashboard link goes to live page or editor.
+  const [studioPage, setStudioPage] = useState<{ slug: string | null; enabled: boolean } | null>(null)
+
   useEffect(() => { setLangState(useLang()); checkAuth(); fetchArtists() }, [])
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -114,6 +117,12 @@ export default function Dashboard() {
     const supabase = createClient()
     const { data } = await supabase.from('artists').select('*, songs(count)').order('created_at', { ascending: false })
     if (data) setArtists(data.map((a: any) => ({ ...a, song_count: a.songs?.[0]?.count ?? 0 })))
+    // Also load studio page status for the header link.
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: sp } = await supabase.from('studio_pages').select('slug, enabled').eq('user_id', user.id).maybeSingle()
+      if (sp) setStudioPage({ slug: sp.slug, enabled: !!sp.enabled })
+    }
     setLoading(false)
   }
 
@@ -364,7 +373,17 @@ export default function Dashboard() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Link href="/studio-settings" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block', background: 'rgba(212,168,67,0.1)', border: '1px solid rgba(212,168,67,0.3)', color: '#d4a843', borderRadius: 4 }}>🌐 {tx.studioPageNav}</Link>
+          {studioPage?.enabled && studioPage.slug ? (
+            <a href={`/studio/${studioPage.slug}`} target="_blank" rel="noopener noreferrer"
+              style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block', background: 'rgba(212,168,67,0.1)', border: '1px solid rgba(212,168,67,0.3)', color: '#d4a843', borderRadius: 4 }}>
+              🌐 {tx.studioPageNavView} ↗
+            </a>
+          ) : (
+            <Link href="/studio-settings"
+              style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block', background: 'rgba(180,140,80,0.08)', border: '1px solid rgba(180,140,80,0.25)', color: '#8a7a60', borderRadius: 4 }}>
+              🌐 {tx.studioPageNavSetup}
+            </Link>
+          )}
           <Link href="/settings" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>⚙ {tx.settings}</Link>
           <button className="btn-outline" onClick={logout} style={{ fontSize: '13px' }}>{tx.logout}</button>
         </div>

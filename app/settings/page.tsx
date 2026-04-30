@@ -65,6 +65,25 @@ export default function SettingsPage() {
 
       <div style={{ padding: '32px', maxWidth: '860px', margin: '0 auto' }}>
 
+        {/* Studio page section */}
+        <Link href="/studio-settings" style={{ textDecoration: 'none' }}>
+          <div className="card" style={{ marginBottom: '24px', cursor: 'pointer', transition: 'border-color 0.2s' }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(212,168,67,0.5)')}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(180,140,80,0.2)')}>
+            <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '16px', marginTop: 0, marginBottom: '6px' }}>
+              🌐 {lang === 'no' ? 'Rediger studio-side' : 'Edit studio page'}
+            </h2>
+            <p style={{ color: '#6a5a40', fontSize: '13px', margin: 0, lineHeight: '1.6' }}>
+              {lang === 'no'
+                ? 'Sett opp og rediger den offentlige hjemmesiden for ditt firma/manager-virksomhet. Bio, artister, prosjekter, tjenester og kontaktskjema.'
+                : 'Set up and edit the public homepage for your company / management business. Bio, artists, projects, services and contact form.'}
+            </p>
+            <p style={{ color: '#d4a843', fontSize: '12px', margin: '10px 0 0' }}>
+              {lang === 'no' ? 'Åpne editor →' : 'Open editor →'}
+            </p>
+          </div>
+        </Link>
+
         {/* Language section */}
         <div className="card" style={{ marginBottom: '24px' }}>
           <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '16px', marginTop: 0, marginBottom: '16px' }}>

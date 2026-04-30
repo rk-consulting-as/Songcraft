@@ -158,6 +158,8 @@ export const t = {
 
     // Studio / manager page
     studioPageNav: 'Studio-side',
+    studioPageNavView: 'Min studio-side',
+    studioPageNavSetup: 'Sett opp studio-side',
     studioPageTitle: 'Studio-side',
     studioTabEdit: 'Rediger',
     studioTabInbox: 'Innboks',
@@ -459,6 +461,8 @@ export const t = {
 
     // Studio / manager page
     studioPageNav: 'Studio page',
+    studioPageNavView: 'My studio page',
+    studioPageNavSetup: 'Set up studio page',
     studioPageTitle: 'Studio page',
     studioTabEdit: 'Edit',
     studioTabInbox: 'Inbox',
