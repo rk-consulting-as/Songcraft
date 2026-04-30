@@ -363,7 +363,8 @@ export default function Dashboard() {
             <p style={{ margin: 0, fontSize: '11px', color: '#6a5a40', letterSpacing: '2px' }}>{tx.dashboard.toUpperCase()}</p>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <Link href="/studio-settings" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block', background: 'rgba(212,168,67,0.1)', border: '1px solid rgba(212,168,67,0.3)', color: '#d4a843', borderRadius: 4 }}>🌐 {tx.studioPageNav}</Link>
           <Link href="/settings" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>⚙ {tx.settings}</Link>
           <button className="btn-outline" onClick={logout} style={{ fontSize: '13px' }}>{tx.logout}</button>
         </div>
