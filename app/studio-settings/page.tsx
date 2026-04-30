@@ -18,6 +18,7 @@ type StudioPage = {
   tagline: string | null
   bio: string | null
   hero_image_url: string | null
+  favicon_url: string | null
   accent_color: string | null
   contact_email: string | null
   show_contact_form: boolean
@@ -59,6 +60,8 @@ export default function StudioSettings() {
   const [tab, setTab] = useState<'edit' | 'inbox'>('edit')
   const [heroFileUploading, setHeroFileUploading] = useState(false)
   const heroFileRef = useRef<HTMLInputElement | null>(null)
+  const [faviconUploading, setFaviconUploading] = useState(false)
+  const faviconFileRef = useRef<HTMLInputElement | null>(null)
 
   const tx = t[lang]
 
@@ -92,7 +95,7 @@ export default function StudioSettings() {
       // First-time setup: stub a fresh page locally (not persisted yet).
       setPage({
         id: '', user_id: userId, slug: '', enabled: false, name: '', tagline: '',
-        bio: '', hero_image_url: '', accent_color: '#d4a843', contact_email: '',
+        bio: '', hero_image_url: '', favicon_url: '', accent_color: '#d4a843', contact_email: '',
         show_contact_form: true, services: [], featured_projects: [],
         featured_artist_ids: [], social_links: {}, sections: { ...DEFAULT_SECTIONS },
       })
@@ -120,6 +123,24 @@ export default function StudioSettings() {
     setHeroFileUploading(false)
   }
 
+  // Favicon upload — same pattern, separate path so it's easy to find later.
+  const uploadFavicon = async (file: File) => {
+    if (!file.type.startsWith('image/')) return
+    setFaviconUploading(true)
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const ext = (file.name.split('.').pop() || 'png').toLowerCase()
+    const path = `favicons/${user?.id || 'anon'}/${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('covers').upload(path, file, { upsert: true, contentType: file.type })
+    if (!error) {
+      const { data } = supabase.storage.from('covers').getPublicUrl(path)
+      update({ favicon_url: data.publicUrl })
+    } else {
+      alert(error.message)
+    }
+    setFaviconUploading(false)
+  }
+
   const save = async () => {
     if (!page) return
     if (page.enabled && !page.slug.trim()) {
@@ -139,6 +160,7 @@ export default function StudioSettings() {
       tagline: page.tagline || null,
       bio: page.bio || null,
       hero_image_url: page.hero_image_url || null,
+      favicon_url: page.favicon_url || null,
       accent_color: page.accent_color || '#d4a843',
       contact_email: page.contact_email || null,
       show_contact_form: page.show_contact_form,
@@ -294,6 +316,29 @@ export default function StudioSettings() {
                   <input type="color" value={page.accent_color || '#d4a843'} onChange={e => update({ accent_color: e.target.value })} style={{ width: 50, height: 34, padding: 0, cursor: 'pointer' }} />
                   <input value={page.accent_color || '#d4a843'} onChange={e => update({ accent_color: e.target.value })} style={{ flex: 1 }} />
                 </div>
+              </Field>
+              <Field label={tx.studioFavicon}>
+                <input value={page.favicon_url || ''} onChange={e => update({ favicon_url: e.target.value })} placeholder="https://..." />
+                <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input ref={faviconFileRef} type="file" accept="image/png,image/jpeg,image/svg+xml,image/x-icon,image/vnd.microsoft.icon" style={{ display: 'none' }}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) uploadFavicon(f); if (e.target) e.target.value = '' }} />
+                  <button type="button" className="btn-outline" style={{ padding: '6px 14px', fontSize: 12 }} onClick={() => faviconFileRef.current?.click()} disabled={faviconUploading}>
+                    {faviconUploading ? tx.saving : '📁 ' + tx.studioFaviconUpload}
+                  </button>
+                  {page.favicon_url && (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={page.favicon_url} alt="" style={{ width: 16, height: 16, objectFit: 'cover', borderRadius: 2, border: '1px solid rgba(180,140,80,0.3)' }} title="16×16" />
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={page.favicon_url} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, border: '1px solid rgba(180,140,80,0.3)' }} title="32×32" />
+                      <button type="button" className="btn-outline" style={{ padding: '6px 14px', fontSize: 12, color: '#c05050', borderColor: 'rgba(200,80,80,0.25)' }}
+                        onClick={() => update({ favicon_url: '' })}>
+                        {tx.studioFaviconRemove}
+                      </button>
+                    </>
+                  )}
+                </div>
+                <p style={{ color: '#5a4a30', fontSize: 11, margin: '6px 0 0' }}>{tx.studioFaviconHint}</p>
               </Field>
             </Section>
 

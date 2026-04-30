@@ -26,6 +26,7 @@ type StudioPage = {
   tagline: string | null
   bio: string | null
   hero_image_url: string | null
+  favicon_url: string | null
   accent_color: string | null
   contact_email: string | null
   show_contact_form: boolean
@@ -55,9 +56,11 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const data = await fetchStudio(params.slug)
   if (!data) return { title: 'Not found' }
   const { page } = data
+  const favicon = page.favicon_url || page.hero_image_url
   return {
     title: `${page.name} — Songcraft`,
     description: page.tagline || page.name,
+    icons: favicon ? { icon: favicon, shortcut: favicon, apple: favicon } : undefined,
     openGraph: {
       title: page.name,
       description: page.tagline || undefined,

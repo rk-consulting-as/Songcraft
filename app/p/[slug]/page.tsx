@@ -57,9 +57,12 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const data = await fetchPageData(params.slug)
   if (!data) return { title: 'Not found' }
   const cover = data.artist.spotify_image_url || data.artist.avatar_url
+  // Prefer a custom favicon, then Spotify image as fallback (most album-cover-like).
+  const favicon = data.artist.favicon_url || data.artist.spotify_image_url || data.artist.avatar_url
   return {
     title: `${data.artist.name} — Songcraft`,
     description: data.artist.description || `${data.artist.name} — official artist page`,
+    icons: favicon ? { icon: favicon, shortcut: favicon, apple: favicon } : undefined,
     openGraph: {
       title: data.artist.name,
       description: data.artist.description || undefined,

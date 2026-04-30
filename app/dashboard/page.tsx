@@ -18,6 +18,7 @@ type Artist = {
   page_enabled?: boolean
   page_slug?: string | null
   page_settings?: any
+  favicon_url?: string | null
 }
 type SpotifyArtist = {
   id: string; name: string; followers: number; genres: string[]
@@ -42,6 +43,7 @@ const emptyForm = {
   page_enabled: false,
   page_slug: '',
   page_settings: DEFAULT_PAGE_SETTINGS as any,
+  favicon_url: '',
 }
 
 /** URL-safe slug from arbitrary text. */
@@ -67,6 +69,25 @@ export default function Dashboard() {
   const [editingArtist, setEditingArtist] = useState<Artist | null>(null)
   const [form, setForm] = useState<any>(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [faviconUploading, setFaviconUploading] = useState(false)
+  const faviconFileRef = useRef<HTMLInputElement | null>(null)
+
+  const uploadArtistFavicon = async (file: File) => {
+    if (!file.type.startsWith('image/')) return
+    setFaviconUploading(true)
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const ext = (file.name.split('.').pop() || 'png').toLowerCase()
+    const path = `favicons/${user?.id || 'anon'}/${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('covers').upload(path, file, { upsert: true, contentType: file.type })
+    if (!error) {
+      const { data } = supabase.storage.from('covers').getPublicUrl(path)
+      setForm((f: any) => ({ ...f, favicon_url: data.publicUrl }))
+    } else {
+      alert(error.message)
+    }
+    setFaviconUploading(false)
+  }
 
   // Spotify search
   const [spotifyResults, setSpotifyResults] = useState<SpotifyArtist[]>([])
@@ -283,6 +304,7 @@ export default function Dashboard() {
       page_enabled: artist.page_enabled || false,
       page_slug: artist.page_slug || '',
       page_settings: { ...DEFAULT_PAGE_SETTINGS, ...(artist.page_settings || {}), sections: { ...DEFAULT_PAGE_SETTINGS.sections, ...((artist.page_settings as any)?.sections || {}) } },
+      favicon_url: artist.favicon_url || '',
     })
     setSelectedGenres(artist.genre ? artist.genre.split(', ').filter(Boolean) : [])
     setSocialInputs({
