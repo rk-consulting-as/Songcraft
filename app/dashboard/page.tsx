@@ -807,6 +807,49 @@ export default function Dashboard() {
                       />
                       <p style={{ color: '#5a4a30', fontSize: 11, margin: '4px 0 0' }}>{tx.publicPageYoutubeVideosHint}</p>
                     </div>
+
+                    <div style={{ marginTop: 12 }}>
+                      <label style={{ display: 'block', color: '#8a7a60', fontSize: 10, letterSpacing: 1, marginBottom: 4 }}>{tx.publicPageFavicon}</label>
+                      <input
+                        value={form.favicon_url || ''}
+                        onChange={e => setForm({ ...form, favicon_url: e.target.value })}
+                        placeholder="https://..."
+                        style={{ fontSize: 12 }}
+                      />
+                      <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <input
+                          ref={faviconFileRef}
+                          type="file"
+                          accept="image/png,image/jpeg,image/svg+xml,image/x-icon,image/vnd.microsoft.icon"
+                          style={{ display: 'none' }}
+                          onChange={e => { const f = e.target.files?.[0]; if (f) uploadArtistFavicon(f); if (e.target) e.target.value = '' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => faviconFileRef.current?.click()}
+                          disabled={faviconUploading}
+                          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(180,140,80,0.25)', color: '#8a7a60', padding: '5px 12px', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
+                        >
+                          {faviconUploading ? tx.saving : '📁 ' + tx.publicPageFaviconUpload}
+                        </button>
+                        {form.favicon_url && (
+                          <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={form.favicon_url} alt="" style={{ width: 16, height: 16, objectFit: 'cover', borderRadius: 2, border: '1px solid rgba(180,140,80,0.3)' }} title="16×16" />
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={form.favicon_url} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, border: '1px solid rgba(180,140,80,0.3)' }} title="32×32" />
+                            <button
+                              type="button"
+                              onClick={() => setForm({ ...form, favicon_url: '' })}
+                              style={{ background: 'none', border: '1px solid rgba(200,80,80,0.25)', color: '#c05050', padding: '5px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 11 }}
+                            >
+                              {tx.publicPageFaviconRemove}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                      <p style={{ color: '#5a4a30', fontSize: 11, margin: '4px 0 0' }}>{tx.publicPageFaviconHint}</p>
+                    </div>
                   </>
                 )}
               </div>
