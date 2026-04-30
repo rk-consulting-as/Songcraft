@@ -23,6 +23,7 @@ type Song = {
   spotify_cover_url?: string | null
   suno_url?: string | null
   media_links?: { platform: string; url: string; label?: string }[] | null
+  featured_on_studio_page?: boolean
 }
 type Album = {
   id: string
@@ -333,6 +334,19 @@ export default function ArtistPage() {
     const supabase = createClient()
     const { data } = await supabase.from('songs').update({ album_id: albumId }).eq('id', songId).select().single()
     if (data) setSongs(songs.map(s => s.id === songId ? { ...s, album_id: data.album_id } : s))
+  }
+
+  // Toggle whether a song is featured on the user's studio page (mini playlist under the artist).
+  const toggleFeaturedOnStudio = async (songId: string, next: boolean) => {
+    // Optimistic update
+    setSongs(songs.map(s => s.id === songId ? { ...s, featured_on_studio_page: next } : s))
+    const supabase = createClient()
+    const { error } = await supabase.from('songs').update({ featured_on_studio_page: next }).eq('id', songId)
+    if (error) {
+      // Revert on failure
+      setSongs(songs.map(s => s.id === songId ? { ...s, featured_on_studio_page: !next } : s))
+      alert(error.message)
+    }
   }
 
   // Apply filters + search to get the visible song list. Reorder operates on UNFILTERED list,
@@ -1360,6 +1374,20 @@ export default function ArtistPage() {
                     </div>
                   </Link>
                   <div className="song-row-right" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {/* Star toggle — feature this song under the artist on the studio page. */}
+                    <button
+                      type="button"
+                      onClick={() => toggleFeaturedOnStudio(song.id, !song.featured_on_studio_page)}
+                      title={song.featured_on_studio_page ? tx.studioFeaturedRemove : tx.studioFeaturedAdd}
+                      aria-pressed={!!song.featured_on_studio_page}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        color: song.featured_on_studio_page ? '#d4a843' : '#3a3530',
+                        fontSize: 18, padding: '0 4px', lineHeight: 1,
+                      }}
+                    >
+                      {song.featured_on_studio_page ? '★' : '☆'}
+                    </button>
                     {/* Album picker — separate from Link, so taps go straight to the dropdown. */}
                     <select
                       value={song.album_id || ''}

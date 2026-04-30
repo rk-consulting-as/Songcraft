@@ -213,6 +213,8 @@ export const t = {
     studioInboxReply: 'Svar',
     studioInboxMarkRead: 'Marker som lest',
     studioInboxArchive: 'Arkiver',
+    studioFeaturedAdd: 'Vis i studio-siden (mini-spilleliste)',
+    studioFeaturedRemove: 'Fjern fra studio-siden',
 
     // Filter / search on artist page
     filterAll: 'Alle',
@@ -524,6 +526,8 @@ export const t = {
     studioInboxReply: 'Reply',
     studioInboxMarkRead: 'Mark as read',
     studioInboxArchive: 'Archive',
+    studioFeaturedAdd: 'Show on studio page (mini playlist)',
+    studioFeaturedRemove: 'Remove from studio page',
 
     // Filter / search on artist page
     filterAll: 'All',

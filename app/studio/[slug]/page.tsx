@@ -44,12 +44,21 @@ async function fetchStudio(slug: string) {
   if (!page) return null
   const ids: string[] = Array.isArray(page.featured_artist_ids) ? page.featured_artist_ids : []
   let artists: any[] = []
+  let featuredSongs: any[] = []
   if (ids.length > 0) {
-    const { data } = await sb.from('artists').select('id, name, genre, avatar_url, page_enabled, page_slug, spotify_image_url')
-      .in('id', ids)
-    artists = data || []
+    const [artistsRes, songsRes] = await Promise.all([
+      sb.from('artists').select('id, name, genre, avatar_url, page_enabled, page_slug, spotify_image_url').in('id', ids),
+      sb.from('songs')
+        .select('id, title, artist_id, position, status, spotify_url, spotify_cover_url, suno_url, suno_audio_url, cover_image_url')
+        .in('artist_id', ids)
+        .eq('featured_on_studio_page', true)
+        .order('position', { ascending: true, nullsFirst: false })
+        .order('created_at', { ascending: false }),
+    ])
+    artists = artistsRes.data || []
+    featuredSongs = songsRes.data || []
   }
-  return { page: page as StudioPage, artists }
+  return { page: page as StudioPage, artists, featuredSongs }
 }
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
@@ -72,7 +81,13 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export default async function StudioPublicPage({ params }: { params: { slug: string } }) {
   const data = await fetchStudio(params.slug)
   if (!data) notFound()
-  const { page, artists } = data
+  const { page, artists, featuredSongs } = data
+  // Pre-group featured songs by artist for fast lookup in the roster grid below.
+  const songsByArtist: Record<string, any[]> = {}
+  for (const s of featuredSongs) {
+    if (!songsByArtist[s.artist_id]) songsByArtist[s.artist_id] = []
+    songsByArtist[s.artist_id].push(s)
+  }
   const accent = page.accent_color || '#d4a843'
   const sections: Record<string, boolean> = {
     hero: true, bio: true, artists: true, projects: true, services: true, contact: true, social: true,
@@ -175,24 +190,60 @@ export default async function StudioPublicPage({ params }: { params: { slug: str
         {sections.artists !== false && artists.length > 0 && (
           <section style={{ marginBottom: 48 }}>
             <h2 style={{ margin: '0 0 16px', fontSize: 13, letterSpacing: 2, color: accent, textTransform: 'uppercase' }}>Artists</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 18 }}>
               {artists.map(a => {
                 const cover = a.spotify_image_url || a.avatar_url
-                const inner = (
-                  <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 14, textAlign: 'center', cursor: a.page_enabled ? 'pointer' : 'default', transition: 'border-color 0.2s' }}>
+                const tracks = songsByArtist[a.id] || []
+                const header = (
+                  <div style={{ textAlign: 'center', cursor: a.page_enabled ? 'pointer' : 'default' }}>
                     {cover ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={cover} alt={a.name} style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '50%', marginBottom: 10 }} />
+                      <img src={cover} alt={a.name} style={{ width: 130, height: 130, objectFit: 'cover', borderRadius: '50%', marginBottom: 10 }} />
                     ) : (
-                      <div style={{ width: '100%', aspectRatio: '1 / 1', borderRadius: '50%', background: `${accent}11`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, marginBottom: 10 }}>🎤</div>
+                      <div style={{ width: 130, height: 130, borderRadius: '50%', background: `${accent}11`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, marginBottom: 10, margin: '0 auto 10px' }}>🎤</div>
                     )}
-                    <div style={{ fontSize: 14, fontWeight: 500, color: '#fff' }}>{a.name}</div>
+                    <div style={{ fontSize: 16, fontWeight: 500, color: '#fff' }}>{a.name}</div>
                     {a.genre && <div style={{ color: '#8a7a60', fontSize: 11, marginTop: 4 }}>{a.genre.split(', ').slice(0, 2).join(' · ')}</div>}
                   </div>
                 )
-                return a.page_enabled && a.page_slug ? (
-                  <Link key={a.id} href={`/p/${a.page_slug}`} style={{ textDecoration: 'none' }}>{inner}</Link>
-                ) : <div key={a.id}>{inner}</div>
+                return (
+                  <div key={a.id} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {a.page_enabled && a.page_slug ? (
+                      <Link href={`/p/${a.page_slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>{header}</Link>
+                    ) : header}
+
+                    {tracks.length > 0 && (
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {tracks.map((t: any) => {
+                          const thumb = t.spotify_cover_url || t.cover_image_url
+                          return (
+                            <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 6, borderRadius: 4, background: 'rgba(255,255,255,0.02)' }}>
+                              {thumb ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={thumb} alt="" style={{ width: 32, height: 32, borderRadius: 3, objectFit: 'cover', flexShrink: 0 }} />
+                              ) : (
+                                <div style={{ width: 32, height: 32, borderRadius: 3, background: `${accent}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>♪</div>
+                              )}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ color: '#e8e0d0', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</div>
+                                {t.suno_audio_url ? (
+                                  <audio src={t.suno_audio_url} controls preload="none" style={{ width: '100%', height: 24, marginTop: 3 }} />
+                                ) : null}
+                              </div>
+                              {t.spotify_url && (
+                                <a href={t.spotify_url} target="_blank" rel="noopener noreferrer"
+                                  title="Open in Spotify"
+                                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: '#1ed760', color: '#000', textDecoration: 'none', fontSize: 12, fontWeight: 'bold', flexShrink: 0 }}>
+                                  ♪
+                                </a>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
               })}
             </div>
           </section>
