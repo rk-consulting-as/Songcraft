@@ -193,7 +193,45 @@ export default function SongPage() {
     setImageGenerating(false)
   }
 
-  // ───── Canvas: AI generation, manual upload, manual URL paste ─────
+  // ───── Canvas: AI prompt generation, video generation, manual upload, manual URL paste ─────
+
+  /**
+   * Generate a Canvas video prompt using everything we know about the song:
+   * artist context, lyrics instructions, cover prompt, lyrics excerpt, target aspect/duration.
+   * Uses the same AI provider toggle (Claude / GPT) as the rest of the app.
+   */
+  const generateCanvasPrompt = async () => {
+    const artistCtx = buildArtistContext()
+    const lyricsExcerpt = lyrics ? lyrics.slice(0, 600) : ''
+    const userContent = [
+      title ? `Song title: ${title}` : '',
+      artistCtx ? artistCtx.trim() : '',
+      lyricsInstructions ? `Theme / concept: ${lyricsInstructions}` : '',
+      coverPrompt ? `Cover image prompt (for visual consistency): ${coverPrompt}` : '',
+      coverStyle ? `Visual style: ${coverStyle}` : '',
+      lyricsExcerpt ? `Lyrics excerpt:\n${lyricsExcerpt}` : '',
+      `Target format: ${canvasAspect} aspect ratio, ${canvasDuration} seconds, looping clip.`,
+    ].filter(Boolean).join('\n\n')
+
+    const system = [
+      'You are an expert in AI video generation (Seedance, Runway, Sora) for Spotify Canvas — short 3-10 second looping video clips that play behind a track.',
+      '',
+      'Write a single video prompt that captures the song\'s aesthetic and mood. Guidelines:',
+      '- Focus on ATMOSPHERE and MOTION rather than narrative. Canvas videos loop, so the scene should not have a clear beginning or end.',
+      '- Be specific about: subject, camera motion (slow dolly, locked off, gentle pan, drift), lighting (warm, cool, neon, golden hour, fog, smoky), colors, texture, mood.',
+      '- Keep visual consistency with the cover image when one is provided — same palette and feel.',
+      '- Avoid hard cuts, fast action, cluttered scenes, or text overlays. Spotify Canvas works best with hypnotic, dreamy clips.',
+      '- Output only the prompt itself — no preamble, no markdown, no headers. Plain English, max 100 words.',
+      '- End with a phrase like "looping motion" or "seamless loop" to hint at loopability.',
+    ].join('\n')
+
+    const result = await callAI([{ role: 'user', content: userContent }], system, 'canvas_prompt')
+    if (result) {
+      setCanvasPrompt(result)
+      await save({ canvas_prompt: result })
+    }
+  }
+
 
   /** Helper: download a video from an external URL via the server proxy and upload to Storage. */
   const persistVideoFromUrl = async (sourceUrl: string, provider: string, meta: any): Promise<string | null> => {
@@ -1040,7 +1078,18 @@ export default function SongPage() {
                 </div>
               </div>
 
-              <label style={{ display: 'block', color: '#8a7a60', fontSize: 11, letterSpacing: 1, marginBottom: 4 }}>{tx.canvasPromptLabel}</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap', gap: 6 }}>
+                <label style={{ color: '#8a7a60', fontSize: 11, letterSpacing: 1 }}>{tx.canvasPromptLabel}</label>
+                <button
+                  type="button"
+                  onClick={generateCanvasPrompt}
+                  disabled={aiLoading || (!lyricsInstructions && !coverPrompt && !lyrics && !title)}
+                  style={{ background: 'rgba(212,168,67,0.12)', border: '1px solid rgba(212,168,67,0.3)', color: '#d4a843', padding: '5px 12px', borderRadius: 4, cursor: 'pointer', fontSize: 11 }}
+                  title={tx.canvasPromptAiHint}
+                >
+                  {isLoading('canvas_prompt') ? tx.generating : '✨ ' + tx.canvasPromptGenerate}
+                </button>
+              </div>
               <textarea
                 value={canvasPrompt}
                 onChange={e => { setCanvasPrompt(e.target.value); save({ canvas_prompt: e.target.value }) }}
