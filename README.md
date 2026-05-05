@@ -35,6 +35,7 @@ Live: <https://songcraft-lilac.vercel.app>
 - **Suno track import** — paste a finished Suno song link, we fetch metadata (cover, audio URL, tags) and attach it to the song. Audio plays inline.
 - **Captions** — per-platform (TikTok, Instagram, Facebook, YouTube, X) with platform-specific rules + your own custom rules.
 - **Cover image** — write a prompt manually or let AI generate one, then create the image with OpenAI `gpt-image-1`. Saves to Supabase Storage.
+- **Canvas (short video loop)** — Spotify-Canvas-style 3–10 second video clips. Generate with AI via fal.ai (Seedance Pro) directly inside Songcraft, or upload a video you made elsewhere (e.g. artlist.io). Stored in Supabase Storage. Aspect ratio + duration configurable per generation.
 - **Publish** — auto-generates WordPress post, Facebook post, Instagram post, press release.
 
 ### Catalogue management
@@ -210,6 +211,8 @@ Open <http://localhost:3000>, sign up, start creating.
 | `SPOTIFY_CLIENT_SECRET`           | Optional | All Spotify routes                           | Pair with above |
 | `RESEND_API_KEY`                  | Optional | `/api/studio/contact`                        | If set, contact form submissions are emailed to the studio's `contact_email`. Otherwise saved to DB only. [resend.com](https://resend.com) |
 | `RESEND_FROM`                     | Optional | `/api/studio/contact`                        | Default `Songcraft <onboarding@resend.dev>`. Use a verified domain in production. |
+| `FAL_KEY`                         | Optional | `/api/canvas/*`                              | Required for inline AI video generation (Spotify Canvas). [fal.ai](https://fal.ai) — ~$0.10–0.30 per video. |
+| `FAL_VIDEO_MODEL`                 | Optional | `/api/canvas/generate`                       | Override the default Seedance model path. Defaults to `fal-ai/bytedance/seedance-1-pro/text-to-video`. |
 
 ---
 
@@ -285,6 +288,9 @@ auth.users (Supabase managed)
 | `/api/spotify/track-by-url`            | GET    | Single track from URL/URI/ID |
 | `/api/spotify/album-by-url`            | GET    | Single album from URL/URI/ID |
 | `/api/suno/track`                      | GET    | Suno song metadata from public page (title, audio, cover, tags, lyrics) |
+| `/api/canvas/generate`                 | POST   | Submit a Canvas video generation job to fal.ai (Seedance Pro). Returns request IDs. |
+| `/api/canvas/status`                   | GET    | Poll fal.ai for job status. Returns video URL when complete. |
+| `/api/canvas/proxy`                    | GET    | Server-side stream of an external video URL (CORS workaround) — used to download generated videos before re-uploading to Supabase Storage. |
 | `/api/studio/contact`                  | POST   | Public contact-form submission. Saves to DB; optionally emails via Resend. |
 
 ---

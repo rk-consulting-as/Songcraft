@@ -77,6 +77,20 @@ export default function SongPage() {
   const [sunoPreview, setSunoPreview] = useState<SunoPreview | null>(null)
   const [sunoSaving, setSunoSaving] = useState(false)
 
+  // Canvas (short looping video, e.g. for Spotify Canvas)
+  const [canvasPrompt, setCanvasPrompt] = useState('')
+  const [canvasUrl, setCanvasUrl] = useState('')
+  const [canvasProvider, setCanvasProvider] = useState<string>('')
+  const [canvasMeta, setCanvasMeta] = useState<any>({})
+  const [canvasAspect, setCanvasAspect] = useState<'9:16' | '16:9' | '1:1'>('9:16')
+  const [canvasDuration, setCanvasDuration] = useState<number>(5)
+  const [canvasGenerating, setCanvasGenerating] = useState(false)
+  const [canvasGenStatus, setCanvasGenStatus] = useState<string>('')
+  const [canvasError, setCanvasError] = useState<string | null>(null)
+  const [canvasUploading, setCanvasUploading] = useState(false)
+  const [canvasExternalInput, setCanvasExternalInput] = useState('')
+  const canvasFileRef = useRef<HTMLInputElement | null>(null)
+
   useEffect(() => { setLangState(useLang()); setAiProvider(getStoredProvider()); fetchSong() }, [songId])
 
   const pickProvider = (p: AIProvider) => { setAiProvider(p); setStoredProvider(p) }
@@ -88,6 +102,7 @@ export default function SongPage() {
     suno: `🤖 ${tx.suno}`,
     captions: `📱 ${tx.captions}`,
     cover: `🖼️ ${tx.cover}`,
+    canvas: `🎬 ${tx.canvas}`,
     media: `🔗 ${tx.media}`,
     publish: `📢 ${tx.publish}`,
   }
@@ -107,6 +122,10 @@ export default function SongPage() {
       setCoverPrompt(data.cover_prompt || '')
       setCoverImageUrl(data.cover_image_url || '')
       setMediaLinks(data.media_links || [])
+      setCanvasPrompt(data.canvas_prompt || '')
+      setCanvasUrl(data.canvas_video_url || '')
+      setCanvasProvider(data.canvas_provider || '')
+      setCanvasMeta(data.canvas_meta || {})
       setPublishContent(data.publish_content || {})
     }
     setLoading(false)
@@ -172,6 +191,156 @@ export default function SongPage() {
       setImageError(e?.message || 'Image generation failed')
     }
     setImageGenerating(false)
+  }
+
+  // ───── Canvas: AI generation, manual upload, manual URL paste ─────
+
+  /** Helper: download a video from an external URL via the server proxy and upload to Storage. */
+  const persistVideoFromUrl = async (sourceUrl: string, provider: string, meta: any): Promise<string | null> => {
+    setCanvasError(null)
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      const proxyUrl = `/api/canvas/proxy?url=${encodeURIComponent(sourceUrl)}`
+      const res = await fetch(proxyUrl)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err?.error || `Proxy ${res.status}`)
+      }
+      const blob = await res.blob()
+      const ext = blob.type.includes('mp4') ? 'mp4' : blob.type.includes('webm') ? 'webm' : 'mp4'
+      const path = `canvas/${user?.id || 'anon'}/${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('covers').upload(path, blob, {
+        upsert: true,
+        contentType: blob.type || 'video/mp4',
+      })
+      if (upErr) throw new Error(upErr.message)
+      const { data: urlData } = supabase.storage.from('covers').getPublicUrl(path)
+      const publicUrl = urlData.publicUrl
+      // Persist on the song row.
+      await save({
+        canvas_video_url: publicUrl,
+        canvas_prompt: canvasPrompt || null,
+        canvas_provider: provider,
+        canvas_meta: meta,
+      })
+      setCanvasUrl(publicUrl)
+      setCanvasProvider(provider)
+      setCanvasMeta(meta)
+      return publicUrl
+    } catch (e: any) {
+      setCanvasError(e?.message || 'Could not save video')
+      return null
+    }
+  }
+
+  const generateCanvas = async () => {
+    if (!canvasPrompt.trim() || canvasGenerating) return
+    setCanvasGenerating(true)
+    setCanvasError(null)
+    setCanvasGenStatus(tx.canvasStatusSubmitting)
+    try {
+      const submitRes = await fetch('/api/canvas/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: canvasPrompt, aspect_ratio: canvasAspect, duration: canvasDuration }),
+      })
+      const submit = await submitRes.json()
+      if (submit.error) throw new Error(submit.error)
+      const { request_id, status_url, response_url, model } = submit
+
+      // Poll status every 4 seconds, max ~3 minutes (45 attempts).
+      let videoUrl: string | null = null
+      for (let i = 0; i < 45; i++) {
+        await new Promise(r => setTimeout(r, 4000))
+        const sRes = await fetch(`/api/canvas/status?status_url=${encodeURIComponent(status_url)}&response_url=${encodeURIComponent(response_url)}`)
+        const s = await sRes.json()
+        if (s.error) throw new Error(s.error)
+        setCanvasGenStatus(`${tx.canvasStatusGenerating} (${s.status || '...'})`)
+        if (s.status === 'COMPLETED' && s.video_url) { videoUrl = s.video_url; break }
+        if (s.status === 'FAILED' || s.status === 'CANCELLED') {
+          throw new Error(`fal.ai ${s.status}: ${s?.raw_response?.error || 'unknown'}`)
+        }
+      }
+      if (!videoUrl) throw new Error('Timed out waiting for video (3 min)')
+
+      setCanvasGenStatus(tx.canvasStatusUploading)
+      const meta = { aspect_ratio: canvasAspect, duration_seconds: canvasDuration, model, request_id }
+      await persistVideoFromUrl(videoUrl, 'fal-seedance', meta)
+      setCanvasGenStatus('')
+    } catch (e: any) {
+      setCanvasError(e?.message || 'Canvas generation failed')
+      setCanvasGenStatus('')
+    }
+    setCanvasGenerating(false)
+  }
+
+  const uploadCanvasFile = async (file: File) => {
+    if (!file.type.startsWith('video/')) {
+      setCanvasError(lang === 'no' ? 'Filen er ikke en video' : 'File is not a video')
+      return
+    }
+    setCanvasUploading(true)
+    setCanvasError(null)
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      const ext = (file.name.split('.').pop() || 'mp4').toLowerCase()
+      const path = `canvas/${user?.id || 'anon'}/${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('covers').upload(path, file, {
+        upsert: true,
+        contentType: file.type,
+      })
+      if (upErr) throw new Error(upErr.message)
+      const { data } = supabase.storage.from('covers').getPublicUrl(path)
+      const meta = { source: 'manual-upload', original_name: file.name }
+      await save({
+        canvas_video_url: data.publicUrl,
+        canvas_prompt: canvasPrompt || null,
+        canvas_provider: 'manual-upload',
+        canvas_meta: meta,
+      })
+      setCanvasUrl(data.publicUrl)
+      setCanvasProvider('manual-upload')
+      setCanvasMeta(meta)
+    } catch (e: any) {
+      setCanvasError(e?.message || 'Upload failed')
+    }
+    setCanvasUploading(false)
+  }
+
+  const saveCanvasFromExternalUrl = async (url: string) => {
+    if (!url.trim()) return
+    setCanvasUploading(true)
+    setCanvasError(null)
+    // Try to download via proxy and host on Supabase. Falls back to storing the raw URL
+    // if the host is not in our allow-list (proxy returns 403).
+    const result = await persistVideoFromUrl(url.trim(), 'manual-url', { original_url: url.trim() })
+    if (!result) {
+      // Allow saving raw URL even if proxy rejected the host.
+      try {
+        await save({
+          canvas_video_url: url.trim(),
+          canvas_prompt: canvasPrompt || null,
+          canvas_provider: 'manual-url',
+          canvas_meta: { original_url: url.trim(), note: 'External URL — not stored in Supabase' },
+        })
+        setCanvasUrl(url.trim())
+        setCanvasProvider('manual-url')
+        setCanvasError(null)
+      } catch (e: any) {
+        setCanvasError(e?.message || 'Save failed')
+      }
+    }
+    setCanvasUploading(false)
+  }
+
+  const clearCanvas = async () => {
+    if (!confirm(tx.canvasClearConfirm)) return
+    await save({ canvas_video_url: null, canvas_provider: null, canvas_meta: null })
+    setCanvasUrl('')
+    setCanvasProvider('')
+    setCanvasMeta({})
   }
 
   const buildArtistContext = () => {
@@ -801,6 +970,139 @@ export default function SongPage() {
                 </p>
               </div>
             )}
+          </div>
+        )}
+
+        {/* CANVAS TAB */}
+        {tab === 'canvas' && (
+          <div>
+            <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>{tx.canvasTitle}</h2>
+
+            {/* Existing canvas preview */}
+            {canvasUrl && (
+              <div className="card" style={{ marginBottom: 24, borderColor: 'rgba(160,100,200,0.3)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+                  <span style={{ color: '#c07bd0', fontSize: 11, letterSpacing: 1 }}>
+                    {tx.canvasCurrent} {canvasProvider ? `· ${canvasProvider}` : ''}
+                  </span>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button className="btn-outline" style={{ padding: '4px 12px', fontSize: 12 }} onClick={() => copy(canvasUrl)}>📋 {tx.copy}</button>
+                    <button onClick={clearCanvas} style={{ background: 'none', border: '1px solid rgba(200,80,80,0.25)', color: '#c05050', padding: '4px 12px', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>{tx.canvasClear}</button>
+                  </div>
+                </div>
+                <video
+                  src={canvasUrl}
+                  controls
+                  loop
+                  playsInline
+                  style={{ width: '100%', maxWidth: 320, borderRadius: 8, display: 'block' }}
+                />
+                {canvasMeta?.aspect_ratio && (
+                  <p style={{ color: '#6a5a40', fontSize: 11, margin: '8px 0 0' }}>
+                    {canvasMeta.aspect_ratio} · {canvasMeta.duration_seconds || '?'}s
+                    {canvasMeta.model ? ` · ${canvasMeta.model}` : ''}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Format controls + AI generation */}
+            <div className="card" style={{ marginBottom: 18, borderColor: 'rgba(160,100,200,0.3)' }}>
+              <p style={{ color: '#c07bd0', fontSize: 11, letterSpacing: 1, marginTop: 0, marginBottom: 12 }}>
+                {tx.canvasGenerateLabel}
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+                <div>
+                  <label style={{ display: 'block', color: '#8a7a60', fontSize: 11, letterSpacing: 1, marginBottom: 4 }}>{tx.canvasAspectRatio}</label>
+                  <select value={canvasAspect} onChange={e => setCanvasAspect(e.target.value as any)}>
+                    <option value="9:16">9:16 — {tx.canvasVertical}</option>
+                    <option value="16:9">16:9 — {tx.canvasHorizontal}</option>
+                    <option value="1:1">1:1 — {tx.canvasSquare}</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', color: '#8a7a60', fontSize: 11, letterSpacing: 1, marginBottom: 4 }}>{tx.canvasDuration}</label>
+                  <select value={canvasDuration} onChange={e => setCanvasDuration(Number(e.target.value))}>
+                    {[3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                      <option key={n} value={n}>{n}s</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <label style={{ display: 'block', color: '#8a7a60', fontSize: 11, letterSpacing: 1, marginBottom: 4 }}>{tx.canvasPromptLabel}</label>
+              <textarea
+                value={canvasPrompt}
+                onChange={e => { setCanvasPrompt(e.target.value); save({ canvas_prompt: e.target.value }) }}
+                placeholder={tx.canvasPromptPlaceholder}
+                rows={4}
+                style={{ marginBottom: 12 }}
+              />
+
+              <button
+                onClick={generateCanvas}
+                disabled={canvasGenerating || canvasPrompt.trim().length < 5}
+                className="btn-gold"
+                style={{ background: 'linear-gradient(135deg, #c07bd0, #9060c0)', borderColor: '#9060c0', color: '#fff' }}
+              >
+                {canvasGenerating ? (canvasGenStatus || tx.canvasGenerating) : '🎬 ' + tx.canvasGenerate}
+              </button>
+
+              <p style={{ color: '#5a4a30', fontSize: 11, margin: '8px 0 0' }}>
+                {tx.canvasGenerateHint}
+              </p>
+
+              {canvasError && (
+                <div style={{ background: 'rgba(200,80,80,0.08)', border: '1px solid rgba(200,80,80,0.3)', color: '#c05050', padding: '8px 12px', borderRadius: 4, fontSize: 12, marginTop: 10 }}>
+                  {canvasError}
+                </div>
+              )}
+            </div>
+
+            {/* Manual: file upload */}
+            <div className="card" style={{ marginBottom: 18 }}>
+              <p style={{ color: '#8a7a60', fontSize: 11, letterSpacing: 1, marginTop: 0, marginBottom: 12 }}>{tx.canvasManualUpload}</p>
+              <input
+                ref={canvasFileRef}
+                type="file"
+                accept="video/mp4,video/webm,video/quicktime"
+                style={{ display: 'none' }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) uploadCanvasFile(f); if (e.target) e.target.value = '' }}
+              />
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={() => canvasFileRef.current?.click()}
+                disabled={canvasUploading}
+              >
+                {canvasUploading ? tx.saving : '📁 ' + tx.canvasUploadFile}
+              </button>
+              <p style={{ color: '#5a4a30', fontSize: 11, margin: '8px 0 0' }}>{tx.canvasUploadHint}</p>
+            </div>
+
+            {/* Manual: paste URL */}
+            <div className="card">
+              <p style={{ color: '#8a7a60', fontSize: 11, letterSpacing: 1, marginTop: 0, marginBottom: 12 }}>{tx.canvasManualUrl}</p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <input
+                  value={canvasExternalInput}
+                  onChange={e => setCanvasExternalInput(e.target.value)}
+                  placeholder={tx.canvasUrlPlaceholder}
+                  style={{ flex: '1 1 220px', minWidth: 0 }}
+                  disabled={canvasUploading}
+                />
+                <button
+                  type="button"
+                  className="btn-outline"
+                  onClick={() => { saveCanvasFromExternalUrl(canvasExternalInput); setCanvasExternalInput('') }}
+                  disabled={canvasUploading || !canvasExternalInput.trim()}
+                >
+                  {tx.canvasUrlSave}
+                </button>
+              </div>
+              <p style={{ color: '#5a4a30', fontSize: 11, margin: '8px 0 0' }}>{tx.canvasUrlHint}</p>
+            </div>
           </div>
         )}
 
