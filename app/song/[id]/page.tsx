@@ -251,13 +251,22 @@ export default function SongPage() {
 
       // Poll status every 4 seconds, max ~3 minutes (45 attempts).
       let videoUrl: string | null = null
+      let lastResponse: any = null
       for (let i = 0; i < 45; i++) {
         await new Promise(r => setTimeout(r, 4000))
         const sRes = await fetch(`/api/canvas/status?status_url=${encodeURIComponent(status_url)}&response_url=${encodeURIComponent(response_url)}`)
         const s = await sRes.json()
         if (s.error) throw new Error(s.error)
         setCanvasGenStatus(`${tx.canvasStatusGenerating} (${s.status || '...'})`)
-        if (s.status === 'COMPLETED' && s.video_url) { videoUrl = s.video_url; break }
+        lastResponse = s.raw_response
+        if (s.status === 'COMPLETED') {
+          if (s.video_url) { videoUrl = s.video_url; break }
+          // COMPLETED but no URL — can't recover from polling. Show details so user can paste manually.
+          throw new Error(
+            (lang === 'no' ? 'Generering ferdig men fant ikke video-URL i svaret. Sjekk Vercel logs for hele responsen, eller lim inn URL-en manuelt fra fal.ai i feltet under.' : 'Generation completed but no video URL was found. Check Vercel logs for the full response, or paste the URL manually below.')
+            + '\n\nResponse: ' + JSON.stringify(s.raw_response).slice(0, 500)
+          )
+        }
         if (s.status === 'FAILED' || s.status === 'CANCELLED') {
           throw new Error(`fal.ai ${s.status}: ${s?.raw_response?.error || 'unknown'}`)
         }

@@ -8,7 +8,9 @@ import { NextRequest, NextResponse } from 'next/server'
 //
 // fal.ai uses an async queue API: submit returns IDs, client polls /api/canvas/status until done.
 
-const DEFAULT_MODEL = process.env.FAL_VIDEO_MODEL || 'fal-ai/bytedance/seedance-1-pro/text-to-video'
+// fal.ai's current Seedance path uses slash-separated version segments.
+// Override via FAL_VIDEO_MODEL if fal.ai changes this.
+const DEFAULT_MODEL = process.env.FAL_VIDEO_MODEL || 'fal-ai/bytedance/seedance/v1/pro/text-to-video'
 
 export async function POST(req: NextRequest) {
   if (!process.env.FAL_KEY) {
@@ -52,7 +54,7 @@ export async function POST(req: NextRequest) {
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
       return NextResponse.json(
-        { error: `fal.ai ${res.status}: ${data?.detail || data?.error || 'queue submit failed'}` },
+        { error: `fal.ai ${res.status} for model "${model}": ${data?.detail || data?.error || 'queue submit failed'}. Set FAL_VIDEO_MODEL env var if the model path has changed.` },
         { status: res.status }
       )
     }
