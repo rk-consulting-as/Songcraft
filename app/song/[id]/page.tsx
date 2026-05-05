@@ -41,6 +41,11 @@ export default function SongPage() {
   const [coverPrompt, setCoverPrompt] = useState('')
   const [coverImageUrl, setCoverImageUrl] = useState('')
   const [uploadingCover, setUploadingCover] = useState(false)
+  // Cover style/mood preset chips and image generation knobs
+  const [coverStyleChips, setCoverStyleChips] = useState<string[]>([])
+  const [coverMoodChips, setCoverMoodChips] = useState<string[]>([])
+  const [coverAspect, setCoverAspect] = useState<'1:1' | '9:16' | '16:9'>('1:1')
+  const [coverQuality, setCoverQuality] = useState<'low' | 'medium' | 'high'>('medium')
 
   const [mediaLinks, setMediaLinks] = useState<{platform:string;url:string;label:string}[]>([])
   const [newPlatform, setNewPlatform] = useState('Spotify')
@@ -84,6 +89,11 @@ export default function SongPage() {
   const [canvasMeta, setCanvasMeta] = useState<any>({})
   const [canvasAspect, setCanvasAspect] = useState<'9:16' | '16:9' | '1:1'>('9:16')
   const [canvasDuration, setCanvasDuration] = useState<number>(5)
+  const [canvasMode, setCanvasMode] = useState<'text-to-video' | 'image-to-video'>('text-to-video')
+  const [canvasImageSource, setCanvasImageSource] = useState<'cover' | 'upload'>('cover')
+  const [canvasImageUrl, setCanvasImageUrl] = useState<string>('')
+  const [canvasImageUploading, setCanvasImageUploading] = useState(false)
+  const canvasImageFileRef = useRef<HTMLInputElement | null>(null)
   const [canvasGenerating, setCanvasGenerating] = useState(false)
   const [canvasGenStatus, setCanvasGenStatus] = useState<string>('')
   const [canvasError, setCanvasError] = useState<string | null>(null)
@@ -154,11 +164,13 @@ export default function SongPage() {
     if (!coverPrompt.trim()) return
     setImageGenerating(true)
     setImageError(null)
+    // Map our aspect-ratio to gpt-image-1 sizes (only specific values are supported).
+    const size = coverAspect === '9:16' ? '1024x1536' : coverAspect === '16:9' ? '1536x1024' : '1024x1024'
     try {
       const res = await fetch('/api/image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: coverPrompt, size: '1024x1024', quality: 'medium' }),
+        body: JSON.stringify({ prompt: coverPrompt, size, quality: coverQuality }),
       })
       const data = await res.json()
       if (data.error) {
@@ -274,6 +286,17 @@ export default function SongPage() {
 
   const generateCanvas = async () => {
     if (!canvasPrompt.trim() || canvasGenerating) return
+    // For image-to-video, derive the source URL from cover or upload, and require it.
+    let sourceImageUrl = ''
+    if (canvasMode === 'image-to-video') {
+      sourceImageUrl = canvasImageSource === 'cover' ? coverImageUrl : canvasImageUrl
+      if (!sourceImageUrl) {
+        setCanvasError(lang === 'no'
+          ? 'Velg eller last opp et startbilde først.'
+          : 'Choose or upload a starting image first.')
+        return
+      }
+    }
     setCanvasGenerating(true)
     setCanvasError(null)
     setCanvasGenStatus(tx.canvasStatusSubmitting)
@@ -281,7 +304,13 @@ export default function SongPage() {
       const submitRes = await fetch('/api/canvas/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: canvasPrompt, aspect_ratio: canvasAspect, duration: canvasDuration }),
+        body: JSON.stringify({
+          prompt: canvasPrompt,
+          mode: canvasMode,
+          image_url: sourceImageUrl || undefined,
+          aspect_ratio: canvasAspect,
+          duration: canvasDuration,
+        }),
       })
       const submit = await submitRes.json()
       if (submit.error) throw new Error(submit.error)
@@ -312,14 +341,47 @@ export default function SongPage() {
       if (!videoUrl) throw new Error('Timed out waiting for video (3 min)')
 
       setCanvasGenStatus(tx.canvasStatusUploading)
-      const meta = { aspect_ratio: canvasAspect, duration_seconds: canvasDuration, model, request_id }
-      await persistVideoFromUrl(videoUrl, 'fal-seedance', meta)
+      const meta = {
+        aspect_ratio: canvasAspect,
+        duration_seconds: canvasDuration,
+        model,
+        request_id,
+        mode: canvasMode,
+        ...(canvasMode === 'image-to-video' ? { source_image_url: sourceImageUrl } : {}),
+      }
+      await persistVideoFromUrl(videoUrl, canvasMode === 'image-to-video' ? 'fal-seedance-i2v' : 'fal-seedance', meta)
       setCanvasGenStatus('')
     } catch (e: any) {
       setCanvasError(e?.message || 'Canvas generation failed')
       setCanvasGenStatus('')
     }
     setCanvasGenerating(false)
+  }
+
+  /** Upload a starting-frame image for canvas image-to-video. Stores in covers/canvas/i2v/{user}/{ts}. */
+  const uploadCanvasImage = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      setCanvasError(lang === 'no' ? 'Filen er ikke et bilde' : 'File is not an image')
+      return
+    }
+    setCanvasImageUploading(true)
+    setCanvasError(null)
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+      const path = `canvas-i2v/${user?.id || 'anon'}/${Date.now()}.${ext}`
+      const { error } = await supabase.storage.from('covers').upload(path, file, {
+        upsert: true,
+        contentType: file.type,
+      })
+      if (error) throw new Error(error.message)
+      const { data } = supabase.storage.from('covers').getPublicUrl(path)
+      setCanvasImageUrl(data.publicUrl)
+    } catch (e: any) {
+      setCanvasError(e?.message || 'Image upload failed')
+    }
+    setCanvasImageUploading(false)
   }
 
   const uploadCanvasFile = async (file: File) => {
@@ -512,10 +574,34 @@ export default function SongPage() {
   }
 
   const generateCoverPrompt = async () => {
-    const result = await callAI(
-      [{ role: 'user', content: `Lyrics:\n\n${lyrics}\n\nDesired style: ${coverStyle || 'free interpretation'}` }],
-      'You are an expert in AI image generation (Midjourney, DALL-E, Stable Diffusion). Create a detailed cover image prompt. Include subject, style, colors, mood, lighting. Format: Subject → Style → Colors → Mood → Technical. Write in English, max 150 words.',
-      'cover')
+    const artistCtx = artist ? [
+      artist.name ? `Artist: ${artist.name}` : '',
+      artist.genre ? `Genre: ${artist.genre}` : '',
+      artist.description ? `Artist description: ${artist.description}` : '',
+    ].filter(Boolean).join('\n') : ''
+    const userContent = [
+      title ? `Song: ${title}` : '',
+      artistCtx,
+      lyrics ? `Lyrics:\n${lyrics.slice(0, 800)}` : '',
+      coverStyle ? `Free-form style notes: ${coverStyle}` : '',
+      coverStyleChips.length ? `Selected styles: ${coverStyleChips.join(', ')}` : '',
+      coverMoodChips.length ? `Selected mood: ${coverMoodChips.join(', ')}` : '',
+      `Target format: ${coverAspect} aspect ratio, ${coverQuality} quality.`,
+    ].filter(Boolean).join('\n\n')
+
+    const system = [
+      'You are an expert in AI image generation (DALL-E, gpt-image-1, Midjourney, Stable Diffusion). Write a detailed prompt for an album/song cover image.',
+      '',
+      'Guidelines:',
+      '- Lead with the subject (what is in the frame), then style, lighting, colors, mood, composition.',
+      '- Honor the selected styles and mood — work them in naturally.',
+      '- Match the song\'s feeling. If the lyrics are dark/melancholic, choose colors and lighting accordingly.',
+      '- Be specific about: lighting (golden hour, neon, fog, harsh sun, candlelight), camera/composition (close-up, wide shot, low angle, symmetrical), texture (grainy film, smooth digital, oil-painted), and palette (specify 2-4 dominant colors).',
+      '- Add quality modifiers at the end: "8k", "ultra-detailed", "professional photography" for photoreal, or "masterpiece" / "trending on ArtStation" for stylized.',
+      '- Output only the prompt — no preamble, no markdown, no headers. Plain English, max 150 words.',
+    ].join('\n')
+
+    const result = await callAI([{ role: 'user', content: userContent }], system, 'cover')
     setCoverPrompt(result)
     await save({ cover_style: coverStyle, cover_prompt: result })
   }
@@ -979,10 +1065,87 @@ export default function SongPage() {
                 {uploadingCover ? tx.saving : coverImageUrl ? '↻ ' + tx.edit : '📁 ' + (lang === 'no' ? 'Velg bilde' : 'Choose image')}
               </button>
             </div>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.coverStyleLabel}</label>
+            {/* Style preset chips */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: 'block', color: '#8a7a60', fontSize: 11, letterSpacing: 1, marginBottom: 6 }}>{tx.coverStyleChips}</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {[
+                  'Cinematic', 'Photorealistic', 'Vintage film', 'Polaroid', 'Oil painting',
+                  'Watercolor', 'Anime', '3D render', 'Sketch', 'Vaporwave', 'Noir', 'Documentary',
+                ].map(s => {
+                  const active = coverStyleChips.includes(s)
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setCoverStyleChips(prev => active ? prev.filter(x => x !== s) : [...prev, s])}
+                      style={{
+                        padding: '4px 10px', borderRadius: 14, fontSize: 11, cursor: 'pointer',
+                        border: `1px solid ${active ? 'rgba(212,168,67,0.5)' : 'rgba(180,140,80,0.2)'}`,
+                        background: active ? 'rgba(212,168,67,0.15)' : 'transparent',
+                        color: active ? '#d4a843' : '#6a5a40',
+                      }}
+                    >
+                      {s}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Mood preset chips */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: 'block', color: '#8a7a60', fontSize: 11, letterSpacing: 1, marginBottom: 6 }}>{tx.coverMoodChips}</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {[
+                  'Dark', 'Dreamy', 'Melancholic', 'Hopeful', 'Energetic',
+                  'Peaceful', 'Mysterious', 'Intense', 'Gritty', 'Nostalgic', 'Epic', 'Warm',
+                ].map(m => {
+                  const active = coverMoodChips.includes(m)
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setCoverMoodChips(prev => active ? prev.filter(x => x !== m) : [...prev, m])}
+                      style={{
+                        padding: '4px 10px', borderRadius: 14, fontSize: 11, cursor: 'pointer',
+                        border: `1px solid ${active ? 'rgba(160,100,200,0.5)' : 'rgba(180,140,80,0.2)'}`,
+                        background: active ? 'rgba(160,100,200,0.15)' : 'transparent',
+                        color: active ? '#c07bd0' : '#6a5a40',
+                      }}
+                    >
+                      {m}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Free-form style + format/quality */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', color: '#8a7a60', fontSize: 11, letterSpacing: 1, marginBottom: 6 }}>{tx.coverStyleLabel}</label>
               <input value={coverStyle} onChange={e => setCoverStyle(e.target.value)} placeholder={tx.coverStylePlaceholder} />
             </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+              <div>
+                <label style={{ display: 'block', color: '#8a7a60', fontSize: 11, letterSpacing: 1, marginBottom: 4 }}>{tx.coverAspect}</label>
+                <select value={coverAspect} onChange={e => setCoverAspect(e.target.value as any)}>
+                  <option value="1:1">1:1 — {tx.coverAspectSquare}</option>
+                  <option value="9:16">9:16 — {tx.coverAspectPortrait}</option>
+                  <option value="16:9">16:9 — {tx.coverAspectLandscape}</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', color: '#8a7a60', fontSize: 11, letterSpacing: 1, marginBottom: 4 }}>{tx.coverQuality}</label>
+                <select value={coverQuality} onChange={e => setCoverQuality(e.target.value as any)}>
+                  <option value="low">Low — ~$0.02 · {tx.coverQualityLowHint}</option>
+                  <option value="medium">Medium — ~$0.04 · {tx.coverQualityMediumHint}</option>
+                  <option value="high">High — ~$0.07 · {tx.coverQualityHighHint}</option>
+                </select>
+              </div>
+            </div>
+
             <button className="btn-gold" onClick={generateCoverPrompt} disabled={aiLoading || !lyrics} style={{ marginBottom: '24px' }}>
               {isLoading('cover') ? tx.generating : coverPrompt ? '↻ ' + tx.regenerate : tx.generateCoverPrompt}
             </button>
@@ -1058,6 +1221,101 @@ export default function SongPage() {
               <p style={{ color: '#c07bd0', fontSize: 11, letterSpacing: 1, marginTop: 0, marginBottom: 12 }}>
                 {tx.canvasGenerateLabel}
               </p>
+
+              {/* Mode toggle: text-to-video vs image-to-video */}
+              <div style={{ display: 'flex', gap: 4, marginBottom: 14, flexWrap: 'wrap' }}>
+                {(['text-to-video', 'image-to-video'] as const).map(m => {
+                  const active = canvasMode === m
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setCanvasMode(m)}
+                      style={{
+                        padding: '6px 14px', borderRadius: 4, fontSize: 12, cursor: 'pointer',
+                        border: `1px solid ${active ? 'rgba(160,100,200,0.5)' : 'rgba(180,140,80,0.2)'}`,
+                        background: active ? 'rgba(160,100,200,0.18)' : 'transparent',
+                        color: active ? '#c07bd0' : '#6a5a40',
+                        fontWeight: active ? 500 : 400,
+                      }}
+                    >
+                      {m === 'text-to-video' ? '✨ ' + tx.canvasModeText : '🖼️ ' + tx.canvasModeImage}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Image-to-video source picker */}
+              {canvasMode === 'image-to-video' && (
+                <div style={{ marginBottom: 14, padding: 12, background: 'rgba(160,100,200,0.05)', border: '1px solid rgba(160,100,200,0.2)', borderRadius: 6 }}>
+                  <p style={{ margin: '0 0 8px', color: '#c07bd0', fontSize: 10, letterSpacing: 1 }}>{tx.canvasImageSource}</p>
+                  <div style={{ display: 'flex', gap: 4, marginBottom: 10, flexWrap: 'wrap' }}>
+                    {(['cover', 'upload'] as const).map(src => {
+                      const active = canvasImageSource === src
+                      const disabled = src === 'cover' && !coverImageUrl
+                      return (
+                        <button
+                          key={src}
+                          type="button"
+                          onClick={() => !disabled && setCanvasImageSource(src)}
+                          disabled={disabled}
+                          style={{
+                            padding: '5px 12px', borderRadius: 4, fontSize: 11, cursor: disabled ? 'not-allowed' : 'pointer',
+                            border: `1px solid ${active ? 'rgba(212,168,67,0.4)' : 'rgba(180,140,80,0.15)'}`,
+                            background: active ? 'rgba(212,168,67,0.1)' : 'transparent',
+                            color: disabled ? '#3a3530' : active ? '#d4a843' : '#6a5a40',
+                          }}
+                        >
+                          {src === 'cover' ? tx.canvasUseSongCover : tx.canvasUploadStartFrame}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {canvasImageSource === 'cover' && (
+                    coverImageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={coverImageUrl} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 4, display: 'block' }} />
+                    ) : (
+                      <p style={{ color: '#5a4a30', fontSize: 11, margin: 0 }}>{tx.canvasNoCover}</p>
+                    )
+                  )}
+
+                  {canvasImageSource === 'upload' && (
+                    <div>
+                      <input
+                        ref={canvasImageFileRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        style={{ display: 'none' }}
+                        onChange={e => { const f = e.target.files?.[0]; if (f) uploadCanvasImage(f); if (e.target) e.target.value = '' }}
+                      />
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          className="btn-outline"
+                          style={{ padding: '5px 12px', fontSize: 11 }}
+                          onClick={() => canvasImageFileRef.current?.click()}
+                          disabled={canvasImageUploading}
+                        >
+                          {canvasImageUploading ? tx.saving : '📁 ' + tx.canvasUploadImage}
+                        </button>
+                        {canvasImageUrl && (
+                          <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={canvasImageUrl} alt="" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 4 }} />
+                            <button
+                              type="button"
+                              onClick={() => setCanvasImageUrl('')}
+                              style={{ background: 'none', border: '1px solid rgba(200,80,80,0.25)', color: '#c05050', padding: '4px 10px', borderRadius: 4, cursor: 'pointer', fontSize: 11 }}
+                            >×</button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
                 <div>

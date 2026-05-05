@@ -3,7 +3,13 @@ import { NextRequest, NextResponse } from 'next/server'
 // POST /api/canvas/generate
 // Submit a video generation job to fal.ai (Seedance Pro by default).
 //
-// Body: { prompt: string, aspect_ratio?: '9:16'|'16:9'|'1:1', duration?: number }
+// Body: {
+//   prompt: string,
+//   mode?: 'text-to-video' | 'image-to-video' (default text-to-video),
+//   image_url?: string (required when mode=image-to-video),
+//   aspect_ratio?: '9:16'|'16:9'|'1:1',
+//   duration?: number
+// }
 // Returns: { request_id, status_url, response_url, model } or { error }
 //
 // fal.ai uses an async queue API: submit returns IDs, client polls /api/canvas/status until done.
@@ -25,7 +31,8 @@ function cleanModelPath(input: string): string {
   return s
 }
 
-const DEFAULT_MODEL = cleanModelPath(process.env.FAL_VIDEO_MODEL || 'fal-ai/bytedance/seedance/v1/pro/text-to-video')
+const TEXT_TO_VIDEO_MODEL = cleanModelPath(process.env.FAL_VIDEO_MODEL || 'fal-ai/bytedance/seedance/v1/pro/text-to-video')
+const IMAGE_TO_VIDEO_MODEL = cleanModelPath(process.env.FAL_VIDEO_I2V_MODEL || 'fal-ai/bytedance/seedance/v1/pro/image-to-video')
 
 export async function POST(req: NextRequest) {
   if (!process.env.FAL_KEY) {
@@ -39,6 +46,8 @@ export async function POST(req: NextRequest) {
   try { body = await req.json() } catch { return NextResponse.json({ error: 'Bad JSON' }, { status: 400 }) }
 
   const prompt = String(body.prompt || '').trim()
+  const mode = body.mode === 'image-to-video' ? 'image-to-video' : 'text-to-video'
+  const image_url = String(body.image_url || '').trim()
   const aspect_ratio = String(body.aspect_ratio || '9:16')
   const duration = Number(body.duration || 5)
 
@@ -51,8 +60,19 @@ export async function POST(req: NextRequest) {
   if (duration < 3 || duration > 10) {
     return NextResponse.json({ error: 'Duration must be 3–10 seconds' }, { status: 400 })
   }
+  if (mode === 'image-to-video' && !image_url) {
+    return NextResponse.json({ error: 'image_url is required when mode=image-to-video' }, { status: 400 })
+  }
 
-  const model = DEFAULT_MODEL
+  const model = mode === 'image-to-video' ? IMAGE_TO_VIDEO_MODEL : TEXT_TO_VIDEO_MODEL
+  // Build payload — image-to-video adds image_url; text-to-video adds aspect_ratio.
+  const payload: Record<string, unknown> = { prompt, duration }
+  if (mode === 'image-to-video') {
+    payload.image_url = image_url
+  } else {
+    payload.aspect_ratio = aspect_ratio
+  }
+
   try {
     const res = await fetch(`https://queue.fal.run/${model}`, {
       method: 'POST',
@@ -60,11 +80,7 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/json',
         Authorization: `Key ${process.env.FAL_KEY}`,
       },
-      body: JSON.stringify({
-        prompt,
-        aspect_ratio,
-        duration,
-      }),
+      body: JSON.stringify(payload),
     })
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
