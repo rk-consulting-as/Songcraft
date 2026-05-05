@@ -1249,6 +1249,9 @@ export default function SongPage() {
               {canvasMode === 'image-to-video' && (
                 <div style={{ marginBottom: 14, padding: 12, background: 'rgba(160,100,200,0.05)', border: '1px solid rgba(160,100,200,0.2)', borderRadius: 6 }}>
                   <p style={{ margin: '0 0 8px', color: '#c07bd0', fontSize: 10, letterSpacing: 1 }}>{tx.canvasImageSource}</p>
+                  <p style={{ margin: '0 0 10px', color: '#e0a050', fontSize: 11, lineHeight: 1.5 }}>
+                    ⚠ {tx.canvasI2vAspectWarning}
+                  </p>
                   <div style={{ display: 'flex', gap: 4, marginBottom: 10, flexWrap: 'wrap' }}>
                     {(['cover', 'upload'] as const).map(src => {
                       const active = canvasImageSource === src
@@ -1319,8 +1322,18 @@ export default function SongPage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
                 <div>
-                  <label style={{ display: 'block', color: '#8a7a60', fontSize: 11, letterSpacing: 1, marginBottom: 4 }}>{tx.canvasAspectRatio}</label>
-                  <select value={canvasAspect} onChange={e => setCanvasAspect(e.target.value as any)}>
+                  <label style={{ display: 'block', color: '#8a7a60', fontSize: 11, letterSpacing: 1, marginBottom: 4 }}>
+                    {tx.canvasAspectRatio}
+                    {canvasMode === 'image-to-video' && (
+                      <span style={{ color: '#5a4a30', fontWeight: 'normal', textTransform: 'none', letterSpacing: 0 }}> — {tx.canvasI2vAspectIgnored}</span>
+                    )}
+                  </label>
+                  <select
+                    value={canvasAspect}
+                    onChange={e => setCanvasAspect(e.target.value as any)}
+                    disabled={canvasMode === 'image-to-video'}
+                    style={canvasMode === 'image-to-video' ? { opacity: 0.5 } : undefined}
+                  >
                     <option value="9:16">9:16 — {tx.canvasVertical}</option>
                     <option value="16:9">16:9 — {tx.canvasHorizontal}</option>
                     <option value="1:1">1:1 — {tx.canvasSquare}</option>

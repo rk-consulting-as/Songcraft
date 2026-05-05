@@ -246,6 +246,8 @@ export const t = {
     canvasUploadStartFrame: 'Last opp eget bilde',
     canvasNoCover: 'Ingen cover lagret. Generer eller last opp først.',
     canvasUploadImage: 'Velg bildefil',
+    canvasI2vAspectWarning: 'Output-videoen får SAMME aspect ratio som startbildet. For Spotify Canvas (9:16): generer cover på 9:16 først (på Cover-tab), eller last opp et vertikalt bilde her.',
+    canvasI2vAspectIgnored: 'ignoreres for image-to-video',
 
     // Cover style/mood/quality
     coverStyleChips: 'STIL — KLIKK FOR Å VELGE',
@@ -610,6 +612,8 @@ export const t = {
     canvasUploadStartFrame: 'Upload custom image',
     canvasNoCover: 'No cover saved. Generate or upload one first.',
     canvasUploadImage: 'Choose image file',
+    canvasI2vAspectWarning: 'Output video gets the SAME aspect ratio as the starting image. For Spotify Canvas (9:16): generate the cover at 9:16 first (Cover tab), or upload a vertical image here.',
+    canvasI2vAspectIgnored: 'ignored for image-to-video',
 
     // Cover style/mood/quality
     coverStyleChips: 'STYLE — CLICK TO SELECT',
