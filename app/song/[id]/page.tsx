@@ -1072,10 +1072,18 @@ export default function SongPage() {
                   <label style={{ display: 'block', color: '#8a7a60', fontSize: 11, letterSpacing: 1, marginBottom: 4 }}>{tx.canvasDuration}</label>
                   <select value={canvasDuration} onChange={e => setCanvasDuration(Number(e.target.value))}>
                     {[3, 4, 5, 6, 7, 8, 9, 10].map(n => (
-                      <option key={n} value={n}>{n}s</option>
+                      <option key={n} value={n}>{n}s{n >= 3 && n <= 7 ? ' ✓ Spotify' : ''}</option>
                     ))}
                   </select>
                 </div>
+              </div>
+
+              {/* Spotify Canvas requirements info */}
+              <div style={{ background: 'rgba(30,215,96,0.06)', border: '1px solid rgba(30,215,96,0.25)', borderRadius: 6, padding: 10, marginBottom: 12 }}>
+                <p style={{ margin: 0, fontSize: 11, color: '#7bc87b', lineHeight: 1.5 }}>
+                  <strong>{tx.canvasSpotifySpecTitle}</strong><br/>
+                  {tx.canvasSpotifySpecBody}
+                </p>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap', gap: 6 }}>
