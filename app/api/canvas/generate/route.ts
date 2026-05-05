@@ -8,9 +8,24 @@ import { NextRequest, NextResponse } from 'next/server'
 //
 // fal.ai uses an async queue API: submit returns IDs, client polls /api/canvas/status until done.
 
-// fal.ai's current Seedance path uses slash-separated version segments.
-// Override via FAL_VIDEO_MODEL if fal.ai changes this.
-const DEFAULT_MODEL = process.env.FAL_VIDEO_MODEL || 'fal-ai/bytedance/seedance/v1/pro/text-to-video'
+/**
+ * fal.ai's current Seedance path uses slash-separated version segments.
+ * Override via FAL_VIDEO_MODEL if fal.ai changes this.
+ *
+ * Tolerates a few common copy-paste mistakes:
+ *   - Full URL like https://fal.ai/models/fal-ai/...
+ *   - Leading/trailing slashes or whitespace
+ */
+function cleanModelPath(input: string): string {
+  let s = (input || '').trim()
+  // Strip the fal.ai web URL prefix if present.
+  s = s.replace(/^https?:\/\/(www\.)?fal\.ai\/models\//i, '')
+  // Strip leading/trailing slashes.
+  s = s.replace(/^\/+|\/+$/g, '')
+  return s
+}
+
+const DEFAULT_MODEL = cleanModelPath(process.env.FAL_VIDEO_MODEL || 'fal-ai/bytedance/seedance/v1/pro/text-to-video')
 
 export async function POST(req: NextRequest) {
   if (!process.env.FAL_KEY) {
