@@ -93,6 +93,7 @@ export default function SongPage() {
   const [canvasImageSource, setCanvasImageSource] = useState<'cover' | 'upload'>('cover')
   const [canvasImageUrl, setCanvasImageUrl] = useState<string>('')
   const [canvasImageUploading, setCanvasImageUploading] = useState(false)
+  const [canvasI2vImageGenerating, setCanvasI2vImageGenerating] = useState(false)
   const canvasImageFileRef = useRef<HTMLInputElement | null>(null)
   const [canvasGenerating, setCanvasGenerating] = useState(false)
   const [canvasGenStatus, setCanvasGenStatus] = useState<string>('')
@@ -356,6 +357,52 @@ export default function SongPage() {
       setCanvasGenStatus('')
     }
     setCanvasGenerating(false)
+  }
+
+  /**
+   * Generate a 9:16 starting-frame image specifically for canvas image-to-video,
+   * using the existing cover prompt so the visual style stays consistent. The
+   * 1:1 album cover is left untouched — the new image is saved separately to
+   * canvasImageUrl, and the source mode is switched to "upload".
+   */
+  const generateCanvasI2vImage = async () => {
+    if (!coverPrompt.trim()) {
+      setCanvasError(lang === 'no'
+        ? 'Du må generere et cover-prompt på Cover-tab først.'
+        : 'Generate a cover prompt on the Cover tab first.')
+      return
+    }
+    setCanvasI2vImageGenerating(true)
+    setCanvasError(null)
+    try {
+      const res = await fetch('/api/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: coverPrompt, size: '1024x1536', quality: coverQuality || 'medium' }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      const b64: string = data.b64
+      const mime: string = data.mime || 'image/png'
+      const bin = atob(b64)
+      const bytes = new Uint8Array(bin.length)
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+      const blob = new Blob([bytes], { type: mime })
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      const path = `canvas-i2v/${user?.id || 'anon'}/${Date.now()}.png`
+      const { error: upErr } = await supabase.storage.from('covers').upload(path, blob, {
+        upsert: true,
+        contentType: mime,
+      })
+      if (upErr) throw new Error(upErr.message)
+      const { data: urlData } = supabase.storage.from('covers').getPublicUrl(path)
+      setCanvasImageUrl(urlData.publicUrl)
+      setCanvasImageSource('upload')
+    } catch (e: any) {
+      setCanvasError(e?.message || 'Image generation failed')
+    }
+    setCanvasI2vImageGenerating(false)
   }
 
   /** Upload a starting-frame image for canvas image-to-video. Stores in covers/canvas/i2v/{user}/{ts}. */
@@ -1252,6 +1299,30 @@ export default function SongPage() {
                   <p style={{ margin: '0 0 10px', color: '#e0a050', fontSize: 11, lineHeight: 1.5 }}>
                     ⚠ {tx.canvasI2vAspectWarning}
                   </p>
+
+                  {/* Quick action: generate a 9:16 version of the cover for canvas use */}
+                  {coverPrompt && (
+                    <button
+                      type="button"
+                      onClick={generateCanvasI2vImage}
+                      disabled={canvasI2vImageGenerating}
+                      style={{
+                        background: 'linear-gradient(135deg, #d4a843, #b08a35)',
+                        color: '#0a0a0f',
+                        border: 'none',
+                        padding: '7px 14px',
+                        borderRadius: 4,
+                        fontSize: 12,
+                        fontWeight: 500,
+                        cursor: canvasI2vImageGenerating ? 'wait' : 'pointer',
+                        marginBottom: 10,
+                        opacity: canvasI2vImageGenerating ? 0.6 : 1,
+                      }}
+                      title={tx.canvasI2vGenerate916Hint}
+                    >
+                      {canvasI2vImageGenerating ? tx.canvasI2vGenerating916 : '✨ ' + tx.canvasI2vGenerate916}
+                    </button>
+                  )}
                   <div style={{ display: 'flex', gap: 4, marginBottom: 10, flexWrap: 'wrap' }}>
                     {(['cover', 'upload'] as const).map(src => {
                       const active = canvasImageSource === src

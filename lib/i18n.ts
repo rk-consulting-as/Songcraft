@@ -246,8 +246,11 @@ export const t = {
     canvasUploadStartFrame: 'Last opp eget bilde',
     canvasNoCover: 'Ingen cover lagret. Generer eller last opp først.',
     canvasUploadImage: 'Velg bildefil',
-    canvasI2vAspectWarning: 'Output-videoen får SAMME aspect ratio som startbildet. For Spotify Canvas (9:16): generer cover på 9:16 først (på Cover-tab), eller last opp et vertikalt bilde her.',
+    canvasI2vAspectWarning: 'Output-videoen får SAMME aspect ratio som startbildet. For Spotify Canvas (9:16): bruk knappen under for å lage en 9:16-versjon av cover-prompten din, eller last opp et vertikalt bilde manuelt.',
     canvasI2vAspectIgnored: 'ignoreres for image-to-video',
+    canvasI2vGenerate916: 'Lag 9:16-startbilde fra cover-prompt',
+    canvasI2vGenerating916: 'Lager 9:16-bilde…',
+    canvasI2vGenerate916Hint: 'Bruker samme cover-prompt og stil-valg, men i 9:16-format. Lagres separat fra album-coveret. Ca. $0.04–0.07 per bilde.',
 
     // Cover style/mood/quality
     coverStyleChips: 'STIL — KLIKK FOR Å VELGE',
@@ -612,8 +615,11 @@ export const t = {
     canvasUploadStartFrame: 'Upload custom image',
     canvasNoCover: 'No cover saved. Generate or upload one first.',
     canvasUploadImage: 'Choose image file',
-    canvasI2vAspectWarning: 'Output video gets the SAME aspect ratio as the starting image. For Spotify Canvas (9:16): generate the cover at 9:16 first (Cover tab), or upload a vertical image here.',
+    canvasI2vAspectWarning: 'Output video gets the SAME aspect ratio as the starting image. For Spotify Canvas (9:16): use the button below to make a 9:16 version of your cover prompt, or upload a vertical image manually.',
     canvasI2vAspectIgnored: 'ignored for image-to-video',
+    canvasI2vGenerate916: 'Generate 9:16 starting frame from cover prompt',
+    canvasI2vGenerating916: 'Generating 9:16 image…',
+    canvasI2vGenerate916Hint: 'Uses the same cover prompt and style choices but in 9:16 format. Saved separately from the album cover. ~$0.04–0.07 per image.',
 
     // Cover style/mood/quality
     coverStyleChips: 'STYLE — CLICK TO SELECT',
