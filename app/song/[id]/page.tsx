@@ -58,6 +58,15 @@ export default function SongPage() {
   // AI provider (persisted in localStorage)
   const [aiProvider, setAiProvider] = useState<AIProvider>('anthropic')
 
+  // Per-song output language for AI generations (independent from UI language).
+  const [aiOutputLang, setAiOutputLang] = useState<Lang>('no')
+
+  // Whether to include the song's lyrics in publish-tab generations (WordPress, FB, etc.).
+  const [includeLyricsInPublish, setIncludeLyricsInPublish] = useState(false)
+
+  // Clean-text modal
+  const [showCleanLyrics, setShowCleanLyrics] = useState(false)
+
   // AI image generation state
   const [imageGenerating, setImageGenerating] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
@@ -102,7 +111,13 @@ export default function SongPage() {
   const [canvasExternalInput, setCanvasExternalInput] = useState('')
   const canvasFileRef = useRef<HTMLInputElement | null>(null)
 
-  useEffect(() => { setLangState(useLang()); setAiProvider(getStoredProvider()); fetchSong() }, [songId])
+  useEffect(() => {
+    const l = useLang()
+    setLangState(l)
+    setAiOutputLang(l)
+    setAiProvider(getStoredProvider())
+    fetchSong()
+  }, [songId])
 
   const pickProvider = (p: AIProvider) => { setAiProvider(p); setStoredProvider(p) }
 
@@ -512,7 +527,7 @@ export default function SongPage() {
     if (!lyricsInstructions.trim()) return
     const artistCtx = buildArtistContext()
     const msgs = [{ role: 'user', content: lyricsInstructions + artistCtx }]
-    const sysLang = lang === 'no' ? 'Norwegian' : 'English'
+    const sysLang = aiOutputLang === 'no' ? 'Norwegian' : 'English'
     const result = await callAI(msgs,
       `You are a creative songwriter. Write song lyrics based on the user's instructions. Write in ${sysLang}. Format with Verse 1, Verse 2, Chorus, Bridge etc.${artist?.song_structure && useProfileForLyrics ? ' Follow the song structure profile provided.' : ''} Output only the lyrics, no explanations.`,
       'lyrics')
@@ -601,7 +616,7 @@ export default function SongPage() {
 
   const getCaptionLang = () => {
     if (captionLangOverride) return captionForcedLang === 'no' ? 'Norwegian' : 'English'
-    return lang === 'no' ? 'Norwegian' : 'English'
+    return aiOutputLang === 'no' ? 'Norwegian' : 'English'
   }
 
   const generateCaption = async (platform: string) => {
@@ -681,14 +696,21 @@ export default function SongPage() {
   }
 
   const generatePublish = async (type: string) => {
-    const publishLang = lang === 'no' ? 'Norwegian' : 'English'
+    const publishLang = aiOutputLang === 'no' ? 'Norwegian' : 'English'
+    const lyricsDirective = includeLyricsInPublish && lyrics
+      ? ' Include the full song lyrics inside the post body, formatted as a clearly-set-off block (e.g., a markdown blockquote or a "Lyrics" section with a heading). Use the cleaned lyrics provided — preserve verse breaks, do not include section markers like [Verse 1].'
+      : ' Reference the lyrics naturally but do NOT include the full lyrics text.'
     const systemMap: Record<string,string> = {
-      wordpress: `Write a WordPress blog post in ${publishLang} about this song. Include title (# Title), intro, background, lyric analysis, listen info. Use markdown. ~400 words.`,
+      wordpress: `Write a WordPress blog post in ${publishLang} about this song. Include title (# Title), intro, background, lyric analysis, listen info. Use markdown. ~400 words.${lyricsDirective}`,
       facebook: `Write a Facebook post in ${publishLang} about this song. Engaging, personal, with hashtags. ~150 words.`,
       instagram: `Write an Instagram post in ${publishLang}. Visual language, storytelling, hashtags. ~120 words.`,
-      press: `Write a press release in ${publishLang} about this song. Professional tone, 5W structure, artist quote. ~300 words.`,
+      press: `Write a press release in ${publishLang} about this song. Professional tone, 5W structure, artist quote. ~300 words.${lyricsDirective}`,
     }
-    const context = `Song: ${title}\nArtist: ${artist?.name}\nGenre: ${artist?.genre}\nLyrics:\n${lyrics}\n\nMedia: ${mediaLinks.map(l => `${l.platform}: ${l.url}`).join(', ')}`
+    const cleanedLyrics = lyrics ? cleanLyricsText(lyrics) : ''
+    const lyricsBlock = type === 'wordpress' || type === 'press'
+      ? (includeLyricsInPublish && cleanedLyrics ? `\n\nCleaned lyrics (use these verbatim if including in post):\n${cleanedLyrics}` : `\n\nLyrics excerpt for context:\n${cleanedLyrics.slice(0, 600)}`)
+      : `\n\nLyrics excerpt for context:\n${cleanedLyrics.slice(0, 400)}`
+    const context = `Song: ${title}\nArtist: ${artist?.name}\nGenre: ${artist?.genre}${lyricsBlock}\n\nMedia: ${mediaLinks.map(l => `${l.platform}: ${l.url}`).join(', ')}`
     const result = await callAI([{ role: 'user', content: context }], systemMap[type], `publish_${type}`)
     const updated = { ...publishContent, [type]: result }
     setPublishContent(updated)
@@ -727,9 +749,36 @@ export default function SongPage() {
           <input value={title} onChange={e => updateTitle(e.target.value)}
             style={{ background: 'none', border: 'none', color: '#e8e0d0', fontSize: '16px', outline: 'none', width: '220px', padding: '4px 0' }} />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <span style={{ color: '#5a4a30', fontSize: 11, letterSpacing: 1 }}>{tx.aiProviderLabel}</span>
           <AIProviderPicker value={aiProvider} onChange={pickProvider} disabled={aiLoading || imageGenerating} />
+          {/* Output language toggle for AI generations */}
+          <div role="radiogroup" aria-label="Output language" title={tx.aiOutputLangHint} style={{ display: 'inline-flex', border: '1px solid rgba(180,140,80,0.2)', borderRadius: 4, overflow: 'hidden', height: 36 }}>
+            {(['no', 'en'] as const).map(l => {
+              const active = aiOutputLang === l
+              return (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setAiOutputLang(l)}
+                  disabled={aiLoading}
+                  style={{
+                    padding: '0 12px',
+                    background: active ? 'rgba(212,168,67,0.15)' : 'transparent',
+                    border: 'none',
+                    borderLeft: l === 'en' ? '1px solid rgba(180,140,80,0.2)' : 'none',
+                    color: active ? '#d4a843' : '#6a5a40',
+                    fontSize: 12,
+                    fontWeight: active ? 600 : 400,
+                    cursor: 'pointer',
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  {l === 'no' ? 'NO' : 'EN'}
+                </button>
+              )
+            })}
+          </div>
           <select value={song?.status || 'draft'} onChange={e => updateStatus(e.target.value)}
             style={{ width: 'auto', padding: '6px 10px', fontSize: '12px' }}>
             {statusOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -786,37 +835,91 @@ export default function SongPage() {
               {isLoading('lyrics') ? tx.generating : lyrics ? tx.regenerateLyrics : tx.generateLyrics}
             </button>
 
-            {lyrics && (
-              <>
-                <div className="card" style={{ marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: 8 }}>
-                    <span style={{ color: '#d4a843', fontSize: '11px', letterSpacing: '1px' }}>{tx.lyricsLabel}</span>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {lyricsHistory.filter(m => m.role === 'assistant').length > 1 && (
-                        <button
-                          className="btn-outline"
-                          style={{ padding: '4px 12px', fontSize: '12px' }}
-                          onClick={() => setShowHistory(true)}
-                          title={tx.historyHint}
-                        >
-                          📜 {tx.historyButton} ({lyricsHistory.filter(m => m.role === 'assistant').length})
-                        </button>
-                      )}
+            {/* Lyrics editor — always visible. User can paste their own or use the AI generator above. */}
+            <div className="card" style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: 8 }}>
+                <span style={{ color: '#d4a843', fontSize: '11px', letterSpacing: '1px' }}>{tx.lyricsLabel}</span>
+                {lyrics && (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {lyricsHistory.filter(m => m.role === 'assistant').length > 1 && (
                       <button
                         className="btn-outline"
                         style={{ padding: '4px 12px', fontSize: '12px' }}
-                        onClick={() => copy(cleanLyricsText(lyrics))}
-                        title={tx.copyCleanHint}
+                        onClick={() => setShowHistory(true)}
+                        title={tx.historyHint}
                       >
-                        📄 {tx.copyClean}
+                        📜 {tx.historyButton} ({lyricsHistory.filter(m => m.role === 'assistant').length})
                       </button>
-                      <button className="btn-outline" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={() => copy(lyrics)}>
-                        📋 {tx.copy}
-                      </button>
-                    </div>
+                    )}
+                    <button
+                      className="btn-outline"
+                      style={{ padding: '4px 12px', fontSize: '12px' }}
+                      onClick={() => setShowCleanLyrics(true)}
+                      title={tx.copyCleanHint}
+                    >
+                      📄 {tx.viewClean}
+                    </button>
+                    <button className="btn-outline" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={() => copy(lyrics)}>
+                      📋 {tx.copy}
+                    </button>
                   </div>
-                  <textarea value={lyrics} onChange={e => { setLyrics(e.target.value); save({ lyrics_text: e.target.value }) }} rows={16} />
-                </div>
+                )}
+              </div>
+              <textarea
+                value={lyrics}
+                onChange={e => { setLyrics(e.target.value); save({ lyrics_text: e.target.value }) }}
+                placeholder={tx.lyricsManualPlaceholder}
+                rows={16}
+              />
+              {!lyrics && (
+                <p style={{ color: '#5a4a30', fontSize: 12, margin: '8px 0 0' }}>
+                  💡 {tx.lyricsManualHint}
+                </p>
+              )}
+            </div>
+
+            {lyrics && (
+              <>
+
+                {/* Clean-lyrics view modal */}
+                {showCleanLyrics && lyrics && (() => {
+                  const cleaned = cleanLyricsText(lyrics)
+                  const wordpressFormat = `<blockquote class="lyrics">\n${cleaned.split('\n').map(l => l.trim() ? `  ${l}` : '').join('\n')}\n</blockquote>`
+                  return (
+                    <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, overflowY: 'auto' }}
+                      onClick={() => setShowCleanLyrics(false)}
+                    >
+                      <div className="card" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 720, maxHeight: '90vh', overflowY: 'auto', borderColor: 'rgba(212,168,67,0.4)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                          <h3 style={{ margin: 0, color: '#d4a843', fontWeight: 'normal', fontSize: 17 }}>📄 {tx.cleanLyricsTitle}</h3>
+                          <button onClick={() => setShowCleanLyrics(false)} style={{ background: 'none', border: 'none', color: '#6a5a40', cursor: 'pointer', fontSize: 22 }}>×</button>
+                        </div>
+                        <p style={{ color: '#5a4a30', fontSize: 12, margin: '0 0 14px' }}>{tx.cleanLyricsHint}</p>
+
+                        <pre style={{ color: '#e8e0d0', fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0, background: 'rgba(0,0,0,0.3)', padding: 14, borderRadius: 6, maxHeight: 360, overflowY: 'auto' }}>
+                          {cleaned || tx.cleanLyricsEmpty}
+                        </pre>
+
+                        <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+                          <button
+                            className="btn-gold"
+                            onClick={() => copy(cleaned)}
+                          >
+                            📋 {tx.cleanLyricsCopyText}
+                          </button>
+                          <button
+                            className="btn-outline"
+                            onClick={() => copy(wordpressFormat)}
+                            title={tx.cleanLyricsCopyHtmlHint}
+                          >
+                            ❮❯ {tx.cleanLyricsCopyHtml}
+                          </button>
+                          <button className="btn-outline" onClick={() => setShowCleanLyrics(false)}>{tx.close}</button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 {/* Lyrics history modal */}
                 {showHistory && (
@@ -1550,6 +1653,24 @@ export default function SongPage() {
           <div>
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>{tx.publishTitle}</h2>
             {!lyrics && <p style={{ color: '#e07070', fontSize: '13px' }}>{tx.sunoNoLyrics}</p>}
+
+            {/* Options bar — language + include-lyrics flag */}
+            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(180,140,80,0.15)', borderRadius: 6, padding: '10px 14px', marginBottom: 22, display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'center' }}>
+              <span style={{ color: '#8a7a60', fontSize: 11, letterSpacing: 1 }}>{tx.publishLangLabel}: <span style={{ color: '#d4a843', fontWeight: 500 }}>{aiOutputLang === 'no' ? 'Norsk' : 'English'}</span></span>
+              <span style={{ color: '#5a4a30', fontSize: 11 }}>↑ {tx.publishLangChangeHint}</span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: lyrics ? 'pointer' : 'not-allowed', opacity: lyrics ? 1 : 0.5 }}>
+                <input
+                  type="checkbox"
+                  checked={includeLyricsInPublish}
+                  onChange={e => setIncludeLyricsInPublish(e.target.checked)}
+                  disabled={!lyrics}
+                  style={{ accentColor: '#d4a843', width: 14, height: 14 }}
+                />
+                <span style={{ color: includeLyricsInPublish ? '#d4a843' : '#8a7a60', fontSize: 13 }}>{tx.publishIncludeLyrics}</span>
+                <span style={{ color: '#5a4a30', fontSize: 11 }}>— {tx.publishIncludeLyricsHint}</span>
+              </label>
+            </div>
+
             {[
               { key: 'wordpress', label: tx.wordpress, color: '#7090d0' },
               { key: 'facebook', label: tx.facebook, color: '#5080d0' },

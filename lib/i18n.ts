@@ -107,6 +107,20 @@ export const t = {
 
     // AI provider
     aiProviderLabel: 'AI:',
+    aiOutputLangHint: 'Språk for AI-genererte tekster (lyrics, captions, blog post osv.)',
+    lyricsManualPlaceholder: 'Skriv eller lim inn dine egne sangtekster her, eller la AI generere fra Instructions over.',
+    lyricsManualHint: 'Tekster lagres automatisk mens du skriver. Du kan også bruke Generer-knappen over for å la AI lage et utkast først, og redigere derfra.',
+    viewClean: 'Vis ren tekst',
+    cleanLyricsTitle: 'Ren sangtekst',
+    cleanLyricsHint: 'Markdown og seksjonsmarkører som [Vers 1] er fjernet. Klar for kopiering til WordPress, presse eller andre eksterne systemer.',
+    cleanLyricsCopyText: 'Kopier som tekst',
+    cleanLyricsCopyHtml: 'Kopier som HTML',
+    cleanLyricsCopyHtmlHint: 'Kopierer som <blockquote> med klassen "lyrics" — klar for å limes inn i WordPress.',
+    cleanLyricsEmpty: '(ingen sangtekst ennå)',
+    publishLangLabel: 'Språk',
+    publishLangChangeHint: 'endre med NO/EN-toggle øverst i headeren',
+    publishIncludeLyrics: 'Inkluder sangtekst',
+    publishIncludeLyricsHint: 'Legger inn ren sangtekst i blog post / press release',
 
     // Cover image generation
     coverImageGenerate: '🎨 Generer cover-bilde',
@@ -476,6 +490,20 @@ export const t = {
 
     // AI provider
     aiProviderLabel: 'AI:',
+    aiOutputLangHint: 'Language for AI-generated text (lyrics, captions, blog posts, etc.)',
+    lyricsManualPlaceholder: 'Write or paste your own lyrics here, or let AI generate from Instructions above.',
+    lyricsManualHint: 'Lyrics save automatically as you type. You can also use the Generate button above to let AI draft first, and edit from there.',
+    viewClean: 'View clean text',
+    cleanLyricsTitle: 'Clean lyrics',
+    cleanLyricsHint: 'Markdown and section markers like [Verse 1] are removed. Ready to copy into WordPress, press, or other external systems.',
+    cleanLyricsCopyText: 'Copy as text',
+    cleanLyricsCopyHtml: 'Copy as HTML',
+    cleanLyricsCopyHtmlHint: 'Copies as <blockquote> with class "lyrics" — ready to paste into WordPress.',
+    cleanLyricsEmpty: '(no lyrics yet)',
+    publishLangLabel: 'Language',
+    publishLangChangeHint: 'change via the NO/EN toggle at the top of the header',
+    publishIncludeLyrics: 'Include lyrics',
+    publishIncludeLyricsHint: 'Inserts clean lyrics into the blog post / press release',
 
     // Cover image generation
     coverImageGenerate: '🎨 Generate cover image',
