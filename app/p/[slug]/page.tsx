@@ -269,7 +269,7 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
                           spotify_url: song.spotify_url,
                           suno_url: song.suno_url,
                           media_links: song.media_links,
-                          artist_name: s.artist.name,
+                          artist_name: artist.name,
                         }}
                         showCounter
                         compact
