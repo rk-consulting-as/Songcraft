@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { t, useLang, setLang, type Lang } from '@/lib/i18n'
 
@@ -8,7 +8,6 @@ const REF_STORAGE_KEY = 'songcraft_referral_code'
 
 export default function LoginPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [lang, setLangState] = useState<Lang>('no')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -20,8 +19,13 @@ export default function LoginPage() {
 
   useEffect(() => {
     setLangState(useLang())
-    // Capture ?ref= from URL (or fall back to previously stored value)
-    const urlRef = searchParams?.get('ref') || null
+    // Capture ?ref= from URL (or fall back to previously stored value).
+    // We read window.location.search directly rather than useSearchParams() to avoid
+    // Next.js requiring a Suspense boundary during static prerender.
+    let urlRef: string | null = null
+    if (typeof window !== 'undefined') {
+      try { urlRef = new URLSearchParams(window.location.search).get('ref') } catch {}
+    }
     if (urlRef) {
       const cleaned = urlRef.trim().toUpperCase().slice(0, 32)
       if (cleaned.length >= 4) {
