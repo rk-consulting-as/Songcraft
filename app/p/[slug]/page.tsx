@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import EmbedPlayer from '@/components/EmbedPlayer'
+import ClientEmbedPlayer from '@/components/ClientEmbedPlayer'
 
 // Public artist landing page. Server-rendered, anonymous Supabase client (RLS gates by page_enabled).
 // URL: /p/{slug}
@@ -259,7 +259,7 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
                     </div>
                     {/* Embed player — picks Spotify/YouTube/SoundCloud/Apple/internal automatically */}
                     <div style={{ flex: '1 1 280px', minWidth: 240, maxWidth: 380 }}>
-                      <EmbedPlayer
+                      <ClientEmbedPlayer
                         song={{
                           id: song.id,
                           title: song.title,

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import Avatar from '@/components/Avatar'
 import FollowButton from '@/components/FollowButton'
-import EmbedPlayer from '@/components/EmbedPlayer'
+import TopTracksList from '@/components/TopTracksList'
 import { CREATOR_ROLES, CREATOR_LANGUAGES } from '@/lib/creatorRoles'
 
 // Public creator profile at /u/[referral_code]. Always fresh — never cache.
@@ -278,31 +278,10 @@ export default async function PublicProfilePage({ params }: { params: { code: st
         )}
 
         {/* Public artists */}
-        {/* Top tracks (most-played from this creator's catalog) */}
-        {topSongs.length > 0 && (
-          <Section title="Top tracks">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {topSongs.map(song => (
-                <EmbedPlayer
-                  key={song.id}
-                  song={{
-                    id: song.id,
-                    title: song.title,
-                    cover_image_url: song.cover_image_url,
-                    spotify_cover_url: song.spotify_cover_url,
-                    suno_audio_url: song.suno_audio_url,
-                    spotify_url: song.spotify_url,
-                    suno_url: song.suno_url,
-                    media_links: song.media_links,
-                    artist_name: song.artists?.name,
-                  }}
-                  showCounter
-                  compact
-                />
-              ))}
-            </div>
-          </Section>
-        )}
+        {/* Top tracks (most-played from this creator's catalog).
+            Rendered via a Client Component wrapper because EmbedPlayer is client-only.
+            Wrapping in its own boundary so any rendering issue won't bubble up. */}
+        <TopTracksList songs={topSongs} />
 
         {artists.length > 0 && (
           <Section title={`Artists (${artists.length})`}>
