@@ -1,0 +1,327 @@
+/* =================================================================
+ * Songcraft Design System — portable CSS
+ * Drop this file into any project and get Songcraft's look.
+ * Works with vanilla HTML, React, Vue, etc. No build step required.
+ *
+ * Optional: pair with lib/tokens.ts if you're using React/TS and
+ * want the same values as JS constants for inline styles.
+ * ================================================================= */
+
+:root {
+  /* === Brand =========================================== */
+  --sc-gold: #d4a843;
+  --sc-gold-bright: #e8c050;
+  --sc-gold-dim: rgba(212, 168, 67, 0.3);
+  --sc-gold-tint: rgba(212, 168, 67, 0.08);
+
+  /* === Backgrounds ===================================== */
+  --sc-bg: #0a0a0f;
+  --sc-bg-2: #14101a;
+  --sc-bg-3: #1a1520;
+  --sc-bg-gradient: linear-gradient(135deg, #0a0a0f 0%, #12071e 50%, #0a0f0a 100%);
+  --sc-surface: rgba(255, 255, 255, 0.03);
+  --sc-surface-2: rgba(255, 255, 255, 0.04);
+  --sc-border: rgba(180, 140, 80, 0.2);
+  --sc-border-strong: rgba(180, 140, 80, 0.4);
+
+  /* === Text (warm beige/brown scale) =================== */
+  --sc-text-bright: #e8e0d0;
+  --sc-text-body: #c8c0b0;
+  --sc-text-mid: #a09080;
+  --sc-text-muted: #8a7a60;
+  --sc-text-dim: #6a5a40;
+  --sc-text-faint: #5a4a30;
+  --sc-text-disabled: #3a3530;
+
+  /* === Status (track/song workflow) ==================== */
+  --sc-status-draft: #8a7a60;
+  --sc-status-in-progress: #d4a843;
+  --sc-status-complete: #7bc87b;
+  --sc-status-released: #1ed760;
+
+  /* === Accent (alt brand) ============================== */
+  --sc-purple: #c07bd0;
+  --sc-purple-dim: rgba(160, 100, 200, 0.3);
+  --sc-purple-tint: rgba(160, 100, 200, 0.08);
+
+  /* === External brand colors =========================== */
+  --sc-spotify: #1ed760;
+  --sc-youtube: #ff0000;
+  --sc-tiktok: #000000;
+  --sc-facebook: #1877f2;
+  --sc-linkedin: #0a66c2;
+  --sc-apple-music: #fa233b;
+  --sc-soundcloud: #ff5500;
+  --sc-instagram-gradient: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+
+  /* === Functional ====================================== */
+  --sc-error: #c05050;
+  --sc-error-tint: rgba(200, 80, 80, 0.08);
+  --sc-warning: #e0a050;
+  --sc-info: #7090d0;
+  --sc-info-blue: #8090b0;
+
+  /* === Typography ====================================== */
+  --sc-font-stack: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --sc-font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* === Spacing / radii ================================= */
+  --sc-radius-sm: 4px;
+  --sc-radius: 6px;
+  --sc-radius-lg: 8px;
+  --sc-radius-pill: 14px;
+  --sc-radius-circle: 50%;
+}
+
+/* === Base ============================================= */
+.sc-app {
+  min-height: 100vh;
+  background: var(--sc-bg-gradient);
+  color: var(--sc-text-bright);
+  font-family: var(--sc-font-stack);
+}
+
+/* === Layout primitives ================================= */
+.sc-page-pad {
+  padding: 32px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.sc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 32px;
+  border-bottom: 1px solid var(--sc-border);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* === Card =============================================== */
+.sc-card {
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-lg);
+  padding: 24px;
+}
+
+.sc-card-hover:hover {
+  border-color: rgba(212, 168, 67, 0.5);
+}
+
+/* === Buttons ============================================ */
+.sc-btn-gold {
+  background: var(--sc-gold);
+  color: #0a0a0f;
+  font-weight: 700;
+  padding: 10px 24px;
+  border-radius: var(--sc-radius-sm);
+  border: none;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: opacity 0.2s;
+  font-family: inherit;
+}
+.sc-btn-gold:hover { opacity: 0.85; }
+.sc-btn-gold:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.sc-btn-outline {
+  background: transparent;
+  color: var(--sc-text-muted);
+  border: 1px solid rgba(180, 140, 80, 0.25);
+  padding: 10px 20px;
+  border-radius: var(--sc-radius-sm);
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+  font-family: inherit;
+}
+.sc-btn-outline:hover {
+  border-color: rgba(180, 140, 80, 0.5);
+  color: var(--sc-gold);
+}
+
+.sc-btn-danger {
+  background: none;
+  border: 1px solid rgba(200, 80, 80, 0.3);
+  color: var(--sc-error);
+  padding: 8px 16px;
+  border-radius: var(--sc-radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+/* === Form fields ======================================== */
+.sc-input,
+.sc-textarea,
+.sc-select {
+  background: var(--sc-surface-2);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-sm);
+  padding: 10px 14px;
+  color: var(--sc-text-bright);
+  font-size: 14px;
+  width: 100%;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+.sc-input:focus,
+.sc-textarea:focus,
+.sc-select:focus {
+  border-color: rgba(212, 168, 67, 0.5);
+}
+
+/* Dark dropdown option styling */
+.sc-select option,
+.sc-select optgroup {
+  background-color: var(--sc-bg-3);
+  color: var(--sc-text-bright);
+}
+.sc-select option:checked {
+  background: var(--sc-gold) linear-gradient(0deg, var(--sc-gold), var(--sc-gold));
+  color: var(--sc-bg);
+}
+
+/* === Chips (toggleable filter buttons) ================== */
+.sc-chip {
+  padding: 4px 12px;
+  border-radius: var(--sc-radius-pill);
+  font-size: 11px;
+  cursor: pointer;
+  border: 1px solid var(--sc-border);
+  background: transparent;
+  color: var(--sc-text-dim);
+  letter-spacing: 0.5px;
+  font-family: inherit;
+}
+.sc-chip:hover {
+  border-color: rgba(212, 168, 67, 0.4);
+}
+.sc-chip.is-active {
+  border-color: rgba(212, 168, 67, 0.5);
+  background: var(--sc-gold-tint);
+  color: var(--sc-gold);
+}
+
+/* === Status pills ======================================= */
+.sc-status {
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid currentColor;
+  display: inline-block;
+}
+.sc-status-draft       { color: var(--sc-status-draft); }
+.sc-status-in-progress { color: var(--sc-status-in-progress); }
+.sc-status-complete    { color: var(--sc-status-complete); }
+.sc-status-released    { color: var(--sc-status-released); }
+
+/* === Brand icon badges (circular, colored) ============== */
+.sc-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--sc-radius-circle);
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.sc-badge-spotify   { background: var(--sc-spotify);    color: #000; }
+.sc-badge-youtube   { background: var(--sc-youtube);    color: #fff; }
+.sc-badge-instagram { background: var(--sc-instagram-gradient); color: #fff; }
+.sc-badge-tiktok    { background: var(--sc-tiktok);     color: #fff; border: 1px solid #fff; }
+.sc-badge-facebook  { background: var(--sc-facebook);   color: #fff; }
+.sc-badge-linkedin  { background: var(--sc-linkedin);   color: #fff; }
+
+/* === Modal overlay ====================================== */
+.sc-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.92);
+  backdrop-filter: blur(4px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+}
+.sc-modal {
+  background: var(--sc-bg-2);
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-lg);
+  padding: 24px;
+  max-width: 620px;
+  width: 100%;
+  max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+/* === Tabs row =========================================== */
+.sc-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 16px 32px;
+  border-bottom: 1px solid rgba(180, 140, 80, 0.1);
+}
+.sc-tab {
+  padding: 8px 16px;
+  border-radius: var(--sc-radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid rgba(180, 140, 80, 0.15);
+  background: transparent;
+  color: var(--sc-text-dim);
+  font-family: inherit;
+}
+.sc-tab.is-active {
+  border-color: var(--sc-gold);
+  background: rgba(212, 168, 67, 0.12);
+  color: var(--sc-gold);
+}
+
+/* === Headings =========================================== */
+.sc-h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: normal;
+  color: var(--sc-gold);
+  letter-spacing: 2px;
+}
+.sc-h2 {
+  margin: 0 0 16px;
+  color: var(--sc-gold);
+  font-weight: normal;
+  font-size: 18px;
+}
+.sc-section-label {
+  display: block;
+  color: var(--sc-text-muted);
+  font-size: 11px;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+/* === Mobile responsive (≤700px) ========================= */
+@media (max-width: 700px) {
+  .sc-header { flex-direction: column; align-items: flex-start; padding: 14px 16px; }
+  .sc-page-pad { padding: 16px; }
+  .sc-card { padding: 14px; }
+  .sc-modal-overlay { padding: 10px; }
+}
+
+/* Slightly larger tap targets on touch devices */
+@media (pointer: coarse) {
+  .sc-btn-gold, .sc-btn-outline, .sc-input, .sc-select, .sc-chip {
+    min-height: 36px;
+  }
+}
