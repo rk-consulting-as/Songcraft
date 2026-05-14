@@ -22,39 +22,69 @@ type FollowerRow = {
 }
 
 async function fetchData(code: string): Promise<{ profile: { id: string; display_name: string | null; referral_code: string }; followers: FollowerRow[] } | null> {
-  const upperCode = code.toUpperCase()
-  const { data: profile } = await sb
-    .from('profiles')
-    .select('id, display_name, referral_code, visible_in_catalog')
-    .eq('referral_code', upperCode)
-    .eq('visible_in_catalog', true)
-    .maybeSingle()
-  if (!profile) return null
+  try {
+    const upperCode = code.toUpperCase()
+    // Try with visible_in_catalog filter, fall back to baseline if column missing.
+    let profile: any = null
+    const r1 = await sb
+      .from('profiles')
+      .select('id, display_name, referral_code, visible_in_catalog')
+      .eq('referral_code', upperCode)
+      .maybeSingle()
+    if (r1.error) {
+      const r2 = await sb
+        .from('profiles')
+        .select('id, display_name, referral_code')
+        .eq('referral_code', upperCode)
+        .maybeSingle()
+      profile = r2.data
+    } else {
+      profile = r1.data
+    }
+    if (!profile) return null
+    if (profile.visible_in_catalog === false) return null
 
-  // Get follower IDs, then their profile data
-  const { data: edges } = await sb
-    .from('follows')
-    .select('follower_id, created_at')
-    .eq('following_id', profile.id)
-    .order('created_at', { ascending: false })
+    // follows table may not exist yet
+    let edges: any[] | null = null
+    try {
+      const { data, error } = await sb
+        .from('follows')
+        .select('follower_id, created_at')
+        .eq('following_id', profile.id)
+        .order('created_at', { ascending: false })
+      if (!error) edges = data
+    } catch {}
 
-  if (!edges || edges.length === 0) {
-    return { profile: profile as any, followers: [] }
+    if (!edges || edges.length === 0) {
+      return { profile, followers: [] }
+    }
+
+    const ids = edges.map((e: any) => e.follower_id)
+    // Try full select with new columns, fall back if missing
+    let profilesData: any[] = []
+    const p1 = await sb
+      .from('profiles')
+      .select('id, display_name, avatar_url, referral_code, location, roles')
+      .in('id', ids)
+    if (p1.error) {
+      const p2 = await sb
+        .from('profiles')
+        .select('id, display_name, avatar_url, referral_code')
+        .in('id', ids)
+      profilesData = p2.data || []
+    } else {
+      profilesData = p1.data || []
+    }
+
+    const profileMap: Record<string, FollowerRow> = {}
+    for (const p of profilesData as FollowerRow[]) profileMap[p.id] = p
+    const ordered = ids.map(id => profileMap[id]).filter(Boolean) as FollowerRow[]
+
+    return { profile, followers: ordered }
+  } catch (e: any) {
+    console.error('[u/code/followers] crashed:', e?.message || e)
+    return null
   }
-
-  const ids = edges.map((e: any) => e.follower_id)
-  const { data: profiles } = await sb
-    .from('profiles')
-    .select('id, display_name, avatar_url, referral_code, location, roles')
-    .in('id', ids)
-    .eq('visible_in_catalog', true)
-
-  // Preserve order from edges
-  const profileMap: Record<string, FollowerRow> = {}
-  for (const p of (profiles as FollowerRow[]) || []) profileMap[p.id] = p
-  const ordered = ids.map(id => profileMap[id]).filter(Boolean) as FollowerRow[]
-
-  return { profile: profile as any, followers: ordered }
 }
 
 export default async function FollowersPage({ params }: { params: { code: string } }) {

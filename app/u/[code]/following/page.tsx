@@ -22,34 +22,63 @@ type FollowingRow = {
 }
 
 async function fetchData(code: string) {
-  const upperCode = code.toUpperCase()
-  const { data: profile } = await sb
-    .from('profiles')
-    .select('id, display_name, referral_code, visible_in_catalog')
-    .eq('referral_code', upperCode)
-    .eq('visible_in_catalog', true)
-    .maybeSingle()
-  if (!profile) return null
+  try {
+    const upperCode = code.toUpperCase()
+    let profile: any = null
+    const r1 = await sb
+      .from('profiles')
+      .select('id, display_name, referral_code, visible_in_catalog')
+      .eq('referral_code', upperCode)
+      .maybeSingle()
+    if (r1.error) {
+      const r2 = await sb
+        .from('profiles')
+        .select('id, display_name, referral_code')
+        .eq('referral_code', upperCode)
+        .maybeSingle()
+      profile = r2.data
+    } else {
+      profile = r1.data
+    }
+    if (!profile) return null
+    if (profile.visible_in_catalog === false) return null
 
-  const { data: edges } = await sb
-    .from('follows')
-    .select('following_id, created_at')
-    .eq('follower_id', profile.id)
-    .order('created_at', { ascending: false })
+    let edges: any[] | null = null
+    try {
+      const { data, error } = await sb
+        .from('follows')
+        .select('following_id, created_at')
+        .eq('follower_id', profile.id)
+        .order('created_at', { ascending: false })
+      if (!error) edges = data
+    } catch {}
 
-  if (!edges || edges.length === 0) return { profile, rows: [] as FollowingRow[] }
+    if (!edges || edges.length === 0) return { profile, rows: [] as FollowingRow[] }
 
-  const ids = edges.map((e: any) => e.following_id)
-  const { data: profiles } = await sb
-    .from('profiles')
-    .select('id, display_name, avatar_url, referral_code, location, roles')
-    .in('id', ids)
-    .eq('visible_in_catalog', true)
+    const ids = edges.map((e: any) => e.following_id)
+    let profilesData: any[] = []
+    const p1 = await sb
+      .from('profiles')
+      .select('id, display_name, avatar_url, referral_code, location, roles')
+      .in('id', ids)
+    if (p1.error) {
+      const p2 = await sb
+        .from('profiles')
+        .select('id, display_name, avatar_url, referral_code')
+        .in('id', ids)
+      profilesData = p2.data || []
+    } else {
+      profilesData = p1.data || []
+    }
 
-  const map: Record<string, FollowingRow> = {}
-  for (const p of (profiles as FollowingRow[]) || []) map[p.id] = p
-  const ordered = ids.map(id => map[id]).filter(Boolean) as FollowingRow[]
-  return { profile, rows: ordered }
+    const map: Record<string, FollowingRow> = {}
+    for (const p of profilesData as FollowingRow[]) map[p.id] = p
+    const ordered = ids.map(id => map[id]).filter(Boolean) as FollowingRow[]
+    return { profile, rows: ordered }
+  } catch (e: any) {
+    console.error('[u/code/following] crashed:', e?.message || e)
+    return null
+  }
 }
 
 export default async function FollowingPage({ params }: { params: { code: string } }) {
