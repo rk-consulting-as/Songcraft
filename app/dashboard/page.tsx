@@ -117,6 +117,9 @@ export default function Dashboard() {
   // Studio page status — used to decide whether the dashboard link goes to live page or editor.
   const [studioPage, setStudioPage] = useState<{ slug: string | null; enabled: boolean } | null>(null)
 
+  // Profile snapshot — used for showing referral / admin links in header.
+  const [userRole, setUserRole] = useState<string | null>(null)
+
   useEffect(() => { setLangState(useLang()); checkAuth(); fetchArtists() }, [])
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -143,6 +146,10 @@ export default function Dashboard() {
     if (user) {
       const { data: sp } = await supabase.from('studio_pages').select('slug, enabled').eq('user_id', user.id).maybeSingle()
       if (sp) setStudioPage({ slug: sp.slug, enabled: !!sp.enabled })
+      // Fetch role from profile so we can show admin link conditionally.
+      // Use maybeSingle — profile row may not yet exist for very old accounts pre-migration.
+      const { data: prof } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+      if (prof?.role) setUserRole(prof.role as string)
     }
     setLoading(false)
   }
@@ -405,6 +412,13 @@ export default function Dashboard() {
               style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block', background: 'rgba(180,140,80,0.08)', border: '1px solid rgba(180,140,80,0.25)', color: '#8a7a60', borderRadius: 4 }}>
               🌐 {tx.studioPageNavSetup}
             </Link>
+          )}
+          <Link href="/referrals" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>🤝 {tx.referralsNavLink}</Link>
+          {(userRole === 'admin' || userRole === 'super_admin') && (
+            <Link href="/admin" style={{
+              fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block',
+              background: 'rgba(212,168,67,0.1)', border: '1px solid rgba(212,168,67,0.3)', color: '#d4a843', borderRadius: 4,
+            }}>⚙️ {tx.adminNavLink}</Link>
           )}
           <Link href="/settings" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>⚙ {tx.settings}</Link>
           <button className="btn-outline" onClick={logout} style={{ fontSize: '13px' }}>{tx.logout}</button>
