@@ -6,6 +6,7 @@ import { t, useLang, setLang, type Lang } from '@/lib/i18n'
 import { searchGenres, MUSIC_GENRES } from '@/lib/genres'
 import { parseYoutube, parseInstagram, type SocialLinksMap } from '@/lib/socialLinks'
 import Link from 'next/link'
+import Avatar from '@/components/Avatar'
 
 type Artist = {
   id: string; name: string; genre: string; description: string
@@ -119,6 +120,7 @@ export default function Dashboard() {
 
   // Profile snapshot — used for showing referral / admin links in header.
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [userProfile, setUserProfile] = useState<{ id: string; display_name: string | null; avatar_url: string | null } | null>(null)
 
   useEffect(() => { setLangState(useLang()); checkAuth(); fetchArtists() }, [])
   useEffect(() => {
@@ -146,10 +148,11 @@ export default function Dashboard() {
     if (user) {
       const { data: sp } = await supabase.from('studio_pages').select('slug, enabled').eq('user_id', user.id).maybeSingle()
       if (sp) setStudioPage({ slug: sp.slug, enabled: !!sp.enabled })
-      // Fetch role from profile so we can show admin link conditionally.
+      // Fetch role + identity from profile for header avatar + admin link.
       // Use maybeSingle — profile row may not yet exist for very old accounts pre-migration.
-      const { data: prof } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+      const { data: prof } = await supabase.from('profiles').select('id, role, display_name, avatar_url').eq('id', user.id).maybeSingle()
       if (prof?.role) setUserRole(prof.role as string)
+      if (prof) setUserProfile({ id: (prof as any).id, display_name: (prof as any).display_name ?? null, avatar_url: (prof as any).avatar_url ?? null })
     }
     setLoading(false)
   }
@@ -421,6 +424,22 @@ export default function Dashboard() {
             }}>⚙️ {tx.adminNavLink}</Link>
           )}
           <Link href="/settings" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>⚙ {tx.settings}</Link>
+          <Link href="/profile" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '6px 12px 6px 6px',
+            border: '1px solid rgba(180,140,80,0.25)',
+            borderRadius: 24,
+            background: 'rgba(255,255,255,0.02)',
+            textDecoration: 'none',
+            transition: 'border-color 0.2s, background 0.2s',
+          }}
+            title={tx.profileTitle}
+          >
+            <Avatar value={userProfile?.avatar_url} name={userProfile?.display_name} seed={userProfile?.id} size={28} />
+            <span style={{ color: '#e8e0d0', fontSize: 13, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {userProfile?.display_name || tx.profileGuest}
+            </span>
+          </Link>
           <button className="btn-outline" onClick={logout} style={{ fontSize: '13px' }}>{tx.logout}</button>
         </div>
       </div>

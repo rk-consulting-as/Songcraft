@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { t, useLang, type Lang } from '@/lib/i18n'
+import Avatar from '@/components/Avatar'
 
 type Profile = {
   id: string
@@ -13,6 +14,7 @@ type Profile = {
   referred_by: string | null
   paid_status: boolean
   total_points: number
+  avatar_url?: string | null
 }
 
 type Relationship = {
@@ -125,9 +127,19 @@ export default function ReferralsPage() {
           <span style={{ color: '#3a3530' }}>|</span>
           <h1 style={{ margin: 0, fontSize: 18, color: accent, fontWeight: 'normal' }}>🤝 {tx.referralsTitle}</h1>
         </div>
-        <div style={{ color: '#6a5a40', fontSize: 12 }}>
-          {tx.referralsLoggedInAs} <span style={{ color: '#e8e0d0' }}>{profile.display_name || '—'}</span>
-        </div>
+        <Link href="/profile" style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          padding: '6px 12px 6px 6px',
+          border: '1px solid rgba(180,140,80,0.25)',
+          borderRadius: 24,
+          background: 'rgba(255,255,255,0.02)',
+          textDecoration: 'none',
+        }} title={tx.profileTitle}>
+          <Avatar value={profile.avatar_url} name={profile.display_name} seed={profile.id} size={28} />
+          <span style={{ color: '#e8e0d0', fontSize: 13, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {profile.display_name || tx.profileGuest}
+          </span>
+        </Link>
       </div>
 
       <div className="page-pad" style={{ padding: 32, maxWidth: 1000, margin: '0 auto' }}>

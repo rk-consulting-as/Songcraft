@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { t, useLang, type Lang } from '@/lib/i18n'
+import Avatar from '@/components/Avatar'
 
 type Role = 'user' | 'moderator' | 'admin' | 'super_admin'
 
@@ -18,6 +19,7 @@ type Profile = {
   total_points: number
   created_at: string
   updated_at: string
+  avatar_url?: string | null
 }
 
 type LedgerEntry = {
@@ -278,12 +280,22 @@ export default function AdminPage() {
           <span style={{ color: '#3a3530' }}>|</span>
           <h1 style={{ margin: 0, fontSize: 18, color: accent, fontWeight: 'normal' }}>⚙️ {tx.adminTitle}</h1>
         </div>
-        <div style={{ color: '#6a5a40', fontSize: 12 }}>
-          {tx.adminSignedInAs} <span style={{ color: '#e8e0d0' }}>{me?.display_name || '—'}</span>
-          <span style={{ marginLeft: 8, color: accent, fontSize: 10, padding: '2px 8px', border: `1px solid ${accent}`, borderRadius: 10 }}>
+        <Link href="/profile" style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          padding: '6px 12px 6px 6px',
+          border: '1px solid rgba(180,140,80,0.25)',
+          borderRadius: 24,
+          background: 'rgba(255,255,255,0.02)',
+          textDecoration: 'none',
+        }} title={tx.profileTitle}>
+          <Avatar value={me?.avatar_url} name={me?.display_name} seed={me?.id} size={28} />
+          <span style={{ color: '#e8e0d0', fontSize: 13, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {me?.display_name || tx.profileGuest}
+          </span>
+          <span style={{ color: accent, fontSize: 10, padding: '2px 8px', border: `1px solid ${accent}`, borderRadius: 10 }}>
             {me?.role}
           </span>
-        </div>
+        </Link>
       </div>
 
       <div className="page-pad" style={{ padding: 32, maxWidth: 1200, margin: '0 auto' }}>
