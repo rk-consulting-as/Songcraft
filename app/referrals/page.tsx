@@ -40,6 +40,7 @@ export default function ReferralsPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [downline, setDownline] = useState<Relationship[]>([])
   const [downlineProfiles, setDownlineProfiles] = useState<Record<string, Profile>>({})
+  const [referrer, setReferrer] = useState<Profile | null>(null)
   const [ledger, setLedger] = useState<LedgerEntry[]>([])
   const [copied, setCopied] = useState(false)
   const [badgeThresholds, setBadgeThresholds] = useState<Record<string, number>>({
@@ -76,7 +77,18 @@ export default function ReferralsPage() {
       setBadgeThresholds(badges.data.value as Record<string, number>)
     }
 
-    if (pr.data) setProfile(pr.data as Profile)
+    if (pr.data) {
+      const p = pr.data as Profile
+      setProfile(p)
+      // Fetch upline (whoever referred this user, if anyone)
+      if (p.referred_by) {
+        const { data: up } = await supabase.from('profiles')
+          .select('id, display_name, referral_code, role, referred_by, paid_status, total_points, avatar_url')
+          .eq('id', p.referred_by)
+          .maybeSingle()
+        if (up) setReferrer(up as Profile)
+      }
+    }
     if (rel.data) {
       setDownline(rel.data as Relationship[])
       // Fetch profile of each referred user for display
@@ -181,6 +193,31 @@ export default function ReferralsPage() {
           <p style={{ color: '#5a4a30', fontSize: 12, margin: '10px 0 0' }}>
             {tx.referralsLinkHint} <span style={{ color: accent, fontFamily: 'monospace' }}>{profile.referral_code}</span>
           </p>
+        </div>
+
+        {/* Upline (your referrer) */}
+        <div style={{ marginBottom: 28 }}>
+          <h2 style={{ color: accent, fontSize: 15, fontWeight: 'normal', letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 14px' }}>
+            ⬆️ {tx.referralsUplineTitle}
+          </h2>
+          {referrer ? (
+            <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+              <Avatar value={referrer.avatar_url} name={referrer.display_name} seed={referrer.id} size={56} borderColor={accent} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ color: '#e8e0d0', fontSize: 16, fontWeight: 600 }}>
+                  {referrer.display_name || tx.referralsAnonymous}
+                </div>
+                <div style={{ color: '#8a7a60', fontSize: 12, marginTop: 2 }}>
+                  {tx.referralsUplineDesc} <code style={{ background: 'rgba(255,255,255,0.04)', padding: '1px 6px', borderRadius: 3, color: accent, fontSize: 11 }}>{referrer.referral_code}</code>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="card" style={{ textAlign: 'center', padding: 20, color: '#8a7a60' }}>
+              <div style={{ fontSize: 22, marginBottom: 6 }}>🚀</div>
+              <p style={{ margin: 0, fontSize: 13 }}>{tx.referralsNoUpline}</p>
+            </div>
+          )}
         </div>
 
         {/* Badge progression */}

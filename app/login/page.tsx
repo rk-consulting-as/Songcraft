@@ -65,16 +65,28 @@ export default function LoginPage() {
     setLoading(true); setError(''); setMessage('')
     const supabase = createClient()
     if (isSignup) {
-      const { data, error } = await supabase.auth.signUp({ email, password })
+      // Pass the referral code through user metadata. The auth trigger reads this
+      // and attributes the signup server-side — works even if the user confirms email
+      // on a different device (where localStorage is empty).
+      const signUpOptions: any = {}
+      if (refCode) {
+        signUpOptions.data = { referral_code: refCode }
+      }
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: signUpOptions,
+      })
       if (error) {
         setError(error.message)
       } else {
-        // If we got a session back (email confirmation disabled), attribute immediately
+        // Server-side trigger handles attribution. Clear the local code so it isn't
+        // re-applied on future signups in the same browser.
+        try { localStorage.removeItem(REF_STORAGE_KEY) } catch {}
         if (data?.session) {
-          await attributeReferralIfNeeded()
           router.push('/dashboard')
         } else {
-          // Email confirmation flow — show message, attribution will run on first sign-in
+          // Email confirmation flow — show message.
           setMessage(tx.confirmEmail)
         }
       }

@@ -409,6 +409,9 @@ export const t = {
     referralsSourcePaid: 'Betalt konvertering',
     referralsSourceManual: 'Manuell justering',
     referralsSourceRedemption: 'Innløsning',
+    referralsUplineTitle: 'Din verver',
+    referralsUplineDesc: 'Verver-kode',
+    referralsNoUpline: 'Du har ingen verver — du fant Songcraft på egen hånd.',
 
     // Login page — referral banner
     loginReferredByTitle: 'Du er invitert',
@@ -966,6 +969,9 @@ export const t = {
     referralsSourcePaid: 'Paid conversion',
     referralsSourceManual: 'Manual adjustment',
     referralsSourceRedemption: 'Redemption',
+    referralsUplineTitle: 'Your referrer',
+    referralsUplineDesc: 'Referrer code',
+    referralsNoUpline: 'You have no referrer — you found Songcraft on your own.',
 
     // Login page — referral banner
     loginReferredByTitle: 'You were invited',
