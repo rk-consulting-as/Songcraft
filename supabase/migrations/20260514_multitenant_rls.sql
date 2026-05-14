@@ -196,7 +196,7 @@ BEGIN
       USING (
         EXISTS (
           SELECT 1 FROM studio_pages sp
-          WHERE sp.id = contact_submissions.page_id
+          WHERE sp.id = contact_submissions.studio_page_id
             AND sp.user_id = auth.uid()
         )
       );
@@ -209,7 +209,7 @@ BEGIN
       USING (
         EXISTS (
           SELECT 1 FROM studio_pages sp
-          WHERE sp.id = contact_submissions.page_id
+          WHERE sp.id = contact_submissions.studio_page_id
             AND sp.user_id = auth.uid()
         )
       );

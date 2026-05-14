@@ -149,10 +149,19 @@ export default function Dashboard() {
       const { data: sp } = await supabase.from('studio_pages').select('slug, enabled').eq('user_id', user.id).maybeSingle()
       if (sp) setStudioPage({ slug: sp.slug, enabled: !!sp.enabled })
       // Fetch role + identity from profile for header avatar + admin link.
-      // Use maybeSingle — profile row may not yet exist for very old accounts pre-migration.
-      const { data: prof } = await supabase.from('profiles').select('id, role, display_name, avatar_url').eq('id', user.id).maybeSingle()
+      // Defensive: if avatar_url column doesn't exist yet (migration not applied),
+      // fall back to a query that only selects guaranteed-existing columns.
+      let prof: any = null
+      const r1 = await supabase.from('profiles').select('id, role, display_name, avatar_url').eq('id', user.id).maybeSingle()
+      if (r1.error && /avatar_url/i.test(r1.error.message || '')) {
+        // Column doesn't exist yet — retry without it so the header still renders.
+        const r2 = await supabase.from('profiles').select('id, role, display_name').eq('id', user.id).maybeSingle()
+        prof = r2.data
+      } else {
+        prof = r1.data
+      }
       if (prof?.role) setUserRole(prof.role as string)
-      if (prof) setUserProfile({ id: (prof as any).id, display_name: (prof as any).display_name ?? null, avatar_url: (prof as any).avatar_url ?? null })
+      if (prof) setUserProfile({ id: prof.id, display_name: prof.display_name ?? null, avatar_url: prof.avatar_url ?? null })
     }
     setLoading(false)
   }
