@@ -4,6 +4,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import Avatar from '@/components/Avatar'
 import FollowButton from '@/components/FollowButton'
+import EmbedPlayer from '@/components/EmbedPlayer'
 import { CREATOR_ROLES, CREATOR_LANGUAGES } from '@/lib/creatorRoles'
 
 // Public creator profile at /u/[referral_code]. Always fresh — never cache.
@@ -41,7 +42,7 @@ type Artist = {
   spotify_image_url: string | null
 }
 
-async function fetchProfile(code: string): Promise<{ profile: Profile; artists: Artist[]; studioSlug: string | null; followerCount: number; followingCount: number } | null> {
+async function fetchProfile(code: string): Promise<{ profile: Profile; artists: Artist[]; studioSlug: string | null; followerCount: number; followingCount: number; topSongs: any[] } | null> {
   try {
     const upperCode = code.toUpperCase()
 
@@ -105,12 +106,30 @@ async function fetchProfile(code: string): Promise<{ profile: Profile; artists: 
       console.warn('[u/code] follows count failed:', e?.message)
     }
 
+    // Top-played songs from this creator's catalog (public, page_enabled artists only)
+    let topSongs: any[] = []
+    try {
+      const { data } = await sb
+        .from('songs')
+        .select('id, title, suno_audio_url, spotify_url, suno_url, media_links, cover_image_url, spotify_cover_url, internal_play_count, embed_click_count, artist_id, artists(name, page_enabled)')
+        .eq('user_id', profileRow.id)
+        .order('internal_play_count', { ascending: false })
+        .limit(6)
+      if (data) {
+        // Filter to songs whose artist is publicly visible
+        topSongs = (data as any[]).filter(s => s.artists?.page_enabled)
+      }
+    } catch (e: any) {
+      console.warn('[u/code] top songs query failed:', e?.message)
+    }
+
     return {
       profile: profileRow as Profile,
       artists,
       studioSlug,
       followerCount,
       followingCount,
+      topSongs,
     }
   } catch (e: any) {
     console.error('[u/code] fetchProfile crashed:', e?.message || e)
@@ -131,7 +150,7 @@ export async function generateMetadata({ params }: { params: { code: string } })
 export default async function PublicProfilePage({ params }: { params: { code: string } }) {
   const data = await fetchProfile(params.code)
   if (!data) notFound()
-  const { profile, artists, studioSlug, followerCount, followingCount } = data
+  const { profile, artists, studioSlug, followerCount, followingCount, topSongs } = data
 
   const roleSet = new Set(profile.roles || [])
   const langSet = new Set(profile.languages || [])
@@ -259,6 +278,32 @@ export default async function PublicProfilePage({ params }: { params: { code: st
         )}
 
         {/* Public artists */}
+        {/* Top tracks (most-played from this creator's catalog) */}
+        {topSongs.length > 0 && (
+          <Section title="Top tracks">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {topSongs.map(song => (
+                <EmbedPlayer
+                  key={song.id}
+                  song={{
+                    id: song.id,
+                    title: song.title,
+                    cover_image_url: song.cover_image_url,
+                    spotify_cover_url: song.spotify_cover_url,
+                    suno_audio_url: song.suno_audio_url,
+                    spotify_url: song.spotify_url,
+                    suno_url: song.suno_url,
+                    media_links: song.media_links,
+                    artist_name: song.artists?.name,
+                  }}
+                  showCounter
+                  compact
+                />
+              ))}
+            </div>
+          </Section>
+        )}
+
         {artists.length > 0 && (
           <Section title={`Artists (${artists.length})`}>
             <div style={{

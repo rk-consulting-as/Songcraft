@@ -644,6 +644,29 @@ export const t = {
     adminTransferErrReferrerMissing: 'Verver finnes ikke',
     adminTransferErrSelf: 'En bruker kan ikke verve seg selv',
     adminTransferErrCycle: 'Dette ville skapt en sirkel i verve-kjeden (ny verver er allerede i brukerens nedlinje)',
+
+    // Charts page
+    chartsNavLink: 'Topplister',
+    chartsTitle: 'Topp-listene på Songcraft',
+    chartsSubtitle: 'De mest spilte sangene i nettverket. Klikk for å lytte og opptjene poeng.',
+    chartsThisWeek: 'Denne uka',
+    chartsAllTime: 'Tidenes',
+    chartsEmpty: 'Ingen avspillinger registrert ennå. Bli den første!',
+
+    // Admin listen point settings
+    adminListenTitle: 'Lytte-poeng',
+    adminListenDesc: 'Poeng brukerne får for å lytte til andres låter. Begrenset av daglig tak nedenfor for å hindre farming.',
+    adminListenFullLabel: 'Full avspilling',
+    adminListenFullHint: 'Lyttet minst 80% av låten',
+    adminListenPartialLabel: 'Delvis lyttet',
+    adminListenPartialHint: 'Lyttet 30–80% av låten',
+    adminListenEmbedLabel: 'Embed-klikk',
+    adminListenEmbedHint: 'Klikket play på Spotify/YouTube-embed',
+    adminListenCapTitle: 'Daglig tak per lytter',
+    adminListenCapDesc: 'Maks antall poeng en bruker kan tjene per dag fra lytting. Hindrer farming.',
+
+    // Dashboard widgets
+    dashboardTopStreamed: 'Dine mest spilte låter',
   },
 
   en: {
@@ -1289,6 +1312,29 @@ export const t = {
     adminTransferErrReferrerMissing: 'Referrer not found',
     adminTransferErrSelf: 'A user cannot refer themselves',
     adminTransferErrCycle: 'This would create a cycle in the referral chain (the new referrer is already in this user\'s downline)',
+
+    // Charts page
+    chartsNavLink: 'Charts',
+    chartsTitle: 'The Songcraft charts',
+    chartsSubtitle: 'The most-played songs in the network. Click to listen and earn points.',
+    chartsThisWeek: 'This week',
+    chartsAllTime: 'All time',
+    chartsEmpty: 'No plays recorded yet. Be the first!',
+
+    // Admin listen point settings
+    adminListenTitle: 'Listen points',
+    adminListenDesc: "Points users earn for listening to others' songs. Capped daily to prevent farming.",
+    adminListenFullLabel: 'Full play',
+    adminListenFullHint: 'Listened to at least 80% of the song',
+    adminListenPartialLabel: 'Partial listen',
+    adminListenPartialHint: 'Listened to 30–80% of the song',
+    adminListenEmbedLabel: 'Embed click',
+    adminListenEmbedHint: 'Clicked play on a Spotify/YouTube embed',
+    adminListenCapTitle: 'Daily cap per listener',
+    adminListenCapDesc: 'Max points a single user can earn per day from listening. Prevents farming.',
+
+    // Dashboard widgets
+    dashboardTopStreamed: 'Your top-streamed songs',
   },
 }
 

@@ -127,6 +127,9 @@ export default function Dashboard() {
   const [feedEntries, setFeedEntries] = useState<ActivityEntry[]>([])
   const [feedFollowCount, setFeedFollowCount] = useState(0)
 
+  // Top-streamed songs from this user's catalog (for the widget)
+  const [topStreamedSongs, setTopStreamedSongs] = useState<any[]>([])
+
   useEffect(() => { setLangState(useLang()); checkAuth(); fetchArtists() }, [])
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -172,6 +175,20 @@ export default function Dashboard() {
       }
       if (prof?.role) setUserRole(prof.role as string)
       if (prof) setUserProfile({ id: prof.id, display_name: prof.display_name ?? null, avatar_url: prof.avatar_url ?? null })
+
+      // Fetch top-streamed of own songs
+      try {
+        const { data: streamed } = await supabase
+          .from('songs')
+          .select('id, title, artist_id, internal_play_count, embed_click_count, cover_image_url, spotify_cover_url, artists(name)')
+          .eq('user_id', user.id)
+          .order('internal_play_count', { ascending: false })
+          .order('embed_click_count', { ascending: false })
+          .limit(5)
+        if (streamed) {
+          setTopStreamedSongs((streamed as any[]).filter(s => (s.internal_play_count || 0) > 0 || (s.embed_click_count || 0) > 0))
+        }
+      } catch {}
 
       // Fetch recent activity from people the user follows (top 5)
       const { data: follows } = await supabase
@@ -499,6 +516,7 @@ export default function Dashboard() {
             </Link>
           )}
           <Link href="/discover" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>🌍 {tx.discoverNavLink}</Link>
+          <Link href="/charts" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>📈 {tx.chartsNavLink}</Link>
           <Link href="/feed" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>📰 {tx.feedNavLink}</Link>
           <Link href="/referrals" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>🤝 {tx.referralsNavLink}</Link>
           {(userRole === 'admin' || userRole === 'super_admin') && (
@@ -542,6 +560,52 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
+
+        {/* Top streamed songs widget */}
+        {topStreamedSongs.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+              <h2 style={{ color: '#d4a843', fontSize: 13, fontWeight: 'normal', letterSpacing: 1, textTransform: 'uppercase', margin: 0 }}>
+                📈 {tx.dashboardTopStreamed}
+              </h2>
+              <Link href="/charts" style={{ color: '#8a7a60', fontSize: 12, textDecoration: 'none' }}>
+                {tx.dashboardViewAllActivity} →
+              </Link>
+            </div>
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              {topStreamedSongs.map((song, i) => (
+                <Link key={song.id} href={`/song/${song.id}`} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '10px 14px',
+                  borderBottom: i < topStreamedSongs.length - 1 ? '1px solid rgba(180,140,80,0.08)' : 'none',
+                  textDecoration: 'none',
+                  transition: 'background 0.2s',
+                }}>
+                  <div style={{ width: 22, textAlign: 'center', color: i < 3 ? '#d4a843' : '#5a4a30', fontSize: 14, fontWeight: 700 }}>
+                    {i + 1}
+                  </div>
+                  {(song.cover_image_url || song.spotify_cover_url) && (
+                    <img
+                      src={song.cover_image_url || song.spotify_cover_url}
+                      alt=""
+                      style={{ width: 36, height: 36, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }}
+                    />
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ color: '#e8e0d0', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{song.title}</div>
+                    <div style={{ color: '#8a7a60', fontSize: 11, marginTop: 1 }}>{song.artists?.name}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, color: '#6a5a40', fontSize: 12, flexShrink: 0 }}>
+                    {song.internal_play_count > 0 && <span>▶ {song.internal_play_count.toLocaleString()}</span>}
+                    {song.embed_click_count > 0 && <span>🔗 {song.embed_click_count.toLocaleString()}</span>}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Activity feed widget */}
         {feedEntries.length > 0 && (

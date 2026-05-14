@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import EmbedPlayer from '@/components/EmbedPlayer'
 
 // Public artist landing page. Server-rendered, anonymous Supabase client (RLS gates by page_enabled).
 // URL: /p/{slug}
@@ -256,16 +257,30 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
                         </div>
                       )}
                     </div>
-                    {/* Suno audio player */}
-                    {song.suno_audio_url && (
-                      <audio src={song.suno_audio_url} controls preload="none" style={{ height: 32, width: '100%', maxWidth: 260, flexShrink: 0 }} />
-                    )}
-                    {song.spotify_url && (
-                      <a href={song.spotify_url} target="_blank" rel="noopener noreferrer"
-                        title="Open in Spotify"
-                        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: '50%', background: '#1ed760', color: '#000', textDecoration: 'none', fontWeight: 'bold', fontSize: 14, flexShrink: 0 }}>
-                        ♪
-                      </a>
+                    {/* Embed player — picks Spotify/YouTube/SoundCloud/Apple/internal automatically */}
+                    <div style={{ flex: '1 1 280px', minWidth: 240, maxWidth: 380 }}>
+                      <EmbedPlayer
+                        song={{
+                          id: song.id,
+                          title: song.title,
+                          cover_image_url: song.cover_image_url,
+                          spotify_cover_url: song.spotify_cover_url,
+                          suno_audio_url: song.suno_audio_url,
+                          spotify_url: song.spotify_url,
+                          suno_url: song.suno_url,
+                          media_links: song.media_links,
+                          artist_name: s.artist.name,
+                        }}
+                        showCounter
+                        compact
+                      />
+                    </div>
+                    {/* Counters */}
+                    {(song.internal_play_count > 0 || song.embed_click_count > 0) && (
+                      <div style={{ color: '#6a5a40', fontSize: 11, display: 'flex', gap: 10, flexShrink: 0 }}>
+                        {song.internal_play_count > 0 && <span>▶ {song.internal_play_count.toLocaleString()}</span>}
+                        {song.embed_click_count > 0 && <span>🔗 {song.embed_click_count.toLocaleString()}</span>}
+                      </div>
                     )}
                   </div>
                 )

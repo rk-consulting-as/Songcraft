@@ -110,8 +110,11 @@ export default function AdminPage() {
       const draft: Record<string, any> = {}
       for (const r of rows) {
         // Known structured keys → store object directly so the form inputs bind cleanly.
-        if (r.key === 'points.signup' || r.key === 'points.paid' || r.key === 'badges.thresholds') {
+        if (r.key === 'points.signup' || r.key === 'points.paid' || r.key === 'badges.thresholds' || r.key === 'points.listen') {
           draft[r.key] = r.value && typeof r.value === 'object' ? r.value : {}
+        } else if (r.key === 'points.listen_daily_cap') {
+          // Numeric scalar key
+          draft[r.key] = Number(r.value) || 0
         } else {
           // Unknown keys → raw JSON string for the textarea fallback.
           draft[r.key] = typeof r.value === 'string' ? r.value : JSON.stringify(r.value, null, 2)
@@ -645,9 +648,86 @@ export default function AdminPage() {
                   )
                 })}
 
+                {/* Listen points editor */}
+                {settings.filter(s => s.key === 'points.listen').map(s => {
+                  const draft = (settingsDraft[s.key] as Record<string, number>) || {}
+                  const items: Array<{ key: string; label: string; emoji: string; hint: string; step: number }> = [
+                    { key: 'full_play',    label: tx.adminListenFullLabel,    emoji: '🎵', hint: tx.adminListenFullHint,    step: 1 },
+                    { key: 'partial_play', label: tx.adminListenPartialLabel, emoji: '⏯️', hint: tx.adminListenPartialHint, step: 1 },
+                    { key: 'embed_click',  label: tx.adminListenEmbedLabel,   emoji: '🔗', hint: tx.adminListenEmbedHint,   step: 1 },
+                  ]
+                  return (
+                    <div key={s.key} className="card">
+                      <div style={settingsHeaderRow}>
+                        <div>
+                          <h3 style={settingsTitle}>🎧 {tx.adminListenTitle}</h3>
+                          <p style={settingsSubtitle}>{tx.adminListenDesc}</p>
+                          <code style={{ color: '#5a4a30', fontSize: 10, fontFamily: 'monospace' }}>{s.key}</code>
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginTop: 14 }}>
+                        {items.map(it => (
+                          <div key={it.key} style={{
+                            background: 'rgba(255,255,255,0.02)',
+                            border: '1px solid rgba(212,168,67,0.2)',
+                            borderRadius: 6,
+                            padding: 12,
+                          }}>
+                            <div style={{ color: accent, fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{it.emoji} {it.label}</div>
+                            <input
+                              type="number"
+                              min={0}
+                              step={it.step}
+                              value={Number(draft[it.key]) || 0}
+                              onChange={e => updateStructuredSetting(s.key, it.key, Math.max(0, parseInt(e.target.value || '0', 10)))}
+                              style={{ width: '100%', textAlign: 'center', fontSize: 18, fontWeight: 600, color: accent, padding: '6px 4px' }}
+                            />
+                            <div style={{ color: '#6a5a40', fontSize: 10, marginTop: 6 }}>{it.hint}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
+                        <button className="btn-gold" onClick={() => saveSetting(s.key)} disabled={savingSettings} style={{ padding: '8px 20px', fontSize: 13 }}>
+                          💾 {tx.adminSaveSetting}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+
+                {/* Daily cap editor (scalar number) */}
+                {settings.filter(s => s.key === 'points.listen_daily_cap').map(s => (
+                  <div key={s.key} className="card">
+                    <div style={settingsHeaderRow}>
+                      <div>
+                        <h3 style={settingsTitle}>🚦 {tx.adminListenCapTitle}</h3>
+                        <p style={settingsSubtitle}>{tx.adminListenCapDesc}</p>
+                        <code style={{ color: '#5a4a30', fontSize: 10, fontFamily: 'monospace' }}>{s.key}</code>
+                      </div>
+                      <input
+                        type="number"
+                        min={0}
+                        step={10}
+                        value={Number(settingsDraft[s.key]) || 0}
+                        onChange={e => setSettingsDraft({ ...settingsDraft, [s.key]: Math.max(0, parseInt(e.target.value || '0', 10)) })}
+                        style={{ width: 140, textAlign: 'center', fontSize: 22, fontWeight: 700, color: accent, padding: '8px 4px' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
+                      <button className="btn-gold" onClick={() => saveSetting(s.key)} disabled={savingSettings} style={{ padding: '8px 20px', fontSize: 13 }}>
+                        💾 {tx.adminSaveSetting}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
                 {/* JSON fallback for any other unknown keys */}
                 {settings.filter(s =>
-                  s.key !== 'points.signup' && s.key !== 'points.paid' && s.key !== 'badges.thresholds'
+                  s.key !== 'points.signup' &&
+                  s.key !== 'points.paid' &&
+                  s.key !== 'badges.thresholds' &&
+                  s.key !== 'points.listen' &&
+                  s.key !== 'points.listen_daily_cap'
                 ).map(s => (
                   <div key={s.key} className="card">
                     <div style={settingsHeaderRow}>

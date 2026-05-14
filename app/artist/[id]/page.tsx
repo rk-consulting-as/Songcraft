@@ -1386,6 +1386,17 @@ export default function ArtistPage() {
                           {song.lyrics_instructions.length > 100 ? song.lyrics_instructions.slice(0, 100) + '...' : song.lyrics_instructions}
                         </div>
                       ) : null}
+                      {/* Stream counters */}
+                      {((song as any).internal_play_count > 0 || (song as any).embed_click_count > 0) && (
+                        <div style={{ color: '#6a5a40', fontSize: 11, marginTop: 4, display: 'flex', gap: 10 }}>
+                          {(song as any).internal_play_count > 0 && (
+                            <span>▶ {((song as any).internal_play_count).toLocaleString()}</span>
+                          )}
+                          {(song as any).embed_click_count > 0 && (
+                            <span>🔗 {((song as any).embed_click_count).toLocaleString()}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </Link>
                   <div className="song-row-right" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
