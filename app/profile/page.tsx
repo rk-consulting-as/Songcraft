@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { t, useLang, setLang, type Lang } from '@/lib/i18n'
 import Avatar, { AVATAR_PRESETS, type AvatarValue } from '@/components/Avatar'
+import { CREATOR_ROLES, CREATOR_LANGUAGES, NORDIC_LOCATIONS } from '@/lib/creatorRoles'
 
 type Profile = {
   id: string
@@ -20,6 +21,11 @@ type Profile = {
   preferred_lang: 'no' | 'en' | null
   preferred_song_lang: 'no' | 'en' | 'auto' | null
   created_at: string
+  roles?: string[] | null
+  location?: string | null
+  languages?: string[] | null
+  open_to_collab?: boolean | null
+  visible_in_catalog?: boolean | null
 }
 
 const BIO_MAX = 280
@@ -37,6 +43,14 @@ export default function ProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState<AvatarValue>(null)
   const [prefLang, setPrefLang] = useState<'no' | 'en'>('no')
   const [prefSongLang, setPrefSongLang] = useState<'no' | 'en' | 'auto'>('auto')
+
+  // Creator profile (Nordic catalog)
+  const [creatorRoles, setCreatorRoles] = useState<string[]>([])
+  const [location, setLocation] = useState('')
+  const [creationLangs, setCreationLangs] = useState<string[]>([])
+  const [openToCollab, setOpenToCollab] = useState(false)
+  const [visibleInCatalog, setVisibleInCatalog] = useState(true)
+  const [savingCreator, setSavingCreator] = useState(false)
 
   const [avatarUploading, setAvatarUploading] = useState(false)
   const avatarFileRef = useRef<HTMLInputElement | null>(null)
@@ -70,6 +84,11 @@ export default function ProfilePage() {
       setAvatarUrl(p.avatar_url)
       setPrefLang((p.preferred_lang as any) || 'no')
       setPrefSongLang((p.preferred_song_lang as any) || 'auto')
+      setCreatorRoles(Array.isArray(p.roles) ? p.roles : [])
+      setLocation(p.location || '')
+      setCreationLangs(Array.isArray(p.languages) ? p.languages : [])
+      setOpenToCollab(!!p.open_to_collab)
+      setVisibleInCatalog(p.visible_in_catalog !== false)
     }
     setEmail(session.user.email || '')
     setLoading(false)
@@ -155,6 +174,34 @@ export default function ProfilePage() {
     setLang(prefLang)
     setLangState(prefLang)
     showOk(tx.profilePrefsSaved)
+  }
+
+  // ----- Save creator profile -----
+  const saveCreatorProfile = async () => {
+    if (!profile) return
+    setSavingCreator(true)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        roles: creatorRoles,
+        location: location.trim() || null,
+        languages: creationLangs,
+        open_to_collab: openToCollab,
+        visible_in_catalog: visibleInCatalog,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', profile.id)
+    setSavingCreator(false)
+    if (error) { showErr(`${tx.profileErrSave}: ${error.message}`); return }
+    showOk(tx.profileCreatorSaved)
+  }
+
+  const toggleRole = (key: string) => {
+    setCreatorRoles(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])
+  }
+  const toggleLang = (key: string) => {
+    setCreationLangs(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])
   }
 
   // ----- Change password -----
@@ -351,6 +398,81 @@ export default function ProfilePage() {
           </div>
         </Section>
 
+        {/* ===== Creator profile (Nordic catalog) ===== */}
+        <Section title={`🎼 ${tx.profileSectionCreator}`}>
+          <p style={{ color: '#8a7a60', fontSize: 13, marginTop: 0 }}>{tx.profileCreatorIntro}</p>
+
+          <Label style={{ marginTop: 16 }}>{tx.profileFieldRoles}</Label>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {CREATOR_ROLES.map(r => {
+              const active = creatorRoles.includes(r.key)
+              return (
+                <button
+                  key={r.key}
+                  onClick={() => toggleRole(r.key)}
+                  style={chipBtn(active, accent)}
+                  type="button"
+                >
+                  {r.emoji} {tx[r.labelKey as keyof typeof tx] as string || r.key}
+                </button>
+              )
+            })}
+          </div>
+
+          <Label style={{ marginTop: 18 }}>{tx.profileFieldLocation}</Label>
+          <input
+            value={location}
+            onChange={e => setLocation(e.target.value)}
+            placeholder={tx.profilePlaceholderLocation}
+            list="nordic-locations"
+            maxLength={80}
+            style={{ width: '100%', boxSizing: 'border-box', maxWidth: 360 }}
+          />
+          <datalist id="nordic-locations">
+            {NORDIC_LOCATIONS.map(l => <option key={l} value={l} />)}
+          </datalist>
+
+          <Label style={{ marginTop: 18 }}>{tx.profileFieldCreationLangs}</Label>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {CREATOR_LANGUAGES.map(l => {
+              const active = creationLangs.includes(l.key)
+              return (
+                <button
+                  key={l.key}
+                  onClick={() => toggleLang(l.key)}
+                  style={chipBtn(active, accent)}
+                  type="button"
+                >
+                  {l.flag} {tx[l.labelKey as keyof typeof tx] as string || l.key}
+                </button>
+              )
+            })}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, marginTop: 18 }}>
+            <ToggleRow
+              label={`🤝 ${tx.profileToggleOpenToCollab}`}
+              hint={tx.profileToggleOpenToCollabHint}
+              checked={openToCollab}
+              onChange={setOpenToCollab}
+              accent={accent}
+            />
+            <ToggleRow
+              label={`🌍 ${tx.profileToggleVisibleInCatalog}`}
+              hint={tx.profileToggleVisibleInCatalogHint}
+              checked={visibleInCatalog}
+              onChange={setVisibleInCatalog}
+              accent={accent}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+            <button className="btn-gold" onClick={saveCreatorProfile} disabled={savingCreator}>
+              {savingCreator ? tx.saving : '💾 ' + tx.save}
+            </button>
+          </div>
+        </Section>
+
         {/* ===== Account & security ===== */}
         <Section title={`🔐 ${tx.profileSectionAccount}`}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
@@ -435,6 +557,68 @@ function Label({ children, style }: { children: React.ReactNode; style?: React.C
       marginBottom: 6,
       ...style,
     }}>{children}</label>
+  )
+}
+
+function chipBtn(active: boolean, accent: string): React.CSSProperties {
+  return {
+    padding: '6px 12px',
+    fontSize: 12,
+    borderRadius: 6,
+    border: active ? `1px solid ${accent}` : '1px solid rgba(180,140,80,0.2)',
+    background: active ? `${accent}1a` : 'rgba(255,255,255,0.02)',
+    color: active ? accent : '#a09080',
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+    whiteSpace: 'nowrap',
+  }
+}
+
+function ToggleRow({ label, hint, checked, onChange, accent }: {
+  label: string
+  hint?: string
+  checked: boolean
+  onChange: (v: boolean) => void
+  accent: string
+}) {
+  return (
+    <div
+      onClick={() => onChange(!checked)}
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 12,
+        padding: '10px 12px',
+        border: `1px solid ${checked ? accent : 'rgba(180,140,80,0.2)'}`,
+        borderRadius: 6,
+        background: checked ? `${accent}0d` : 'rgba(255,255,255,0.02)',
+        cursor: 'pointer',
+        transition: 'border-color 0.2s, background 0.2s',
+      }}
+    >
+      <div style={{
+        marginTop: 2,
+        width: 36, height: 20,
+        borderRadius: 10,
+        background: checked ? accent : 'rgba(180,140,80,0.25)',
+        position: 'relative',
+        flexShrink: 0,
+        transition: 'background 0.2s',
+      }}>
+        <div style={{
+          position: 'absolute',
+          top: 2, left: checked ? 18 : 2,
+          width: 16, height: 16,
+          borderRadius: '50%',
+          background: '#fff',
+          transition: 'left 0.2s',
+        }} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ color: checked ? '#e8e0d0' : '#a09080', fontSize: 13, fontWeight: 500 }}>{label}</div>
+        {hint && <div style={{ color: '#6a5a40', fontSize: 11, marginTop: 2 }}>{hint}</div>}
+      </div>
+    </div>
   )
 }
 

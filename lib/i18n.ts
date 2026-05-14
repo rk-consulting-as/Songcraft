@@ -559,6 +559,56 @@ export const t = {
     spotifyClaimedBy: 'Eid av',
     spotifyClaimedAt: 'Claimet dato',
     spotifyClaimTransferHint: 'Trenger du å overføre eierskap? Kontakt en administrator med Spotify-ID og forklaring av situasjonen, så kan de overføre artist-raden til riktig bruker.',
+
+    // Creator profile (Nordic catalog) — profile page section
+    profileSectionCreator: 'Skaper-profil',
+    profileCreatorIntro: 'Synes på Songcraft sin oppdagelse-side så andre i miljøet kan finne deg. Alt er valgfritt.',
+    profileFieldRoles: 'Hva gjør du? (flere kan velges)',
+    profileFieldLocation: 'Sted',
+    profilePlaceholderLocation: 'F.eks. Bergen, Oslo, Stockholm',
+    profileFieldCreationLangs: 'Hvilke språk skaper du på?',
+    profileToggleOpenToCollab: 'Åpen for samarbeid',
+    profileToggleOpenToCollabHint: 'Andre kan se at du er åpen for samarbeid og kontakte deg.',
+    profileToggleVisibleInCatalog: 'Synlig i oppdagelse-katalogen',
+    profileToggleVisibleInCatalogHint: 'Når på, vises profilen på /discover og er søkbar. Slå av for å være privat.',
+    profileCreatorSaved: 'Skaper-profil lagret ✓',
+
+    // Roles
+    roleArtist: 'Artist',
+    roleVocalist: 'Vokalist',
+    roleSongwriter: 'Låtskriver',
+    roleProducer: 'Produsent',
+    roleBeatmaker: 'Beatmaker',
+    roleInstrumentalist: 'Instrumentalist',
+    roleMixer: 'Mikser',
+    roleMastering: 'Mastering',
+    roleManager: 'Manager',
+    roleBooking: 'Booking',
+    roleLabel: 'Label',
+    roleAnR: 'A&R',
+
+    // Creation languages
+    creationLangNo: 'Norsk',
+    creationLangEn: 'Engelsk',
+    creationLangSv: 'Svensk',
+    creationLangDa: 'Dansk',
+    creationLangFi: 'Finsk',
+    creationLangIs: 'Islandsk',
+
+    // Discover page
+    discoverNavLink: 'Oppdag',
+    discoverTitle: 'Finn skapere i Norden',
+    discoverSubtitle: 'Bla gjennom artister, produsenter og låtskrivere på Songcraft. Filtrer etter rolle, språk eller sted.',
+    discoverSearchPlaceholder: 'Søk navn, bio eller sted...',
+    discoverFilterRoles: 'Rolle',
+    discoverFilterLangs: 'Språk',
+    discoverFilterLocation: 'Sted',
+    discoverAllLocations: 'Alle steder',
+    discoverOnlyCollab: 'Bare åpne for samarbeid',
+    discoverCreator: 'skaper',
+    discoverCreators: 'skapere',
+    discoverNoMatches: 'Ingen skapere matcher disse filtrene.',
+    discoverOpenToCollab: 'Åpen for samarbeid',
   },
 
   en: {
@@ -1119,6 +1169,56 @@ export const t = {
     spotifyClaimedBy: 'Owned by',
     spotifyClaimedAt: 'Claimed on',
     spotifyClaimTransferHint: 'Need to transfer ownership? Contact an administrator with the Spotify ID and an explanation, and they can transfer the artist row to the correct user.',
+
+    // Creator profile (Nordic catalog) — profile page section
+    profileSectionCreator: 'Creator profile',
+    profileCreatorIntro: 'Show up on the Songcraft discovery page so others in the community can find you. Everything is optional.',
+    profileFieldRoles: 'What do you do? (multi-select)',
+    profileFieldLocation: 'Location',
+    profilePlaceholderLocation: 'E.g. Bergen, Oslo, Stockholm',
+    profileFieldCreationLangs: 'Which languages do you create in?',
+    profileToggleOpenToCollab: 'Open for collaboration',
+    profileToggleOpenToCollabHint: 'Others can see you are open for collabs and reach out.',
+    profileToggleVisibleInCatalog: 'Visible in discover catalog',
+    profileToggleVisibleInCatalogHint: 'When on, your profile appears on /discover and is searchable. Turn off to stay private.',
+    profileCreatorSaved: 'Creator profile saved ✓',
+
+    // Roles
+    roleArtist: 'Artist',
+    roleVocalist: 'Vocalist',
+    roleSongwriter: 'Songwriter',
+    roleProducer: 'Producer',
+    roleBeatmaker: 'Beatmaker',
+    roleInstrumentalist: 'Instrumentalist',
+    roleMixer: 'Mixer',
+    roleMastering: 'Mastering',
+    roleManager: 'Manager',
+    roleBooking: 'Booking',
+    roleLabel: 'Label',
+    roleAnR: 'A&R',
+
+    // Creation languages
+    creationLangNo: 'Norwegian',
+    creationLangEn: 'English',
+    creationLangSv: 'Swedish',
+    creationLangDa: 'Danish',
+    creationLangFi: 'Finnish',
+    creationLangIs: 'Icelandic',
+
+    // Discover page
+    discoverNavLink: 'Discover',
+    discoverTitle: 'Find creators in the Nordics',
+    discoverSubtitle: 'Browse artists, producers and songwriters on Songcraft. Filter by role, language or location.',
+    discoverSearchPlaceholder: 'Search name, bio or location...',
+    discoverFilterRoles: 'Role',
+    discoverFilterLangs: 'Languages',
+    discoverFilterLocation: 'Location',
+    discoverAllLocations: 'All locations',
+    discoverOnlyCollab: 'Open for collab only',
+    discoverCreator: 'creator',
+    discoverCreators: 'creators',
+    discoverNoMatches: 'No creators match these filters.',
+    discoverOpenToCollab: 'Open for collab',
   },
 }
 

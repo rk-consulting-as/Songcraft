@@ -461,6 +461,7 @@ export default function Dashboard() {
               🌐 {tx.studioPageNavSetup}
             </Link>
           )}
+          <Link href="/discover" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>🌍 {tx.discoverNavLink}</Link>
           <Link href="/referrals" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>🤝 {tx.referralsNavLink}</Link>
           {(userRole === 'admin' || userRole === 'super_admin') && (
             <Link href="/admin" style={{
