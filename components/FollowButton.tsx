@@ -67,20 +67,21 @@ export default function FollowButton({
     setBusy(false)
   }
 
-  // Hide if viewing self
+  // Hide if viewing self — just show the follower count (clickable if we have a code)
   if (!loading && meId === targetUserId) {
-    return (
-      {targetCode ? (
+    if (targetCode) {
+      return (
         <a href={`/u/${targetCode}/followers`} style={{ ...countDisplay, textDecoration: 'none' }}>
           <strong style={countNumber}>{count.toLocaleString()}</strong>
           <span style={countLabel}>followers</span>
         </a>
-      ) : (
-        <div style={countDisplay}>
-          <strong style={countNumber}>{count.toLocaleString()}</strong>
-          <span style={countLabel}>followers</span>
-        </div>
-      )}
+      )
+    }
+    return (
+      <div style={countDisplay}>
+        <strong style={countNumber}>{count.toLocaleString()}</strong>
+        <span style={countLabel}>followers</span>
+      </div>
     )
   }
 
