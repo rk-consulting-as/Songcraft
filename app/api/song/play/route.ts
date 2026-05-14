@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { createHash } from 'crypto'
+
+// Force Node.js runtime so the crypto module is fully available (Edge runtime has only
+// a subset of Node APIs and would break createHash).
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/song/play
@@ -31,13 +35,32 @@ const VALID_SOURCES = new Set([
   'apple_embed',
 ])
 
+// Lazy-load crypto so a bad runtime doesn't crash the module before we reach the handler.
 function hashIp(ip: string | null): string | null {
   if (!ip) return null
-  const salt = process.env.IP_HASH_SALT || 'songcraft-default-salt'
-  return createHash('sha256').update(ip + salt).digest('hex').slice(0, 32)
+  try {
+    const crypto = require('crypto') as typeof import('crypto')
+    const salt = process.env.IP_HASH_SALT || 'songcraft-default-salt'
+    return crypto.createHash('sha256').update(ip + salt).digest('hex').slice(0, 32)
+  } catch {
+    return null
+  }
 }
 
 export async function POST(req: NextRequest) {
+  try {
+    return await handlePlay(req)
+  } catch (e: any) {
+    // Always return JSON with the actual error so the client/console can see it.
+    console.error('[song/play] route crashed:', e?.message, e?.stack)
+    return NextResponse.json({
+      error: 'play_handler_crashed',
+      message: e?.message || String(e),
+    }, { status: 500 })
+  }
+}
+
+async function handlePlay(req: NextRequest) {
   let body: any
   try {
     body = await req.json()
@@ -99,50 +122,63 @@ export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null
   const ipHash = hashIp(ip)
 
-  // Insert the play log
-  const { data: play, error: insertErr } = await sbAnon
-    .from('song_plays')
-    .insert({
-      song_id: songId,
-      listener_id: listenerId,
-      source,
-      duration_listened_seconds: durationListened,
-      completed,
-      points_awarded: 0,
-      ip_hash: ipHash,
-    })
-    .select('id')
-    .single()
-  if (insertErr) {
-    console.error('[song/play] insert failed:', insertErr)
-    return NextResponse.json({ error: insertErr.message }, { status: 500 })
+  // Insert the play log. If the table doesn't exist, return a clear error instead of 500.
+  let playId: string | null = null
+  {
+    const { data: play, error: insertErr } = await sbAnon
+      .from('song_plays')
+      .insert({
+        song_id: songId,
+        listener_id: listenerId,
+        source,
+        duration_listened_seconds: durationListened,
+        completed,
+        points_awarded: 0,
+        ip_hash: ipHash,
+      })
+      .select('id')
+      .single()
+    if (insertErr) {
+      console.error('[song/play] song_plays insert failed:', insertErr)
+      return NextResponse.json({
+        error: 'song_plays_insert_failed',
+        message: insertErr.message,
+        hint: insertErr.message?.includes('does not exist')
+          ? 'song_plays table missing — run migration 20260516_song_plays.sql'
+          : insertErr.hint,
+      }, { status: 500 })
+    }
+    playId = play.id
   }
 
-  // If listener is logged in, try to award points via the RPC.
+  // If listener is logged in, try to award points via the RPC. Non-fatal if RPC missing.
   let awarded = 0
   if (listenerId) {
-    const { data: awardData, error: awardErr } = await sbAnon.rpc('award_listen_points', {
-      p_listener_id: listenerId,
-      p_song_id: songId,
-      p_source: source,
-      p_completed: completed,
-      p_duration: durationListened,
-      p_song_duration: songDuration,
-    })
-    if (awardErr) {
-      console.warn('[song/play] award_listen_points failed:', awardErr.message)
-    } else {
-      awarded = Number(awardData || 0)
-      // Update the play row with how many points were given (informational)
-      if (awarded > 0) {
-        await sbAnon.from('song_plays').update({ points_awarded: awarded }).eq('id', play.id)
+    try {
+      const { data: awardData, error: awardErr } = await sbAnon.rpc('award_listen_points', {
+        p_listener_id: listenerId,
+        p_song_id: songId,
+        p_source: source,
+        p_completed: completed,
+        p_duration: durationListened,
+        p_song_duration: songDuration,
+      })
+      if (awardErr) {
+        console.warn('[song/play] award_listen_points failed (non-fatal):', awardErr.message)
+      } else {
+        awarded = Number(awardData || 0)
+        if (awarded > 0 && playId) {
+          await sbAnon.from('song_plays').update({ points_awarded: awarded }).eq('id', playId)
+        }
       }
+    } catch (e: any) {
+      console.warn('[song/play] award_listen_points threw (non-fatal):', e?.message)
     }
   }
 
   return NextResponse.json({
     ok: true,
-    play_id: play.id,
+    play_id: playId,
     points_awarded: awarded,
   })
 }
