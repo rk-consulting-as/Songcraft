@@ -42,44 +42,80 @@ type Artist = {
 }
 
 async function fetchProfile(code: string): Promise<{ profile: Profile; artists: Artist[]; studioSlug: string | null; followerCount: number; followingCount: number } | null> {
-  const upperCode = code.toUpperCase()
-  const { data: profile } = await sb
-    .from('profiles')
-    .select('id, display_name, bio, avatar_url, referral_code, roles, location, languages, open_to_collab, visible_in_catalog, total_points, created_at')
-    .eq('referral_code', upperCode)
-    .eq('visible_in_catalog', true)
-    .maybeSingle()
+  try {
+    const upperCode = code.toUpperCase()
 
-  if (!profile) return null
+    // Try the full column set first. If a column is missing (migration pending),
+    // retry with the guaranteed-existing baseline so the page still renders.
+    let profile: any = null
+    const fullCols = 'id, display_name, bio, avatar_url, referral_code, roles, location, languages, open_to_collab, visible_in_catalog, total_points, created_at'
+    const baselineCols = 'id, display_name, bio, avatar_url, referral_code, total_points, created_at'
 
-  // Public artists for this user
-  const { data: artists } = await sb
-    .from('artists')
-    .select('id, name, genre, page_enabled, page_slug, avatar_url, spotify_image_url')
-    .eq('user_id', profile.id)
-    .eq('page_enabled', true)
-    .order('name')
+    const r1 = await sb
+      .from('profiles')
+      .select(fullCols)
+      .eq('referral_code', upperCode)
+      .maybeSingle()
+    if (r1.error) {
+      console.warn('[u/code] full select failed, retrying baseline:', r1.error.message)
+      const r2 = await sb
+        .from('profiles')
+        .select(baselineCols)
+        .eq('referral_code', upperCode)
+        .maybeSingle()
+      profile = r2.data
+    } else {
+      profile = r1.data
+    }
 
-  // Studio page (if enabled)
-  const { data: studio } = await sb
-    .from('studio_pages')
-    .select('slug, enabled')
-    .eq('user_id', profile.id)
-    .eq('enabled', true)
-    .maybeSingle()
+    if (!profile) return null
 
-  // Follower / following counts
-  const [followerRes, followingRes] = await Promise.all([
-    sb.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profile.id),
-    sb.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', profile.id),
-  ])
+    // Respect catalog opt-out only when the column exists.
+    if (profile.visible_in_catalog === false) return null
 
-  return {
-    profile: profile as Profile,
-    artists: (artists as Artist[]) || [],
-    studioSlug: studio?.slug || null,
-    followerCount: followerRes.count || 0,
-    followingCount: followingRes.count || 0,
+    // Public artists for this user (RLS gates by page_enabled=true)
+    const { data: artists, error: artistsErr } = await sb
+      .from('artists')
+      .select('id, name, genre, page_enabled, page_slug, avatar_url, spotify_image_url')
+      .eq('user_id', profile.id)
+      .eq('page_enabled', true)
+      .order('name')
+    if (artistsErr) console.warn('[u/code] artists query error:', artistsErr.message)
+
+    // Studio page (if enabled)
+    const { data: studio, error: studioErr } = await sb
+      .from('studio_pages')
+      .select('slug, enabled')
+      .eq('user_id', profile.id)
+      .eq('enabled', true)
+      .maybeSingle()
+    if (studioErr) console.warn('[u/code] studio query error:', studioErr.message)
+
+    // Follower / following counts — these tables may not exist yet if the follows
+    // migration hasn't run. Fall back to 0 silently.
+    let followerCount = 0
+    let followingCount = 0
+    try {
+      const [followerRes, followingRes] = await Promise.all([
+        sb.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profile.id),
+        sb.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', profile.id),
+      ])
+      if (!followerRes.error) followerCount = followerRes.count || 0
+      if (!followingRes.error) followingCount = followingRes.count || 0
+    } catch (e: any) {
+      console.warn('[u/code] follows count failed (table may not exist yet):', e?.message)
+    }
+
+    return {
+      profile: profile as Profile,
+      artists: (artists as Artist[]) || [],
+      studioSlug: studio?.slug || null,
+      followerCount,
+      followingCount,
+    }
+  } catch (e: any) {
+    console.error('[u/code] fetchProfile crashed:', e?.message || e)
+    return null
   }
 }
 
