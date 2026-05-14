@@ -14,6 +14,7 @@ const MEDIA_PLATFORMS = ['Spotify', 'YouTube', 'TikTok', 'Instagram', 'Facebook'
 
 export default function SongPage() {
   const params = useParams()
+  const router = useRouter()
   const songId = params.id as string
   const [lang, setLangState] = useState<Lang>('no')
   const [tab, setTab] = useState('lyrics')
@@ -135,7 +136,21 @@ export default function SongPage() {
 
   const fetchSong = async () => {
     const supabase = createClient()
-    const { data } = await supabase.from('songs').select('*, artists(*)').eq('id', songId).single()
+    // Explicit owner check — admin role should not be able to open another user's song
+    // through direct URL navigation. Use eq('user_id', ...) so RLS isn't the only gate.
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data } = await supabase
+      .from('songs')
+      .select('*, artists(*)')
+      .eq('id', songId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+    if (!data) {
+      // Not your song — bounce to dashboard.
+      router.push('/dashboard')
+      return
+    }
     if (data) {
       setSong(data); setArtist(data.artists)
       setTitle(data.title || '')

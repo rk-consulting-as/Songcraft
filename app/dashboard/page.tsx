@@ -141,10 +141,15 @@ export default function Dashboard() {
 
   const fetchArtists = async () => {
     const supabase = createClient()
-    const { data } = await supabase.from('artists').select('*, songs(count)').order('created_at', { ascending: false })
+    // Get the user FIRST so we can explicitly scope the artists query to them.
+    // Defence in depth: RLS already gates this, but admin/super_admin would otherwise
+    // see every user's artists. The dashboard is always "your" artists — admins use
+    // the /admin page when they need to see cross-tenant data.
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setLoading(false); return }
+    const { data } = await supabase.from('artists').select('*, songs(count)').eq('user_id', user.id).order('created_at', { ascending: false })
     if (data) setArtists(data.map((a: any) => ({ ...a, song_count: a.songs?.[0]?.count ?? 0 })))
     // Also load studio page status for the header link.
-    const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       const { data: sp } = await supabase.from('studio_pages').select('slug, enabled').eq('user_id', user.id).maybeSingle()
       if (sp) setStudioPage({ slug: sp.slug, enabled: !!sp.enabled })
@@ -176,9 +181,13 @@ export default function Dashboard() {
     setSearching(true)
     const supabase = createClient()
     const term = `%${q.trim()}%`
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setSearching(false); return }
+    // Explicit user_id scope — admin/super_admin should not see other users' content
+    // in their own dashboard search.
     const [artistsRes, songsRes] = await Promise.all([
-      supabase.from('artists').select('*').or(`name.ilike.${term},genre.ilike.${term}`).limit(10),
-      supabase.from('songs').select('id,title,status,artist_id,artists(name)').or(`title.ilike.${term},lyrics_instructions.ilike.${term},spotify_album.ilike.${term}`).limit(20),
+      supabase.from('artists').select('*').eq('user_id', user.id).or(`name.ilike.${term},genre.ilike.${term}`).limit(10),
+      supabase.from('songs').select('id,title,status,artist_id,artists(name)').eq('user_id', user.id).or(`title.ilike.${term},lyrics_instructions.ilike.${term},spotify_album.ilike.${term}`).limit(20),
     ])
     setSearchResults({
       artists: (artistsRes.data || []) as Artist[],

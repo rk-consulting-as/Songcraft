@@ -130,8 +130,23 @@ export default function ArtistPage() {
 
   const fetchData = async () => {
     const supabase = createClient()
-    const { data: a } = await supabase.from('artists').select('*').eq('id', artistId).single()
-    if (a) setArtist(a)
+    // Explicit owner check — defence in depth on top of RLS.
+    // Admins viewing another user's artist via direct URL should be blocked here.
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setLoading(false); return }
+    const { data: a } = await supabase
+      .from('artists')
+      .select('*')
+      .eq('id', artistId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+    if (!a) {
+      // Not your artist (or doesn't exist) — bounce to dashboard.
+      setLoading(false)
+      router.push('/dashboard')
+      return
+    }
+    setArtist(a)
     // Order by manual position first (NULLS LAST), then by creation date as fallback.
     const { data: s } = await supabase
       .from('songs')
