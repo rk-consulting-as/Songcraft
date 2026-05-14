@@ -17,96 +17,59 @@ const sb = createClient(
   { auth: { persistSession: false } }
 )
 
-type Profile = {
-  id: string
-  display_name: string | null
-  bio: string | null
-  avatar_url: string | null
-  referral_code: string
-  roles: string[] | null
-  location: string | null
-  languages: string[] | null
-  open_to_collab: boolean
-  visible_in_catalog: boolean
-  total_points: number
-  created_at: string
+type ProfileData = {
+  profile: any
+  artists: any[]
+  studioSlug: string | null
+  followerCount: number
+  followingCount: number
+  topSongs: any[]
 }
 
-type Artist = {
-  id: string
-  name: string
-  genre: string
-  page_enabled: boolean
-  page_slug: string | null
-  avatar_url: string | null
-  spotify_image_url: string | null
-}
-
-async function fetchProfile(code: string): Promise<{ profile: Profile; artists: Artist[]; studioSlug: string | null; followerCount: number; followingCount: number; topSongs: any[] } | null> {
+async function fetchProfile(code: string): Promise<ProfileData | null> {
   try {
     const upperCode = code.toUpperCase()
-
-    // Use select('*') so we get back whatever columns actually exist in the DB,
-    // regardless of which migrations have run. We access columns defensively below.
-    const { data: profileRow, error: profileErr } = await sb
+    const { data: profileRow, error } = await sb
       .from('profiles')
       .select('*')
       .eq('referral_code', upperCode)
       .maybeSingle()
-
-    if (profileErr) {
-      console.warn('[u/code] profile select failed:', profileErr.message)
-      return null
-    }
-    if (!profileRow) return null
-
-    // Catalog visibility — if the column doesn't exist (undefined) we let the row through.
+    if (error || !profileRow) return null
     if (profileRow.visible_in_catalog === false) return null
 
-    // Public artists for this user (RLS gates by page_enabled=true)
-    let artists: Artist[] = []
+    let artists: any[] = []
     try {
-      const { data, error } = await sb
+      const { data } = await sb
         .from('artists')
         .select('id, name, genre, page_enabled, page_slug, avatar_url, spotify_image_url')
         .eq('user_id', profileRow.id)
         .eq('page_enabled', true)
         .order('name')
-      if (!error && data) artists = data as Artist[]
-      if (error) console.warn('[u/code] artists query error:', error.message)
-    } catch (e: any) {
-      console.warn('[u/code] artists query threw:', e?.message)
-    }
+      if (data) artists = data
+    } catch {}
 
-    // Studio page (if enabled)
     let studioSlug: string | null = null
     try {
-      const { data, error } = await sb
+      const { data } = await sb
         .from('studio_pages')
         .select('slug, enabled')
         .eq('user_id', profileRow.id)
         .eq('enabled', true)
         .maybeSingle()
-      if (!error && data) studioSlug = data.slug || null
-    } catch (e: any) {
-      console.warn('[u/code] studio query threw:', e?.message)
-    }
+      if (data) studioSlug = data.slug || null
+    } catch {}
 
-    // Follower / following counts — tables may not exist yet.
     let followerCount = 0
     let followingCount = 0
     try {
-      const [followerRes, followingRes] = await Promise.all([
+      const [a, b] = await Promise.all([
         sb.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profileRow.id),
         sb.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', profileRow.id),
       ])
-      if (!followerRes.error) followerCount = followerRes.count || 0
-      if (!followingRes.error) followingCount = followingRes.count || 0
-    } catch (e: any) {
-      console.warn('[u/code] follows count failed:', e?.message)
-    }
+      if (!a.error) followerCount = a.count || 0
+      if (!b.error) followingCount = b.count || 0
+    } catch {}
 
-    // Top-played songs from this creator's catalog (public, page_enabled artists only)
     let topSongs: any[] = []
     try {
       const { data } = await sb
@@ -115,35 +78,27 @@ async function fetchProfile(code: string): Promise<{ profile: Profile; artists: 
         .eq('user_id', profileRow.id)
         .order('internal_play_count', { ascending: false })
         .limit(6)
-      if (data) {
-        // Filter to songs whose artist is publicly visible
-        topSongs = (data as any[]).filter(s => s.artists?.page_enabled)
-      }
-    } catch (e: any) {
-      console.warn('[u/code] top songs query failed:', e?.message)
-    }
+      if (data) topSongs = (data as any[]).filter(s => s.artists?.page_enabled)
+    } catch {}
 
-    return {
-      profile: profileRow as Profile,
-      artists,
-      studioSlug,
-      followerCount,
-      followingCount,
-      topSongs,
-    }
+    return { profile: profileRow, artists, studioSlug, followerCount, followingCount, topSongs }
   } catch (e: any) {
-    console.error('[u/code] fetchProfile crashed:', e?.message || e)
+    console.error('[u/code] fetchProfile crashed:', e?.message)
     return null
   }
 }
 
 export async function generateMetadata({ params }: { params: { code: string } }): Promise<Metadata> {
-  const data = await fetchProfile(params.code)
-  if (!data) return { title: 'Songcraft — Profile not found' }
-  const name = data.profile.display_name || data.profile.referral_code
-  return {
-    title: `${name} · Songcraft`,
-    description: data.profile.bio || `Creator profile on Songcraft`,
+  try {
+    const data = await fetchProfile(params.code)
+    if (!data) return { title: 'Songcraft — Profile not found' }
+    const name = data.profile.display_name || data.profile.referral_code
+    return {
+      title: `${name} · Songcraft`,
+      description: data.profile.bio || `Creator profile on Songcraft`,
+    }
+  } catch {
+    return { title: 'Songcraft' }
   }
 }
 
@@ -152,8 +107,21 @@ export default async function PublicProfilePage({ params }: { params: { code: st
   if (!data) notFound()
   const { profile, artists, studioSlug, followerCount, followingCount, topSongs } = data
 
-  const roleSet = new Set(profile.roles || [])
-  const langSet = new Set(profile.languages || [])
+  // Safely extract fields with explicit defaults
+  const displayName: string = typeof profile.display_name === 'string' ? profile.display_name : ''
+  const referralCode: string = typeof profile.referral_code === 'string' ? profile.referral_code : ''
+  const avatarUrl: string | null = typeof profile.avatar_url === 'string' ? profile.avatar_url : null
+  const profileId: string = typeof profile.id === 'string' ? profile.id : ''
+  const bio: string = typeof profile.bio === 'string' ? profile.bio : ''
+  const location: string = typeof profile.location === 'string' ? profile.location : ''
+  const totalPoints: number = typeof profile.total_points === 'number' ? profile.total_points : 0
+  const openToCollab: boolean = profile.open_to_collab === true
+  const rolesArray: string[] = Array.isArray(profile.roles) ? profile.roles : []
+  const langsArray: string[] = Array.isArray(profile.languages) ? profile.languages : []
+  const createdAt: string = typeof profile.created_at === 'string' ? profile.created_at : new Date().toISOString()
+
+  const roleSet = new Set(rolesArray)
+  const langSet = new Set(langsArray)
 
   const accent = '#d4a843'
 
@@ -164,7 +132,6 @@ export default async function PublicProfilePage({ params }: { params: { code: st
       color: '#e8e0d0',
       fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
     }}>
-      {/* Slim header */}
       <div style={{
         borderBottom: '1px solid rgba(180,140,80,0.2)',
         padding: '14px 32px',
@@ -182,74 +149,47 @@ export default async function PublicProfilePage({ params }: { params: { code: st
       </div>
 
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '40px 24px' }}>
-
-        {/* Hero */}
         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'center', marginBottom: 32 }}>
-          <Avatar value={profile.avatar_url} name={profile.display_name} seed={profile.id} size={140} borderColor={accent} />
+          <Avatar value={avatarUrl} name={displayName} seed={profileId} size={140} borderColor={accent} />
           <div style={{ flex: '1 1 280px', minWidth: 0 }}>
             <h1 style={{ margin: 0, color: '#e8e0d0', fontSize: 36, fontWeight: 700, letterSpacing: '-0.02em' }}>
-              {profile.display_name || profile.referral_code}
+              {displayName || referralCode}
             </h1>
-            {profile.location && (
-              <div style={{ color: '#8a7a60', fontSize: 14, marginTop: 4 }}>
-                📍 {profile.location}
-              </div>
+            {location && (
+              <div style={{ color: '#8a7a60', fontSize: 14, marginTop: 4 }}>📍 {location}</div>
             )}
-            {profile.bio && (
-              <p style={{ color: '#c8c0b0', fontSize: 15, marginTop: 12, lineHeight: 1.5, maxWidth: 600 }}>
-                {profile.bio}
-              </p>
+            {bio && (
+              <p style={{ color: '#c8c0b0', fontSize: 15, marginTop: 12, lineHeight: 1.5, maxWidth: 600 }}>{bio}</p>
             )}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
-              {profile.open_to_collab && (
-                <span style={{
-                  background: 'rgba(123,200,123,0.12)',
-                  border: '1px solid rgba(123,200,123,0.4)',
-                  color: '#7bc87b',
-                  padding: '4px 12px',
-                  fontSize: 12,
-                  borderRadius: 14,
-                }}>
+              {openToCollab && (
+                <span style={{ background: 'rgba(123,200,123,0.12)', border: '1px solid rgba(123,200,123,0.4)', color: '#7bc87b', padding: '4px 12px', fontSize: 12, borderRadius: 14 }}>
                   🤝 Open for collab
                 </span>
               )}
-              {profile.total_points >= 100 && (
-                <span style={{
-                  background: 'rgba(212,168,67,0.12)',
-                  border: '1px solid rgba(212,168,67,0.4)',
-                  color: accent,
-                  padding: '4px 12px',
-                  fontSize: 12,
-                  borderRadius: 14,
-                }}>
-                  ⭐ {profile.total_points.toLocaleString()} pts
+              {totalPoints >= 100 && (
+                <span style={{ background: 'rgba(212,168,67,0.12)', border: '1px solid rgba(212,168,67,0.4)', color: accent, padding: '4px 12px', fontSize: 12, borderRadius: 14 }}>
+                  ⭐ {totalPoints.toLocaleString()} pts
                 </span>
               )}
             </div>
-
-            <div style={{ marginTop: 18, display: 'flex', gap: 22, alignItems: 'center', flexWrap: 'wrap' }}>
-              <FollowButton targetUserId={profile.id} targetCode={profile.referral_code} initialFollowerCount={followerCount} />
-              <Link href={`/u/${profile.referral_code}/following`} style={{ display: 'flex', alignItems: 'baseline', gap: 6, textDecoration: 'none' }}>
-                <strong style={{ color: '#e8e0d0', fontSize: 16, fontWeight: 700 }}>{followingCount.toLocaleString()}</strong>
-                <span style={{ color: '#8a7a60', fontSize: 12 }}>following</span>
-              </Link>
-            </div>
+            {profileId && (
+              <div style={{ marginTop: 18, display: 'flex', gap: 22, alignItems: 'center', flexWrap: 'wrap' }}>
+                <FollowButton targetUserId={profileId} targetCode={referralCode} initialFollowerCount={followerCount} />
+                <Link href={`/u/${referralCode}/following`} style={{ display: 'flex', alignItems: 'baseline', gap: 6, textDecoration: 'none' }}>
+                  <strong style={{ color: '#e8e0d0', fontSize: 16, fontWeight: 700 }}>{followingCount.toLocaleString()}</strong>
+                  <span style={{ color: '#8a7a60', fontSize: 12 }}>following</span>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Roles */}
-        {(profile.roles || []).length > 0 && (
+        {rolesArray.length > 0 && (
           <Section title="Roles">
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {CREATOR_ROLES.filter(r => roleSet.has(r.key)).map(r => (
-                <span key={r.key} style={{
-                  background: 'rgba(212,168,67,0.08)',
-                  border: '1px solid rgba(212,168,67,0.3)',
-                  color: accent,
-                  padding: '6px 12px',
-                  borderRadius: 14,
-                  fontSize: 13,
-                }}>
+                <span key={r.key} style={{ background: 'rgba(212,168,67,0.08)', border: '1px solid rgba(212,168,67,0.3)', color: accent, padding: '6px 12px', borderRadius: 14, fontSize: 13 }}>
                   {r.emoji} {labelForRole(r.key)}
                 </span>
               ))}
@@ -257,19 +197,11 @@ export default async function PublicProfilePage({ params }: { params: { code: st
           </Section>
         )}
 
-        {/* Languages */}
-        {(profile.languages || []).length > 0 && (
+        {langsArray.length > 0 && (
           <Section title="Creates in">
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {CREATOR_LANGUAGES.filter(l => langSet.has(l.key)).map(l => (
-                <span key={l.key} style={{
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(180,140,80,0.2)',
-                  color: '#c8c0b0',
-                  padding: '6px 12px',
-                  borderRadius: 14,
-                  fontSize: 13,
-                }}>
+                <span key={l.key} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(180,140,80,0.2)', color: '#c8c0b0', padding: '6px 12px', borderRadius: 14, fontSize: 13 }}>
                   {l.flag} {labelForLang(l.key)}
                 </span>
               ))}
@@ -277,35 +209,18 @@ export default async function PublicProfilePage({ params }: { params: { code: st
           </Section>
         )}
 
-        {/* Public artists */}
-        {/* Top tracks (most-played from this creator's catalog).
-            Rendered via a Client Component wrapper because EmbedPlayer is client-only.
-            Wrapping in its own boundary so any rendering issue won't bubble up. */}
         <TopTracksList songs={topSongs} />
 
         {artists.length > 0 && (
           <Section title={`Artists (${artists.length})`}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-              gap: 12,
-            }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
               {artists.map(a => {
                 const img = a.avatar_url || a.spotify_image_url
-                const href = a.page_slug ? `/p/${a.page_slug}` : '#'
+                const href = a.page_slug ? `/p/${a.page_slug}` : null
                 const card = (
-                  <div style={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(180,140,80,0.2)',
-                    borderRadius: 8,
-                    padding: 14,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    transition: 'border-color 0.2s',
-                  }}>
+                  <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(180,140,80,0.2)', borderRadius: 8, padding: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
                     {img ? (
-                      <img src={img} alt={a.name} style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                      <img src={img} alt={a.name || ''} style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
                     ) : (
                       <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(212,168,67,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🎤</div>
                     )}
@@ -315,7 +230,7 @@ export default async function PublicProfilePage({ params }: { params: { code: st
                     </div>
                   </div>
                 )
-                return a.page_slug
+                return href
                   ? <Link key={a.id} href={href} style={{ textDecoration: 'none' }}>{card}</Link>
                   : <div key={a.id}>{card}</div>
               })}
@@ -323,29 +238,16 @@ export default async function PublicProfilePage({ params }: { params: { code: st
           </Section>
         )}
 
-        {/* Studio link */}
         {studioSlug && (
           <Section title="Studio">
-            <Link href={`/studio/${studioSlug}`} style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '10px 18px',
-              background: 'rgba(212,168,67,0.12)',
-              border: `1px solid ${accent}`,
-              color: accent,
-              borderRadius: 6,
-              textDecoration: 'none',
-              fontSize: 14,
-            }}>
+            <Link href={`/studio/${studioSlug}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: 'rgba(212,168,67,0.12)', border: `1px solid ${accent}`, color: accent, borderRadius: 6, textDecoration: 'none', fontSize: 14 }}>
               🌐 Visit studio page ↗
             </Link>
           </Section>
         )}
 
-        {/* Member since */}
         <p style={{ color: '#5a4a30', fontSize: 11, textAlign: 'center', marginTop: 60 }}>
-          Member since {new Date(profile.created_at).toLocaleDateString()}
+          Member since {new Date(createdAt).toLocaleDateString()}
         </p>
       </div>
     </div>
@@ -355,34 +257,20 @@ export default async function PublicProfilePage({ params }: { params: { code: st
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 28 }}>
-      <h2 style={{
-        color: '#d4a843',
-        fontSize: 13,
-        fontWeight: 'normal',
-        letterSpacing: 1,
-        textTransform: 'uppercase',
-        margin: '0 0 12px',
-      }}>{title}</h2>
+      <h2 style={{ color: '#d4a843', fontSize: 13, fontWeight: 'normal', letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 12px' }}>
+        {title}
+      </h2>
       {children}
     </div>
   )
 }
 
-// English labels (public page is server-rendered without lang context for simplicity)
 function labelForRole(key: string): string {
   const map: Record<string, string> = {
-    artist: 'Artist',
-    vocalist: 'Vocalist',
-    songwriter: 'Songwriter',
-    producer: 'Producer',
-    beatmaker: 'Beatmaker',
-    instrumentalist: 'Instrumentalist',
-    mixer: 'Mixer',
-    mastering: 'Mastering',
-    manager: 'Manager',
-    booking: 'Booking',
-    label: 'Label',
-    an_r: 'A&R',
+    artist: 'Artist', vocalist: 'Vocalist', songwriter: 'Songwriter',
+    producer: 'Producer', beatmaker: 'Beatmaker', instrumentalist: 'Instrumentalist',
+    mixer: 'Mixer', mastering: 'Mastering', manager: 'Manager',
+    booking: 'Booking', label: 'Label', an_r: 'A&R',
   }
   return map[key] || key
 }
