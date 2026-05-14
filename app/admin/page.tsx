@@ -65,6 +65,11 @@ export default function AdminPage() {
   const [busyUserId, setBusyUserId] = useState<string | null>(null)
   const [statusMsg, setStatusMsg] = useState<string | null>(null)
 
+  // Transfer-referrer modal
+  const [transferTarget, setTransferTarget] = useState<Profile | null>(null)
+  const [transferSearch, setTransferSearch] = useState('')
+  const [transferBusy, setTransferBusy] = useState(false)
+
   useEffect(() => { setLangState(useLang()); init() }, [])
   const tx = t[lang]
 
@@ -168,6 +173,36 @@ export default function AdminPage() {
     }
     setBusyUserId(null)
     setTimeout(() => setStatusMsg(null), 3000)
+  }
+
+  const performTransferReferrer = async (newReferrerId: string | null) => {
+    if (!transferTarget) return
+    setTransferBusy(true)
+    const supabase = createClient()
+    const { data, error } = await supabase.rpc('transfer_referrer', {
+      target_user_id: transferTarget.id,
+      new_referrer_id: newReferrerId,
+    })
+    setTransferBusy(false)
+    if (error) {
+      setStatusMsg(`${tx.adminError}: ${error.message}`)
+    } else if (data && (data as any).error) {
+      const errKey = (data as any).error as string
+      const map: Record<string, string> = {
+        not_authorised:     tx.adminTransferErrNotAuth,
+        target_not_found:   tx.adminTransferErrTargetMissing,
+        referrer_not_found: tx.adminTransferErrReferrerMissing,
+        self_referral:      tx.adminTransferErrSelf,
+        would_create_cycle: tx.adminTransferErrCycle,
+      }
+      setStatusMsg(`${tx.adminError}: ${map[errKey] || errKey}`)
+    } else {
+      setStatusMsg(tx.adminTransferSuccess)
+      setTransferTarget(null)
+      setTransferSearch('')
+      await refresh()
+    }
+    setTimeout(() => setStatusMsg(null), 4000)
   }
 
   const adjustPoints = async (userId: string) => {
@@ -449,6 +484,14 @@ export default function AdminPage() {
                             >
                               ± {tx.adminBtnAdjustPoints}
                             </button>
+                            <button
+                              disabled={busy}
+                              onClick={() => { setTransferTarget(p); setTransferSearch('') }}
+                              style={smallBtn('#9ad0d4')}
+                              title={tx.adminBtnTransferReferrerTip}
+                            >
+                              🔀 {tx.adminBtnTransferReferrer}
+                            </button>
                           </div>
                         </Td>
                       </tr>
@@ -687,6 +730,159 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+
+        {/* Transfer-referrer modal */}
+        {transferTarget && (() => {
+          const currentReferrer = transferTarget.referred_by ? profileMap[transferTarget.referred_by] : null
+          const search = transferSearch.trim().toLowerCase()
+          // Candidates = all other profiles, optionally filtered by search
+          const candidates = profiles.filter(p => {
+            if (p.id === transferTarget.id) return false
+            if (!search) return true
+            const hay = `${p.display_name || ''} ${p.referral_code || ''}`.toLowerCase()
+            return hay.includes(search)
+          }).slice(0, 30)
+
+          return (
+            <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+              <div className="card" style={{ width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', borderColor: 'rgba(154,208,212,0.4)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
+                  <div>
+                    <h3 style={{ margin: 0, color: '#9ad0d4', fontWeight: 'normal', fontSize: 18 }}>
+                      🔀 {tx.adminTransferTitle}
+                    </h3>
+                    <p style={{ color: '#8a7a60', fontSize: 13, margin: '6px 0 0' }}>
+                      {tx.adminTransferDesc}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => { setTransferTarget(null); setTransferSearch('') }}
+                    style={{ background: 'none', border: 'none', color: '#6a5a40', cursor: 'pointer', fontSize: 22, lineHeight: 1 }}
+                    title={tx.close}
+                  >×</button>
+                </div>
+
+                {/* Target user */}
+                <div style={{
+                  background: 'rgba(154,208,212,0.06)',
+                  border: '1px solid rgba(154,208,212,0.25)',
+                  borderRadius: 6,
+                  padding: 12,
+                  marginBottom: 14,
+                }}>
+                  <div style={{ color: '#6a5a40', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' }}>
+                    {tx.adminTransferTargetLabel}
+                  </div>
+                  <div style={{ color: '#e8e0d0', fontSize: 16, fontWeight: 600, marginTop: 4 }}>
+                    {transferTarget.display_name || transferTarget.referral_code}
+                  </div>
+                  <div style={{ color: '#8a7a60', fontSize: 12, marginTop: 2 }}>
+                    <code style={{ background: 'rgba(255,255,255,0.04)', padding: '1px 6px', borderRadius: 3, color: accent }}>{transferTarget.referral_code}</code>
+                  </div>
+                </div>
+
+                {/* Current referrer */}
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ color: '#6a5a40', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
+                    {tx.adminTransferCurrent}
+                  </div>
+                  {currentReferrer ? (
+                    <div style={{ color: '#a09080', fontSize: 13 }}>
+                      {currentReferrer.display_name || currentReferrer.referral_code}{' '}
+                      <code style={{ color: '#6a5a40', fontSize: 11 }}>({currentReferrer.referral_code})</code>
+                    </div>
+                  ) : (
+                    <div style={{ color: '#5a4a30', fontSize: 13, fontStyle: 'italic' }}>
+                      {tx.adminTransferNoneCurrent}
+                    </div>
+                  )}
+                </div>
+
+                {/* New referrer search */}
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ color: '#6a5a40', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>
+                    {tx.adminTransferNew}
+                  </div>
+                  <input
+                    value={transferSearch}
+                    onChange={e => setTransferSearch(e.target.value)}
+                    placeholder={tx.adminTransferSearchPlaceholder}
+                    style={{ width: '100%', boxSizing: 'border-box', fontSize: 14 }}
+                    autoFocus
+                  />
+                </div>
+
+                {/* Quick option: remove referrer */}
+                <button
+                  disabled={transferBusy || !currentReferrer}
+                  onClick={() => {
+                    if (confirm(tx.adminTransferConfirmRemove)) performTransferReferrer(null)
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    background: 'transparent',
+                    border: '1px dashed rgba(192,80,80,0.4)',
+                    color: '#c05050',
+                    borderRadius: 6,
+                    cursor: currentReferrer ? 'pointer' : 'not-allowed',
+                    opacity: currentReferrer ? 1 : 0.4,
+                    fontSize: 12,
+                    marginBottom: 10,
+                  }}
+                >
+                  ✕ {tx.adminTransferRemoveReferrer}
+                </button>
+
+                {/* Candidates list */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 280, overflowY: 'auto' }}>
+                  {candidates.map(c => {
+                    const isCurrent = c.id === transferTarget.referred_by
+                    return (
+                      <button
+                        key={c.id}
+                        disabled={transferBusy || isCurrent}
+                        onClick={() => {
+                          if (confirm(tx.adminTransferConfirm.replace('{name}', c.display_name || c.referral_code))) {
+                            performTransferReferrer(c.id)
+                          }
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 10,
+                          padding: '8px 12px',
+                          background: isCurrent ? 'rgba(212,168,67,0.08)' : 'rgba(255,255,255,0.02)',
+                          border: '1px solid ' + (isCurrent ? 'rgba(212,168,67,0.3)' : 'rgba(180,140,80,0.15)'),
+                          borderRadius: 4,
+                          color: '#e8e0d0',
+                          cursor: isCurrent ? 'not-allowed' : 'pointer',
+                          textAlign: 'left',
+                          fontSize: 13,
+                          opacity: isCurrent ? 0.6 : 1,
+                        }}
+                      >
+                        <span>
+                          {c.display_name || <code style={{ color: '#5a4a30' }}>{c.referral_code}</code>}
+                        </span>
+                        <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <code style={{ background: 'rgba(255,255,255,0.04)', padding: '1px 5px', borderRadius: 3, color: '#a09080', fontSize: 10 }}>{c.referral_code}</code>
+                          {isCurrent && <span style={{ color: accent, fontSize: 11 }}>({tx.adminTransferCurrentTag})</span>}
+                        </span>
+                      </button>
+                    )
+                  })}
+                  {candidates.length === 0 && (
+                    <div style={{ color: '#6a5a40', textAlign: 'center', padding: 20, fontSize: 13 }}>
+                      {tx.adminTransferNoMatches}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        })()}
 
       </div>
     </div>
