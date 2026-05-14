@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * Avatar — renders a profile picture, gallery preset, or initial-letter fallback.
  *
@@ -5,6 +7,9 @@
  *   - "https://…"            → uploaded image
  *   - "preset:guitar"        → music-themed preset (emoji on colored circle)
  *   - null / undefined / ""  → first letter of name on a color derived from seed
+ *
+ * Marked as client component because it uses onClick and onError event handlers,
+ * which are not supported in React Server Components.
  */
 
 import React from 'react'
