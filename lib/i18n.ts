@@ -609,6 +609,19 @@ export const t = {
     discoverCreators: 'skapere',
     discoverNoMatches: 'Ingen skapere matcher disse filtrene.',
     discoverOpenToCollab: 'Åpen for samarbeid',
+
+    // Feed page + dashboard widget
+    feedNavLink: 'Feed',
+    feedTitle: 'Aktivitet',
+    feedTabFollowing: 'Personer jeg følger',
+    feedTabEveryone: 'Hele Songcraft',
+    feedEmpty: 'Ingen aktivitet ennå.',
+    feedEmptyFollowingTitle: 'Følg noen for å fylle feeden din',
+    feedEmptyFollowingDesc: 'Når du følger andre skapere ser du her hva de slipper og publiserer.',
+    dashboardActivity: 'Siste aktivitet',
+    dashboardViewAllActivity: 'Se alt',
+    dashboardEmptyFeed: 'Følg andre skapere for å se aktiviteten deres her.',
+    dashboardDiscoverCreators: 'Finn skapere',
   },
 
   en: {
@@ -1219,6 +1232,19 @@ export const t = {
     discoverCreators: 'creators',
     discoverNoMatches: 'No creators match these filters.',
     discoverOpenToCollab: 'Open for collab',
+
+    // Feed page + dashboard widget
+    feedNavLink: 'Feed',
+    feedTitle: 'Activity',
+    feedTabFollowing: 'People you follow',
+    feedTabEveryone: 'All of Songcraft',
+    feedEmpty: 'No activity yet.',
+    feedEmptyFollowingTitle: 'Follow someone to fill your feed',
+    feedEmptyFollowingDesc: "Once you follow other creators, you'll see what they release and publish here.",
+    dashboardActivity: 'Recent activity',
+    dashboardViewAllActivity: 'View all',
+    dashboardEmptyFeed: 'Follow other creators to see their activity here.',
+    dashboardDiscoverCreators: 'Find creators',
   },
 }
 

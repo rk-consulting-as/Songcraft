@@ -7,6 +7,7 @@ import { searchGenres, MUSIC_GENRES } from '@/lib/genres'
 import { parseYoutube, parseInstagram, type SocialLinksMap } from '@/lib/socialLinks'
 import Link from 'next/link'
 import Avatar from '@/components/Avatar'
+import ActivityList, { type ActivityEntry } from '@/components/ActivityList'
 
 type Artist = {
   id: string; name: string; genre: string; description: string
@@ -122,6 +123,10 @@ export default function Dashboard() {
   const [userRole, setUserRole] = useState<string | null>(null)
   const [userProfile, setUserProfile] = useState<{ id: string; display_name: string | null; avatar_url: string | null } | null>(null)
 
+  // Activity feed snapshot for the dashboard widget
+  const [feedEntries, setFeedEntries] = useState<ActivityEntry[]>([])
+  const [feedFollowCount, setFeedFollowCount] = useState(0)
+
   useEffect(() => { setLangState(useLang()); checkAuth(); fetchArtists() }, [])
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -167,6 +172,38 @@ export default function Dashboard() {
       }
       if (prof?.role) setUserRole(prof.role as string)
       if (prof) setUserProfile({ id: prof.id, display_name: prof.display_name ?? null, avatar_url: prof.avatar_url ?? null })
+
+      // Fetch recent activity from people the user follows (top 5)
+      const { data: follows } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', user.id)
+      const actorIds = (follows || []).map((f: any) => f.following_id)
+      setFeedFollowCount(actorIds.length)
+      if (actorIds.length > 0) {
+        const { data: feed } = await supabase
+          .from('activity_feed')
+          .select('id, actor_id, kind, subject_id, subject_type, subject_label, metadata, created_at')
+          .in('actor_id', actorIds)
+          .eq('visible', true)
+          .order('created_at', { ascending: false })
+          .limit(5)
+        if (feed && feed.length > 0) {
+          const uniqueIds = Array.from(new Set((feed as any[]).map(f => f.actor_id)))
+          const { data: actors } = await supabase
+            .from('profiles')
+            .select('id, display_name, avatar_url, referral_code')
+            .in('id', uniqueIds)
+          const actorMap: Record<string, any> = {}
+          for (const a of (actors as any[]) || []) actorMap[a.id] = a
+          setFeedEntries((feed as any[]).map(f => ({
+            ...f,
+            actor_name: actorMap[f.actor_id]?.display_name || null,
+            actor_avatar: actorMap[f.actor_id]?.avatar_url || null,
+            actor_code: actorMap[f.actor_id]?.referral_code || null,
+          })))
+        }
+      }
     }
     setLoading(false)
   }
@@ -462,6 +499,7 @@ export default function Dashboard() {
             </Link>
           )}
           <Link href="/discover" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>🌍 {tx.discoverNavLink}</Link>
+          <Link href="/feed" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>📰 {tx.feedNavLink}</Link>
           <Link href="/referrals" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>🤝 {tx.referralsNavLink}</Link>
           {(userRole === 'admin' || userRole === 'super_admin') && (
             <Link href="/admin" style={{
@@ -504,6 +542,39 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
+
+        {/* Activity feed widget */}
+        {feedEntries.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+              <h2 style={{ color: '#d4a843', fontSize: 13, fontWeight: 'normal', letterSpacing: 1, textTransform: 'uppercase', margin: 0 }}>
+                📰 {tx.dashboardActivity}
+              </h2>
+              <Link href="/feed" style={{ color: '#8a7a60', fontSize: 12, textDecoration: 'none' }}>
+                {tx.dashboardViewAllActivity} →
+              </Link>
+            </div>
+            <ActivityList entries={feedEntries} lang={lang} compact />
+          </div>
+        )}
+        {feedEntries.length === 0 && feedFollowCount === 0 && userProfile && (
+          <div style={{ marginBottom: 24 }}>
+            <div className="card" style={{ textAlign: 'center', padding: '20px 18px', borderColor: 'rgba(212,168,67,0.15)' }}>
+              <div style={{ fontSize: 26, marginBottom: 6 }}>🌍</div>
+              <p style={{ color: '#a09080', fontSize: 13, margin: '0 0 10px' }}>{tx.dashboardEmptyFeed}</p>
+              <Link href="/discover" style={{
+                display: 'inline-block',
+                padding: '8px 16px',
+                background: 'rgba(212,168,67,0.12)',
+                border: '1px solid rgba(212,168,67,0.4)',
+                color: '#d4a843',
+                textDecoration: 'none',
+                borderRadius: 4,
+                fontSize: 13,
+              }}>🌍 {tx.dashboardDiscoverCreators}</Link>
+            </div>
+          </div>
+        )}
 
         {/* Global search */}
         <div style={{ marginBottom: 24, position: 'relative' }}>

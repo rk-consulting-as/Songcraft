@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import Avatar from '@/components/Avatar'
+import FollowButton from '@/components/FollowButton'
 import { CREATOR_ROLES, CREATOR_LANGUAGES } from '@/lib/creatorRoles'
 
 // Public creator profile at /u/[referral_code]. Always fresh — never cache.
@@ -40,7 +41,7 @@ type Artist = {
   spotify_image_url: string | null
 }
 
-async function fetchProfile(code: string): Promise<{ profile: Profile; artists: Artist[]; studioSlug: string | null } | null> {
+async function fetchProfile(code: string): Promise<{ profile: Profile; artists: Artist[]; studioSlug: string | null; followerCount: number; followingCount: number } | null> {
   const upperCode = code.toUpperCase()
   const { data: profile } = await sb
     .from('profiles')
@@ -67,10 +68,18 @@ async function fetchProfile(code: string): Promise<{ profile: Profile; artists: 
     .eq('enabled', true)
     .maybeSingle()
 
+  // Follower / following counts
+  const [followerRes, followingRes] = await Promise.all([
+    sb.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', profile.id),
+    sb.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', profile.id),
+  ])
+
   return {
     profile: profile as Profile,
     artists: (artists as Artist[]) || [],
     studioSlug: studio?.slug || null,
+    followerCount: followerRes.count || 0,
+    followingCount: followingRes.count || 0,
   }
 }
 
@@ -87,7 +96,7 @@ export async function generateMetadata({ params }: { params: { code: string } })
 export default async function PublicProfilePage({ params }: { params: { code: string } }) {
   const data = await fetchProfile(params.code)
   if (!data) notFound()
-  const { profile, artists, studioSlug } = data
+  const { profile, artists, studioSlug, followerCount, followingCount } = data
 
   const roleSet = new Set(profile.roles || [])
   const langSet = new Set(profile.languages || [])
@@ -162,6 +171,14 @@ export default async function PublicProfilePage({ params }: { params: { code: st
                   ⭐ {profile.total_points.toLocaleString()} pts
                 </span>
               )}
+            </div>
+
+            <div style={{ marginTop: 18, display: 'flex', gap: 22, alignItems: 'center', flexWrap: 'wrap' }}>
+              <FollowButton targetUserId={profile.id} targetCode={profile.referral_code} initialFollowerCount={followerCount} />
+              <Link href={`/u/${profile.referral_code}/following`} style={{ display: 'flex', alignItems: 'baseline', gap: 6, textDecoration: 'none' }}>
+                <strong style={{ color: '#e8e0d0', fontSize: 16, fontWeight: 700 }}>{followingCount.toLocaleString()}</strong>
+                <span style={{ color: '#8a7a60', fontSize: 12 }}>following</span>
+              </Link>
             </div>
           </div>
         </div>
