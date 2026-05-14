@@ -250,8 +250,35 @@ export default function Dashboard() {
     setSpotifyResults([])
   }
 
-  const confirmSpotifyOwnership = (confirmed: boolean) => {
+  // Collision-warning state — populated when another user has already verified this Spotify artist
+  const [claimCollision, setClaimCollision] = useState<{
+    artist_id: string
+    artist_name: string
+    claimant_name: string
+    claimed_at: string
+    is_self: boolean
+  } | null>(null)
+  const [claimCheckLoading, setClaimCheckLoading] = useState(false)
+
+  const confirmSpotifyOwnership = async (confirmed: boolean) => {
     if (confirmed) {
+      // Before flipping spotify_verified=true, check whether someone else already owns this Spotify id.
+      const spotifyId = form.spotify_id
+      if (spotifyId) {
+        setClaimCheckLoading(true)
+        const supabase = createClient()
+        const { data: existing, error } = await supabase.rpc('check_spotify_claim', { spotify_id_to_check: spotifyId })
+        setClaimCheckLoading(false)
+        if (error) {
+          // RPC might not exist yet (migration pending). Proceed without blocking — DB unique
+          // index will still catch real duplicates with a clear error on save.
+          console.warn('check_spotify_claim RPC failed:', error.message)
+        } else if (existing && !existing.is_self) {
+          // Block — another user has verified this artist. Show the conflict modal.
+          setClaimCollision(existing as any)
+          return
+        }
+      }
       setForm((f: any) => ({ ...f, spotify_verified: true }))
     } else {
       // Clear all Spotify-derived fields and the avatar (since it came from Spotify).
@@ -558,6 +585,44 @@ export default function Dashboard() {
           <button className="btn-gold" onClick={openCreate}>{tx.newArtist}</button>
         </div>
 
+        {/* Spotify claim collision modal */}
+        {claimCollision && (
+          <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+            <div className="card" style={{ width: '100%', maxWidth: 520, borderColor: 'rgba(192,80,80,0.5)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+                <div style={{ fontSize: 36 }}>⚠️</div>
+                <h3 style={{ margin: 0, color: '#e07070', fontWeight: 'normal', fontSize: 18 }}>
+                  {tx.spotifyClaimConflictTitle}
+                </h3>
+              </div>
+              <p style={{ color: '#c8c0b0', fontSize: 14, lineHeight: 1.5 }}>
+                {tx.spotifyClaimConflictBody.replace('{name}', claimCollision.artist_name).replace('{claimant}', claimCollision.claimant_name)}
+              </p>
+              <div style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(180,140,80,0.15)',
+                borderRadius: 6,
+                padding: 12,
+                margin: '14px 0',
+                fontSize: 13,
+                color: '#a09080',
+              }}>
+                <div><strong style={{ color: '#e8e0d0' }}>{tx.spotifyClaimArtist}:</strong> {claimCollision.artist_name}</div>
+                <div><strong style={{ color: '#e8e0d0' }}>{tx.spotifyClaimedBy}:</strong> {claimCollision.claimant_name}</div>
+                <div><strong style={{ color: '#e8e0d0' }}>{tx.spotifyClaimedAt}:</strong> {new Date(claimCollision.claimed_at).toLocaleDateString()}</div>
+              </div>
+              <p style={{ color: '#8a7a60', fontSize: 12, lineHeight: 1.4 }}>
+                {tx.spotifyClaimTransferHint}
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
+                <button className="btn-outline" onClick={() => setClaimCollision(null)}>
+                  {tx.close}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Artist form modal */}
         {showForm && (
           <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', overflowY: 'auto' }}>
@@ -638,10 +703,10 @@ export default function Dashboard() {
                           {lang === 'no' ? 'Er dette din artist eller en samarbeidspartner?' : 'Is this your artist or a collaborator?'}
                         </p>
                         <div style={{ display: 'flex', gap: '8px' }}>
-                          <button onClick={() => confirmSpotifyOwnership(true)} style={{ padding: '8px 16px', background: 'rgba(30,215,96,0.15)', border: '1px solid rgba(30,215,96,0.4)', color: '#1ed760', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>
-                            ✓ {lang === 'no' ? 'Ja, dette er artisten min' : 'Yes, this is my artist'}
+                          <button onClick={() => confirmSpotifyOwnership(true)} disabled={claimCheckLoading} style={{ padding: '8px 16px', background: 'rgba(30,215,96,0.15)', border: '1px solid rgba(30,215,96,0.4)', color: '#1ed760', borderRadius: '4px', cursor: claimCheckLoading ? 'wait' : 'pointer', fontSize: '13px', opacity: claimCheckLoading ? 0.6 : 1 }}>
+                            {claimCheckLoading ? '⏳ ' + (lang === 'no' ? 'Sjekker...' : 'Checking...') : '✓ ' + (lang === 'no' ? 'Ja, dette er artisten min' : 'Yes, this is my artist')}
                           </button>
-                          <button onClick={() => confirmSpotifyOwnership(false)} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid rgba(180,140,80,0.2)', color: '#6a5a40', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>
+                          <button onClick={() => confirmSpotifyOwnership(false)} disabled={claimCheckLoading} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid rgba(180,140,80,0.2)', color: '#6a5a40', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>
                             {lang === 'no' ? 'Nei, feil artist' : 'No, wrong artist'}
                           </button>
                         </div>

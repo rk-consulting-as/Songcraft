@@ -548,6 +548,14 @@ export const t = {
     avatarPresetDrums: 'Trommer',
     avatarPresetPiano: 'Piano',
     avatarPresetSax: 'Saksofon',
+
+    // Spotify claim collision (when verifying ownership)
+    spotifyClaimConflictTitle: 'Denne artisten er allerede claimet',
+    spotifyClaimConflictBody: 'Artisten "{name}" er allerede knyttet til Songcraft-brukeren {claimant}. Du kan ikke claime samme Spotify-artist to ganger. Hvis dette er feil, må du be om at eierskapet overføres til riktig bruker.',
+    spotifyClaimArtist: 'Artist',
+    spotifyClaimedBy: 'Eid av',
+    spotifyClaimedAt: 'Claimet dato',
+    spotifyClaimTransferHint: 'Trenger du å overføre eierskap? Kontakt en administrator med Spotify-ID og forklaring av situasjonen, så kan de overføre artist-raden til riktig bruker.',
   },
 
   en: {
@@ -1097,6 +1105,14 @@ export const t = {
     avatarPresetDrums: 'Drums',
     avatarPresetPiano: 'Piano',
     avatarPresetSax: 'Saxophone',
+
+    // Spotify claim collision (when verifying ownership)
+    spotifyClaimConflictTitle: 'This artist is already claimed',
+    spotifyClaimConflictBody: 'The artist "{name}" is already linked to Songcraft user {claimant}. The same Spotify artist cannot be claimed twice. If this is an error, the ownership must be transferred to the correct user.',
+    spotifyClaimArtist: 'Artist',
+    spotifyClaimedBy: 'Owned by',
+    spotifyClaimedAt: 'Claimed on',
+    spotifyClaimTransferHint: 'Need to transfer ownership? Contact an administrator with the Spotify ID and an explanation, and they can transfer the artist row to the correct user.',
   },
 }
 
