@@ -318,127 +318,152 @@ function InternalAudioPlayer({
 }
 
 /* ---------- Embed players ----------
-   Iframes are cross-origin, so we can't directly listen for clicks inside them.
-   But when a user clicks INTO a cross-origin iframe, the parent window LOSES focus
-   to the iframe. We detect that via `window.blur` + checking `document.activeElement`.
-   This is the most reliable cross-browser way to detect "user interacted with iframe".
+   Cross-origin iframes (Spotify, YouTube, SoundCloud, Apple Music) swallow clicks
+   without bubbling to the parent — so onClick on a wrapper div never fires when the
+   user clicks the play button INSIDE the iframe. window.blur isn't reliable either.
+
+   Solution: a transparent overlay that captures the FIRST click. When the user clicks
+   the overlay, we register the play event + hide the overlay so subsequent clicks
+   reach the iframe normally. Two-click experience the first time, perfect tracking.
 */
 
-function useIframeClickDetect(opts: {
-  iframeRef: React.RefObject<HTMLIFrameElement>
+function ClickOverlayWrapper({
+  songId,
+  source,
+  onPointsAwarded,
+  children,
+  hintText = '▶ Click to play & earn points',
+}: {
   songId: string
   source: 'spotify_embed' | 'youtube_embed' | 'soundcloud_embed' | 'apple_embed'
   onPointsAwarded: (n: number) => void
+  children: React.ReactNode
+  hintText?: string
 }) {
-  const { iframeRef, songId, source, onPointsAwarded } = opts
-  const reportedRef = useRef(false)
+  const [activated, setActivated] = useState(false)
 
-  useEffect(() => {
-    const handleBlur = () => {
-      // Defer the activeElement check — browsers may update it slightly after blur
-      setTimeout(async () => {
-        if (reportedRef.current) return
-        if (document.activeElement !== iframeRef.current) return
-        reportedRef.current = true
-        const res = await reportPlay({
-          song_id: songId,
-          source,
-          duration_listened: 0,
-          completed: false,
-        })
-        if (res?.points_awarded && res.points_awarded > 0) {
-          onPointsAwarded(res.points_awarded)
-        }
-      }, 80)
+  const handleClick = async () => {
+    if (activated) return
+    setActivated(true)
+    const res = await reportPlay({
+      song_id: songId,
+      source,
+      duration_listened: 0,
+      completed: false,
+    })
+    if (res?.points_awarded && res.points_awarded > 0) {
+      onPointsAwarded(res.points_awarded)
     }
-    window.addEventListener('blur', handleBlur)
-    return () => window.removeEventListener('blur', handleBlur)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [songId, source])
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      {children}
+      {!activated && (
+        <button
+          onClick={handleClick}
+          aria-label="Activate player to earn points"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'rgba(10,10,15,0.35)',
+            border: 0,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#d4a843',
+            fontSize: 13,
+            fontWeight: 600,
+            letterSpacing: 0.5,
+            backdropFilter: 'blur(1px)',
+            borderRadius: 6,
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(10,10,15,0.5)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(10,10,15,0.35)' }}
+        >
+          {hintText}
+        </button>
+      )}
+    </div>
+  )
 }
 
 function SpotifyEmbed({ url, songId, onPointsAwarded }: { url: string; songId: string; onPointsAwarded: (n: number) => void }) {
-  const iframeRef = useRef<HTMLIFrameElement>(null)
   const parsed = parseSpotifyId(url)
   const embedUrl = parsed
     ? `https://open.spotify.com/embed/${parsed.type}/${parsed.id}?utm_source=generator`
     : url
 
-  useIframeClickDetect({ iframeRef, songId, source: 'spotify_embed', onPointsAwarded })
-
   return (
-    <iframe
-      ref={iframeRef}
-      src={embedUrl}
-      width="100%"
-      height="80"
-      frameBorder={0}
-      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-      loading="lazy"
-      style={{ border: 0, borderRadius: 6 }}
-    />
+    <ClickOverlayWrapper songId={songId} source="spotify_embed" onPointsAwarded={onPointsAwarded} hintText="🎵 Click to play on Spotify & earn points">
+      <iframe
+        src={embedUrl}
+        width="100%"
+        height="80"
+        frameBorder={0}
+        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+        loading="lazy"
+        style={{ border: 0, borderRadius: 6, display: 'block' }}
+      />
+    </ClickOverlayWrapper>
   )
 }
 
 function YouTubeEmbed({ url, songId, onPointsAwarded }: { url: string; songId: string; onPointsAwarded: (n: number) => void }) {
-  const iframeRef = useRef<HTMLIFrameElement>(null)
   const videoId = parseYouTubeId(url)
   const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}` : url
 
-  useIframeClickDetect({ iframeRef, songId, source: 'youtube_embed', onPointsAwarded })
-
   return (
-    <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: 6 }}>
-      <iframe
-        ref={iframeRef}
-        src={embedUrl}
-        frameBorder={0}
-        allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        allowFullScreen
-        loading="lazy"
-        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
-      />
-    </div>
+    <ClickOverlayWrapper songId={songId} source="youtube_embed" onPointsAwarded={onPointsAwarded} hintText="▶ Click to play on YouTube & earn points">
+      <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: 6 }}>
+        <iframe
+          src={embedUrl}
+          frameBorder={0}
+          allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+          loading="lazy"
+          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+        />
+      </div>
+    </ClickOverlayWrapper>
   )
 }
 
 function SoundCloudEmbed({ url, songId, onPointsAwarded }: { url: string; songId: string; onPointsAwarded: (n: number) => void }) {
-  const iframeRef = useRef<HTMLIFrameElement>(null)
   const embedUrl = `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&color=%23d4a843&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false`
 
-  useIframeClickDetect({ iframeRef, songId, source: 'soundcloud_embed', onPointsAwarded })
-
   return (
-    <iframe
-      ref={iframeRef}
-      width="100%"
-      height="120"
-      scrolling="no"
-      frameBorder={0}
-      src={embedUrl}
-      loading="lazy"
-      style={{ border: 0, borderRadius: 6 }}
-    />
+    <ClickOverlayWrapper songId={songId} source="soundcloud_embed" onPointsAwarded={onPointsAwarded} hintText="☁️ Click to play on SoundCloud & earn points">
+      <iframe
+        width="100%"
+        height="120"
+        scrolling="no"
+        frameBorder={0}
+        src={embedUrl}
+        loading="lazy"
+        style={{ border: 0, borderRadius: 6, display: 'block' }}
+      />
+    </ClickOverlayWrapper>
   )
 }
 
 function AppleMusicEmbed({ url, songId, onPointsAwarded }: { url: string; songId: string; onPointsAwarded: (n: number) => void }) {
-  const iframeRef = useRef<HTMLIFrameElement>(null)
   const embedUrl = parseAppleMusicEmbed(url)
 
-  useIframeClickDetect({ iframeRef, songId, source: 'apple_embed', onPointsAwarded })
-
   return (
-    <iframe
-      ref={iframeRef}
-      src={embedUrl || url}
-      height="175"
-      width="100%"
-      frameBorder={0}
-      allow="autoplay *; encrypted-media *; fullscreen *; clipboard-write"
-      sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation"
-      loading="lazy"
-      style={{ border: 0, borderRadius: 6, background: 'transparent' }}
-    />
+    <ClickOverlayWrapper songId={songId} source="apple_embed" onPointsAwarded={onPointsAwarded} hintText="🍎 Click to play on Apple Music & earn points">
+      <iframe
+        src={embedUrl || url}
+        height="175"
+        width="100%"
+        frameBorder={0}
+        allow="autoplay *; encrypted-media *; fullscreen *; clipboard-write"
+        sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation"
+        loading="lazy"
+        style={{ border: 0, borderRadius: 6, background: 'transparent', display: 'block' }}
+      />
+    </ClickOverlayWrapper>
   )
 }
