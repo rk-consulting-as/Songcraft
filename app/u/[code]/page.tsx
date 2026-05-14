@@ -4,6 +4,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import Avatar from '@/components/Avatar'
 import FollowButton from '@/components/FollowButton'
+import MessageButton from '@/components/MessageButton'
 import TopTracksList from '@/components/TopTracksList'
 import { CREATOR_ROLES, CREATOR_LANGUAGES } from '@/lib/creatorRoles'
 
@@ -175,8 +176,9 @@ export default async function PublicProfilePage({ params }: { params: { code: st
               )}
             </div>
             {profileId && (
-              <div style={{ marginTop: 18, display: 'flex', gap: 22, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ marginTop: 18, display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
                 <FollowButton targetUserId={profileId} targetCode={referralCode} initialFollowerCount={followerCount} />
+                <MessageButton targetUserId={profileId} />
                 <Link href={`/u/${referralCode}/following`} style={{ display: 'flex', alignItems: 'baseline', gap: 6, textDecoration: 'none' }}>
                   <strong style={{ color: '#e8e0d0', fontSize: 16, fontWeight: 700 }}>{followingCount.toLocaleString()}</strong>
                   <span style={{ color: '#8a7a60', fontSize: 12 }}>following</span>

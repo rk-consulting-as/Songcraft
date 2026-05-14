@@ -130,6 +130,9 @@ export default function Dashboard() {
   // Top-streamed songs from this user's catalog (for the widget)
   const [topStreamedSongs, setTopStreamedSongs] = useState<any[]>([])
 
+  // Unread messages count for the nav badge
+  const [unreadCount, setUnreadCount] = useState(0)
+
   useEffect(() => { setLangState(useLang()); checkAuth(); fetchArtists() }, [])
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -175,6 +178,30 @@ export default function Dashboard() {
       }
       if (prof?.role) setUserRole(prof.role as string)
       if (prof) setUserProfile({ id: prof.id, display_name: prof.display_name ?? null, avatar_url: prof.avatar_url ?? null })
+
+      // Fetch unread message count for nav badge
+      try {
+        const { data: parts } = await supabase
+          .from('conversation_participants')
+          .select('conversation_id, last_read_at')
+          .eq('user_id', user.id)
+        if (parts && parts.length > 0) {
+          const convIds = (parts as any[]).map(p => p.conversation_id)
+          const readMap: Record<string, string> = {}
+          for (const p of parts as any[]) readMap[p.conversation_id] = p.last_read_at || '1970-01-01T00:00:00Z'
+          const { data: msgs } = await supabase
+            .from('messages')
+            .select('conversation_id, sender_id, created_at')
+            .in('conversation_id', convIds)
+            .eq('hidden', false)
+            .neq('sender_id', user.id)
+          let unread = 0
+          for (const m of (msgs as any[]) || []) {
+            if (new Date(m.created_at) > new Date(readMap[m.conversation_id])) unread++
+          }
+          setUnreadCount(unread)
+        }
+      } catch {}
 
       // Fetch top-streamed of own songs
       try {
@@ -518,6 +545,14 @@ export default function Dashboard() {
           <Link href="/discover" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>🌍 {tx.discoverNavLink}</Link>
           <Link href="/charts" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>📈 {tx.chartsNavLink}</Link>
           <Link href="/feed" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>📰 {tx.feedNavLink}</Link>
+          <Link href="/messages" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-flex', alignItems: 'center', gap: 6, position: 'relative' }}>
+            💬 {tx.messagesNavLink}
+            {unreadCount > 0 && (
+              <span style={{ background: '#d4a843', color: '#0a0a0f', fontSize: 11, fontWeight: 700, padding: '1px 7px', borderRadius: 10, marginLeft: 2 }}>
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </Link>
           <Link href="/referrals" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>🤝 {tx.referralsNavLink}</Link>
           {(userRole === 'admin' || userRole === 'super_admin') && (
             <Link href="/admin" style={{

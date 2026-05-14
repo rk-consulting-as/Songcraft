@@ -34,7 +34,19 @@ type LedgerEntry = {
 
 type SettingRow = { key: string; value: any; description: string | null }
 
-type Tab = 'users' | 'settings' | 'ledger'
+type Tab = 'users' | 'settings' | 'ledger' | 'moderation'
+
+type MessageReport = {
+  id: string
+  message_id: string
+  reporter_id: string
+  reason: string
+  status: 'pending' | 'dismissed' | 'actioned'
+  created_at: string
+  message?: { id: string; content: string; sender_id: string; conversation_id: string; hidden: boolean; created_at: string }
+  reporter?: { display_name: string | null; referral_code: string }
+  sender?: { display_name: string | null; referral_code: string }
+}
 
 const ROLES: Role[] = ['user', 'moderator', 'admin', 'super_admin']
 
@@ -61,6 +73,7 @@ export default function AdminPage() {
   const [settingsSavedAt, setSettingsSavedAt] = useState<number | null>(null)
 
   const [ledger, setLedger] = useState<LedgerEntry[]>([])
+  const [reports, setReports] = useState<MessageReport[]>([])
 
   const [busyUserId, setBusyUserId] = useState<string | null>(null)
   const [statusMsg, setStatusMsg] = useState<string | null>(null)
@@ -123,6 +136,59 @@ export default function AdminPage() {
       setSettingsDraft(draft)
     }
     if (lg.data) setLedger(lg.data as LedgerEntry[])
+
+    // Load pending message reports for moderation queue
+    try {
+      const { data: reportsData } = await supabase
+        .from('message_reports')
+        .select('id, message_id, reporter_id, reason, status, created_at')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(50)
+      if (reportsData && reportsData.length > 0) {
+        const msgIds = (reportsData as any[]).map(r => r.message_id)
+        const reporterIds = Array.from(new Set((reportsData as any[]).map(r => r.reporter_id)))
+        const [msgsRes, reportersRes] = await Promise.all([
+          supabase.from('messages').select('id, content, sender_id, conversation_id, hidden, created_at').in('id', msgIds),
+          supabase.from('profiles').select('id, display_name, referral_code').in('id', reporterIds),
+        ])
+        const msgMap: Record<string, any> = {}
+        const reporterMap: Record<string, any> = {}
+        for (const m of (msgsRes.data as any[]) || []) msgMap[m.id] = m
+        for (const p of (reportersRes.data as any[]) || []) reporterMap[p.id] = p
+        const senderIds = Array.from(new Set(Object.values(msgMap).map((m: any) => m.sender_id)))
+        const { data: senders } = await supabase.from('profiles').select('id, display_name, referral_code').in('id', senderIds)
+        const senderMap: Record<string, any> = {}
+        for (const p of (senders as any[]) || []) senderMap[p.id] = p
+
+        setReports((reportsData as any[]).map(r => ({
+          ...r,
+          message: msgMap[r.message_id],
+          reporter: reporterMap[r.reporter_id],
+          sender: msgMap[r.message_id] ? senderMap[msgMap[r.message_id].sender_id] : undefined,
+        })))
+      } else {
+        setReports([])
+      }
+    } catch {}
+  }
+
+  const moderateReport = async (reportId: string, messageId: string, action: 'dismiss' | 'hide') => {
+    const supabase = createClient()
+    setBusyUserId(reportId)
+    if (action === 'hide') {
+      const { error: hideErr } = await supabase.from('messages').update({ hidden: true }).eq('id', messageId)
+      if (hideErr) { setStatusMsg(`${tx.adminError}: ${hideErr.message}`); setBusyUserId(null); return }
+    }
+    const { error } = await supabase
+      .from('message_reports')
+      .update({ status: action === 'hide' ? 'actioned' : 'dismissed', reviewed_by: me?.id, reviewed_at: new Date().toISOString() })
+      .eq('id', reportId)
+    setBusyUserId(null)
+    if (error) { setStatusMsg(`${tx.adminError}: ${error.message}`); return }
+    setStatusMsg(action === 'hide' ? tx.adminModHidden : tx.adminModDismissed)
+    await refresh()
+    setTimeout(() => setStatusMsg(null), 3000)
   }
 
   const changeRole = async (userId: string, newRole: Role) => {
@@ -362,6 +428,12 @@ export default function AdminPage() {
           <TabBtn active={tab === 'users'} onClick={() => setTab('users')}>👥 {tx.adminTabUsers} ({counts.total})</TabBtn>
           <TabBtn active={tab === 'settings'} onClick={() => setTab('settings')}>⚙️ {tx.adminTabSettings}</TabBtn>
           <TabBtn active={tab === 'ledger'} onClick={() => setTab('ledger')}>📊 {tx.adminTabLedger} ({ledger.length})</TabBtn>
+          <TabBtn active={tab === 'moderation'} onClick={() => setTab('moderation')}>
+            ⚐ {tx.adminTabModeration}
+            {reports.length > 0 && (
+              <span style={{ marginLeft: 6, background: '#c05050', color: '#fff', fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 8 }}>{reports.length}</span>
+            )}
+          </TabBtn>
         </div>
 
         {tab === 'users' && (
@@ -808,6 +880,65 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {tab === 'moderation' && (
+          <div>
+            <p style={{ color: '#8a7a60', fontSize: 13, marginTop: 0 }}>{tx.adminModerationDesc}</p>
+            {reports.length === 0 ? (
+              <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+                <div style={{ fontSize: 32, marginBottom: 10 }}>🕊️</div>
+                <p style={{ color: '#8a7a60' }}>{tx.adminModerationEmpty}</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {reports.map(r => (
+                  <div key={r.id} className="card" style={{ borderColor: 'rgba(192,80,80,0.3)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
+                      <div style={{ fontSize: 12, color: '#8a7a60' }}>
+                        <strong style={{ color: '#c05050' }}>⚐ {tx.adminModerationReportedBy}:</strong>{' '}
+                        {r.reporter?.display_name || r.reporter?.referral_code || '—'} · {new Date(r.created_at).toLocaleString()}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#5a4a30' }}>{tx.adminModerationReason}: {r.reason}</div>
+                    </div>
+                    {r.message ? (
+                      <div style={{
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(180,140,80,0.15)',
+                        borderRadius: 6,
+                        padding: 12,
+                        marginBottom: 12,
+                      }}>
+                        <div style={{ color: '#6a5a40', fontSize: 11, marginBottom: 4 }}>
+                          {tx.adminModerationFrom}: {r.sender?.display_name || r.sender?.referral_code || r.message.sender_id.slice(0, 8)}
+                          {r.message.hidden && <span style={{ marginLeft: 8, color: '#c05050' }}>({tx.adminModerationAlreadyHidden})</span>}
+                        </div>
+                        <div style={{ color: '#e8e0d0', fontSize: 13, whiteSpace: 'pre-wrap' }}>{r.message.content}</div>
+                      </div>
+                    ) : (
+                      <div style={{ color: '#5a4a30', fontSize: 12, marginBottom: 12 }}>{tx.adminModerationMessageGone}</div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                      <button
+                        onClick={() => moderateReport(r.id, r.message_id, 'dismiss')}
+                        disabled={busyUserId === r.id}
+                        style={smallBtn('#8a7a60')}
+                      >
+                        ✓ {tx.adminModerationDismiss}
+                      </button>
+                      <button
+                        onClick={() => moderateReport(r.id, r.message_id, 'hide')}
+                        disabled={busyUserId === r.id || r.message?.hidden}
+                        style={smallBtn('#c05050')}
+                      >
+                        🚫 {tx.adminModerationHide}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

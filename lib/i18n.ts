@@ -667,6 +667,46 @@ export const t = {
 
     // Dashboard widgets
     dashboardTopStreamed: 'Dine mest spilte låter',
+
+    // Chat / messages
+    messagesNavLink: 'Meldinger',
+    messagesTitle: 'Meldinger',
+    messagesEmptyTitle: 'Ingen meldinger ennå',
+    messagesEmptyDesc: 'Klikk på en bruker og send en melding for å starte en samtale.',
+    messagesNoMessagesYet: 'Ingen meldinger ennå.',
+    messagesEmptyConv: 'Ingen meldinger ennå. Skriv den første!',
+    messagesContactSupport: 'Kontakt support',
+    messagesYouPrefix: 'Du:',
+    messagesSend: 'Send',
+    messagesComposerPlaceholder: 'Skriv en melding... (Enter for å sende, Shift+Enter for ny linje)',
+    messagesBlock: 'Blokker',
+    messagesBlocked: 'Blokkert',
+    messagesYouBlocked: 'Du har blokkert denne brukeren. Fjern blokkering for å sende meldinger.',
+    messagesBlockedByOther: 'Du kan ikke sende meldinger til denne brukeren.',
+    messagesConfirmBlock: 'Blokkere {name}? De vil ikke kunne sende deg meldinger.',
+    messagesErrSend: 'Kunne ikke sende melding',
+    messagesErrBlocked: 'Du kan ikke sende meldinger til denne brukeren',
+    messagesErrReport: 'Kunne ikke sende rapport',
+    messagesReportTitle: 'Rapporter melding',
+    messagesReportDesc: 'Hvorfor rapporterer du denne meldingen? Admin vil gjennomgå den.',
+    messagesReportPlaceholder: 'Spam, trakassering, hatprat, ...',
+    messagesReportTip: 'Rapporter denne meldingen',
+    messagesSubmitReport: 'Send rapport',
+    messagesReportSubmitted: 'Rapport sendt ✓',
+
+    // Admin moderation
+    adminTabModeration: 'Moderering',
+    adminModerationDesc: 'Innrapporterte meldinger som venter på gjennomgang. Avvis hvis OK, eller skjul meldingen.',
+    adminModerationEmpty: 'Ingen ventende rapporter. Alt fred og ro 🕊️',
+    adminModerationReportedBy: 'Rapportert av',
+    adminModerationReason: 'Grunn',
+    adminModerationFrom: 'Sendt av',
+    adminModerationAlreadyHidden: 'allerede skjult',
+    adminModerationMessageGone: 'Meldingen ble slettet.',
+    adminModerationDismiss: 'Avvis',
+    adminModerationHide: 'Skjul melding',
+    adminModHidden: 'Melding skjult ✓',
+    adminModDismissed: 'Rapport avvist ✓',
   },
 
   en: {
@@ -1335,6 +1375,46 @@ export const t = {
 
     // Dashboard widgets
     dashboardTopStreamed: 'Your top-streamed songs',
+
+    // Chat / messages
+    messagesNavLink: 'Messages',
+    messagesTitle: 'Messages',
+    messagesEmptyTitle: 'No messages yet',
+    messagesEmptyDesc: 'Click on a user and send a message to start a conversation.',
+    messagesNoMessagesYet: 'No messages yet.',
+    messagesEmptyConv: 'No messages yet. Send the first!',
+    messagesContactSupport: 'Contact support',
+    messagesYouPrefix: 'You:',
+    messagesSend: 'Send',
+    messagesComposerPlaceholder: 'Type a message... (Enter to send, Shift+Enter for new line)',
+    messagesBlock: 'Block',
+    messagesBlocked: 'Blocked',
+    messagesYouBlocked: "You have blocked this user. Unblock to send messages.",
+    messagesBlockedByOther: 'You cannot send messages to this user.',
+    messagesConfirmBlock: 'Block {name}? They will not be able to send you messages.',
+    messagesErrSend: 'Could not send message',
+    messagesErrBlocked: 'You cannot send messages to this user',
+    messagesErrReport: 'Could not submit report',
+    messagesReportTitle: 'Report message',
+    messagesReportDesc: 'Why are you reporting this message? An admin will review it.',
+    messagesReportPlaceholder: 'Spam, harassment, hate speech, ...',
+    messagesReportTip: 'Report this message',
+    messagesSubmitReport: 'Submit report',
+    messagesReportSubmitted: 'Report submitted ✓',
+
+    // Admin moderation
+    adminTabModeration: 'Moderation',
+    adminModerationDesc: 'Reported messages awaiting review. Dismiss if OK, or hide the message.',
+    adminModerationEmpty: 'No pending reports. All quiet 🕊️',
+    adminModerationReportedBy: 'Reported by',
+    adminModerationReason: 'Reason',
+    adminModerationFrom: 'Sent by',
+    adminModerationAlreadyHidden: 'already hidden',
+    adminModerationMessageGone: 'The message was deleted.',
+    adminModerationDismiss: 'Dismiss',
+    adminModerationHide: 'Hide message',
+    adminModHidden: 'Message hidden ✓',
+    adminModDismissed: 'Report dismissed ✓',
   },
 }
 
