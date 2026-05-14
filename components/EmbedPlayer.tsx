@@ -189,16 +189,24 @@ export default function EmbedPlayer({
         />
       )}
       {active?.kind === 'spotify' && (
-        <SpotifyEmbed url={active.url} songId={song.id} />
+        <SpotifyEmbed url={active.url} songId={song.id}
+          onPointsAwarded={n => { setPointsToast(n); setTimeout(() => setPointsToast(null), 3000) }}
+        />
       )}
       {active?.kind === 'youtube' && (
-        <YouTubeEmbed url={active.url} songId={song.id} />
+        <YouTubeEmbed url={active.url} songId={song.id}
+          onPointsAwarded={n => { setPointsToast(n); setTimeout(() => setPointsToast(null), 3000) }}
+        />
       )}
       {active?.kind === 'soundcloud' && (
-        <SoundCloudEmbed url={active.url} songId={song.id} />
+        <SoundCloudEmbed url={active.url} songId={song.id}
+          onPointsAwarded={n => { setPointsToast(n); setTimeout(() => setPointsToast(null), 3000) }}
+        />
       )}
       {active?.kind === 'apple' && (
-        <AppleMusicEmbed url={active.url} songId={song.id} />
+        <AppleMusicEmbed url={active.url} songId={song.id}
+          onPointsAwarded={n => { setPointsToast(n); setTimeout(() => setPointsToast(null), 3000) }}
+        />
       )}
 
       {/* Points awarded toast */}
@@ -309,50 +317,80 @@ function InternalAudioPlayer({
   )
 }
 
-/* ---------- Embed players (click-tracked but duration not measurable) ---------- */
+/* ---------- Embed players ----------
+   Iframes are cross-origin, so we can't directly listen for clicks inside them.
+   But when a user clicks INTO a cross-origin iframe, the parent window LOSES focus
+   to the iframe. We detect that via `window.blur` + checking `document.activeElement`.
+   This is the most reliable cross-browser way to detect "user interacted with iframe".
+*/
 
-function SpotifyEmbed({ url, songId }: { url: string; songId: string }) {
+function useIframeClickDetect(opts: {
+  iframeRef: React.RefObject<HTMLIFrameElement>
+  songId: string
+  source: 'spotify_embed' | 'youtube_embed' | 'soundcloud_embed' | 'apple_embed'
+  onPointsAwarded: (n: number) => void
+}) {
+  const { iframeRef, songId, source, onPointsAwarded } = opts
   const reportedRef = useRef(false)
+
+  useEffect(() => {
+    const handleBlur = () => {
+      // Defer the activeElement check — browsers may update it slightly after blur
+      setTimeout(async () => {
+        if (reportedRef.current) return
+        if (document.activeElement !== iframeRef.current) return
+        reportedRef.current = true
+        const res = await reportPlay({
+          song_id: songId,
+          source,
+          duration_listened: 0,
+          completed: false,
+        })
+        if (res?.points_awarded && res.points_awarded > 0) {
+          onPointsAwarded(res.points_awarded)
+        }
+      }, 80)
+    }
+    window.addEventListener('blur', handleBlur)
+    return () => window.removeEventListener('blur', handleBlur)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [songId, source])
+}
+
+function SpotifyEmbed({ url, songId, onPointsAwarded }: { url: string; songId: string; onPointsAwarded: (n: number) => void }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null)
   const parsed = parseSpotifyId(url)
   const embedUrl = parsed
     ? `https://open.spotify.com/embed/${parsed.type}/${parsed.id}?utm_source=generator`
     : url
 
-  const handlePlayClick = () => {
-    if (reportedRef.current) return
-    reportedRef.current = true
-    reportPlay({ song_id: songId, source: 'spotify_embed', duration_listened: 0, completed: false })
-  }
+  useIframeClickDetect({ iframeRef, songId, source: 'spotify_embed', onPointsAwarded })
 
   return (
-    <div onClick={handlePlayClick}>
-      <iframe
-        src={embedUrl}
-        width="100%"
-        height="80"
-        frameBorder={0}
-        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-        loading="lazy"
-        style={{ border: 0, borderRadius: 6 }}
-      />
-    </div>
+    <iframe
+      ref={iframeRef}
+      src={embedUrl}
+      width="100%"
+      height="80"
+      frameBorder={0}
+      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+      loading="lazy"
+      style={{ border: 0, borderRadius: 6 }}
+    />
   )
 }
 
-function YouTubeEmbed({ url, songId }: { url: string; songId: string }) {
-  const reportedRef = useRef(false)
+function YouTubeEmbed({ url, songId, onPointsAwarded }: { url: string; songId: string; onPointsAwarded: (n: number) => void }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null)
   const videoId = parseYouTubeId(url)
   const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}` : url
 
-  const handlePlayClick = () => {
-    if (reportedRef.current) return
-    reportedRef.current = true
-    reportPlay({ song_id: songId, source: 'youtube_embed', duration_listened: 0, completed: false })
-  }
+  useIframeClickDetect({ iframeRef, songId, source: 'youtube_embed', onPointsAwarded })
 
   return (
-    <div onClick={handlePlayClick} style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: 6 }}>
+    <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: 6 }}>
       <iframe
+        ref={iframeRef}
         src={embedUrl}
         frameBorder={0}
         allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -364,53 +402,43 @@ function YouTubeEmbed({ url, songId }: { url: string; songId: string }) {
   )
 }
 
-function SoundCloudEmbed({ url, songId }: { url: string; songId: string }) {
-  const reportedRef = useRef(false)
+function SoundCloudEmbed({ url, songId, onPointsAwarded }: { url: string; songId: string; onPointsAwarded: (n: number) => void }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null)
   const embedUrl = `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&color=%23d4a843&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false`
 
-  const handlePlayClick = () => {
-    if (reportedRef.current) return
-    reportedRef.current = true
-    reportPlay({ song_id: songId, source: 'soundcloud_embed', duration_listened: 0, completed: false })
-  }
+  useIframeClickDetect({ iframeRef, songId, source: 'soundcloud_embed', onPointsAwarded })
 
   return (
-    <div onClick={handlePlayClick}>
-      <iframe
-        width="100%"
-        height="120"
-        scrolling="no"
-        frameBorder={0}
-        src={embedUrl}
-        loading="lazy"
-        style={{ border: 0, borderRadius: 6 }}
-      />
-    </div>
+    <iframe
+      ref={iframeRef}
+      width="100%"
+      height="120"
+      scrolling="no"
+      frameBorder={0}
+      src={embedUrl}
+      loading="lazy"
+      style={{ border: 0, borderRadius: 6 }}
+    />
   )
 }
 
-function AppleMusicEmbed({ url, songId }: { url: string; songId: string }) {
-  const reportedRef = useRef(false)
+function AppleMusicEmbed({ url, songId, onPointsAwarded }: { url: string; songId: string; onPointsAwarded: (n: number) => void }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null)
   const embedUrl = parseAppleMusicEmbed(url)
 
-  const handlePlayClick = () => {
-    if (reportedRef.current) return
-    reportedRef.current = true
-    reportPlay({ song_id: songId, source: 'apple_embed', duration_listened: 0, completed: false })
-  }
+  useIframeClickDetect({ iframeRef, songId, source: 'apple_embed', onPointsAwarded })
 
   return (
-    <div onClick={handlePlayClick}>
-      <iframe
-        src={embedUrl || url}
-        height="175"
-        width="100%"
-        frameBorder={0}
-        allow="autoplay *; encrypted-media *; fullscreen *; clipboard-write"
-        sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation"
-        loading="lazy"
-        style={{ border: 0, borderRadius: 6, background: 'transparent' }}
-      />
-    </div>
+    <iframe
+      ref={iframeRef}
+      src={embedUrl || url}
+      height="175"
+      width="100%"
+      frameBorder={0}
+      allow="autoplay *; encrypted-media *; fullscreen *; clipboard-write"
+      sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation"
+      loading="lazy"
+      style={{ border: 0, borderRadius: 6, background: 'transparent' }}
+    />
   )
 }
