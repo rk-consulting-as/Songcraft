@@ -133,6 +133,7 @@ export default function EmbedPlayer({
   const sources = deriveSources(song)
   const [active, setActive] = useState<Source | null>(sources[0] || null)
   const [pointsToast, setPointsToast] = useState<number | null>(null)
+  const [clickToast, setClickToast] = useState<string | null>(null)
 
   if (sources.length === 0) {
     return (
@@ -185,27 +186,57 @@ export default function EmbedPlayer({
         <InternalAudioPlayer
           song={song}
           audioUrl={active.url}
-          onPointsAwarded={n => { setPointsToast(n); setTimeout(() => setPointsToast(null), 3000) }}
+          onPointsAwarded={n => {
+            if (n > 0) {
+              setPointsToast(n); setTimeout(() => setPointsToast(null), 3000)
+            } else {
+              setClickToast('✓ Play registered'); setTimeout(() => setClickToast(null), 2000)
+            }
+          }}
         />
       )}
       {active?.kind === 'spotify' && (
         <SpotifyEmbed url={active.url} songId={song.id}
-          onPointsAwarded={n => { setPointsToast(n); setTimeout(() => setPointsToast(null), 3000) }}
+          onPointsAwarded={n => {
+            if (n > 0) {
+              setPointsToast(n); setTimeout(() => setPointsToast(null), 3000)
+            } else {
+              setClickToast('✓ Play registered'); setTimeout(() => setClickToast(null), 2000)
+            }
+          }}
         />
       )}
       {active?.kind === 'youtube' && (
         <YouTubeEmbed url={active.url} songId={song.id}
-          onPointsAwarded={n => { setPointsToast(n); setTimeout(() => setPointsToast(null), 3000) }}
+          onPointsAwarded={n => {
+            if (n > 0) {
+              setPointsToast(n); setTimeout(() => setPointsToast(null), 3000)
+            } else {
+              setClickToast('✓ Play registered'); setTimeout(() => setClickToast(null), 2000)
+            }
+          }}
         />
       )}
       {active?.kind === 'soundcloud' && (
         <SoundCloudEmbed url={active.url} songId={song.id}
-          onPointsAwarded={n => { setPointsToast(n); setTimeout(() => setPointsToast(null), 3000) }}
+          onPointsAwarded={n => {
+            if (n > 0) {
+              setPointsToast(n); setTimeout(() => setPointsToast(null), 3000)
+            } else {
+              setClickToast('✓ Play registered'); setTimeout(() => setClickToast(null), 2000)
+            }
+          }}
         />
       )}
       {active?.kind === 'apple' && (
         <AppleMusicEmbed url={active.url} songId={song.id}
-          onPointsAwarded={n => { setPointsToast(n); setTimeout(() => setPointsToast(null), 3000) }}
+          onPointsAwarded={n => {
+            if (n > 0) {
+              setPointsToast(n); setTimeout(() => setPointsToast(null), 3000)
+            } else {
+              setClickToast('✓ Play registered'); setTimeout(() => setClickToast(null), 2000)
+            }
+          }}
         />
       )}
 
@@ -220,9 +251,25 @@ export default function EmbedPlayer({
           borderRadius: 12,
           fontSize: 11,
           fontWeight: 600,
-          animation: 'pointsFade 3s ease',
+          zIndex: 20,
         }}>
           ✨ +{pointsToast} pts
+        </div>
+      )}
+      {/* Generic click-registered toast (when no points but click was logged) */}
+      {clickToast && (
+        <div style={{
+          position: 'absolute', top: 10, right: 10,
+          background: 'rgba(180,140,80,0.12)',
+          color: '#a09080',
+          border: '1px solid rgba(180,140,80,0.3)',
+          padding: '4px 10px',
+          borderRadius: 12,
+          fontSize: 11,
+          fontWeight: 600,
+          zIndex: 20,
+        }}>
+          {clickToast}
         </div>
       )}
     </div>
@@ -345,14 +392,16 @@ function ClickOverlayWrapper({
   const handleClick = async () => {
     if (activated) return
     setActivated(true)
+    console.log('[EmbedPlayer] Click overlay activated, reporting play:', { songId, source })
     const res = await reportPlay({
       song_id: songId,
       source,
       duration_listened: 0,
       completed: false,
     })
-    if (res?.points_awarded && res.points_awarded > 0) {
-      onPointsAwarded(res.points_awarded)
+    console.log('[EmbedPlayer] reportPlay response:', res)
+    if (res) {
+      onPointsAwarded(res.points_awarded || 0)
     }
   }
 
@@ -366,8 +415,9 @@ function ClickOverlayWrapper({
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'rgba(10,10,15,0.35)',
-            border: 0,
+            zIndex: 10,
+            background: 'rgba(10,10,15,0.5)',
+            border: '1px solid rgba(212,168,67,0.4)',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -376,12 +426,12 @@ function ClickOverlayWrapper({
             fontSize: 13,
             fontWeight: 600,
             letterSpacing: 0.5,
-            backdropFilter: 'blur(1px)',
             borderRadius: 6,
             transition: 'background 0.15s',
+            padding: 0,
           }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(10,10,15,0.5)' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(10,10,15,0.35)' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(10,10,15,0.7)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(10,10,15,0.5)' }}
         >
           {hintText}
         </button>
