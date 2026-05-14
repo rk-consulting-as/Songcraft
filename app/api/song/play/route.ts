@@ -122,33 +122,31 @@ async function handlePlay(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null
   const ipHash = hashIp(ip)
 
-  // Insert the play log. If the table doesn't exist, return a clear error instead of 500.
+  // Log the play via SECURITY DEFINER RPC — bypasses any RLS quirks on song_plays.
   let playId: string | null = null
   {
-    const { data: play, error: insertErr } = await sbAnon
-      .from('song_plays')
-      .insert({
-        song_id: songId,
-        listener_id: listenerId,
-        source,
-        duration_listened_seconds: durationListened,
-        completed,
-        points_awarded: 0,
-        ip_hash: ipHash,
-      })
-      .select('id')
-      .single()
-    if (insertErr) {
-      console.error('[song/play] song_plays insert failed:', insertErr)
+    const { data: logResult, error: logErr } = await sbAnon.rpc('log_song_play', {
+      p_song_id: songId,
+      p_listener_id: listenerId,
+      p_source: source,
+      p_duration: durationListened,
+      p_completed: completed,
+      p_ip_hash: ipHash,
+    })
+    if (logErr) {
+      console.error('[song/play] log_song_play RPC failed:', logErr)
       return NextResponse.json({
-        error: 'song_plays_insert_failed',
-        message: insertErr.message,
-        hint: insertErr.message?.includes('does not exist')
-          ? 'song_plays table missing — run migration 20260516_song_plays.sql'
-          : insertErr.hint,
+        error: 'log_song_play_failed',
+        message: logErr.message,
+        hint: logErr.message?.includes('does not exist')
+          ? 'log_song_play RPC missing — run migration 20260516_log_song_play_rpc.sql'
+          : logErr.hint,
       }, { status: 500 })
     }
-    playId = play.id
+    if (logResult && (logResult as any).error) {
+      return NextResponse.json({ error: (logResult as any).error }, { status: 400 })
+    }
+    playId = (logResult as any)?.play_id || null
   }
 
   // If listener is logged in, try to award points via the RPC. Non-fatal if RPC missing.
