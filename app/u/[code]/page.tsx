@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import Avatar from '@/components/Avatar'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -13,15 +14,11 @@ const sb = createClient(
 
 export default async function PublicProfilePage({ params }: { params: { code: string } }) {
   const upperCode = (params.code || '').toUpperCase()
-  const { data: profile, error } = await sb
+  const { data: profile } = await sb
     .from('profiles')
     .select('*')
     .eq('referral_code', upperCode)
     .maybeSingle()
-
-  if (error) {
-    console.error('[u/code] profile query error:', error.message)
-  }
   if (!profile) notFound()
 
   return (
@@ -36,22 +33,17 @@ export default async function PublicProfilePage({ params }: { params: { code: st
         <Link href="/discover" style={{ color: '#6a5a40', fontSize: 13, textDecoration: 'none' }}>
           ← Discover
         </Link>
+
+        {/* TEST 1: Avatar component */}
+        <div style={{ marginTop: 20, padding: 16, border: '1px solid rgba(180,140,80,0.2)', borderRadius: 6 }}>
+          <p style={{ color: '#8a7a60', fontSize: 11, margin: 0 }}>TEST 1: Avatar component</p>
+          <Avatar value={profile.avatar_url} name={profile.display_name} seed={profile.id} size={80} />
+        </div>
+
         <h1 style={{ color: '#d4a843', fontSize: 32, margin: '20px 0 10px' }}>
           {profile.display_name || profile.referral_code}
         </h1>
-        <p style={{ color: '#8a7a60' }}>
-          Profile loaded ✓ — referral code: {profile.referral_code}
-        </p>
-        <pre style={{
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(180,140,80,0.15)',
-          padding: 16,
-          borderRadius: 6,
-          color: '#a09080',
-          fontSize: 11,
-          overflowX: 'auto',
-          marginTop: 24,
-        }}>{JSON.stringify(profile, null, 2)}</pre>
+        <p style={{ color: '#8a7a60' }}>Profile loaded ✓ — Avatar test active</p>
       </div>
     </div>
   )
