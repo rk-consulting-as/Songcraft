@@ -40,6 +40,9 @@ export default function ReferralsPage() {
   const [downlineProfiles, setDownlineProfiles] = useState<Record<string, Profile>>({})
   const [ledger, setLedger] = useState<LedgerEntry[]>([])
   const [copied, setCopied] = useState(false)
+  const [badgeThresholds, setBadgeThresholds] = useState<Record<string, number>>({
+    bronze: 100, silver: 500, gold: 2000, platinum: 10000,
+  })
 
   useEffect(() => { setLangState(useLang()); fetchAll() }, [])
 
@@ -52,7 +55,7 @@ export default function ReferralsPage() {
 
     const userId = session.user.id
 
-    const [pr, rel, led] = await Promise.all([
+    const [pr, rel, led, badges] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).single(),
       supabase.from('referral_relationships')
         .select('id, referred_id, level, created_at')
@@ -64,7 +67,12 @@ export default function ReferralsPage() {
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(50),
+      supabase.from('system_settings').select('value').eq('key', 'badges.thresholds').maybeSingle(),
     ])
+
+    if (badges?.data?.value && typeof badges.data.value === 'object') {
+      setBadgeThresholds(badges.data.value as Record<string, number>)
+    }
 
     if (pr.data) setProfile(pr.data as Profile)
     if (rel.data) {
@@ -163,6 +171,14 @@ export default function ReferralsPage() {
           </p>
         </div>
 
+        {/* Badge progression */}
+        <BadgeProgress
+          points={profile.total_points}
+          thresholds={badgeThresholds}
+          tx={tx}
+          accent={accent}
+        />
+
         {/* Downline tree by level */}
         <div style={{ marginBottom: 28 }}>
           <h2 style={{ color: accent, fontSize: 15, fontWeight: 'normal', letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 14px' }}>
@@ -249,6 +265,146 @@ export default function ReferralsPage() {
             </div>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+/* ---------- Badge progression component ---------- */
+
+const BADGE_TIERS = [
+  { key: 'bronze',   color: '#c47b3e', emoji: '🥉', labelKey: 'badgeTierBronze',   benefitKey: 'badgeBenefitBronze' },
+  { key: 'silver',   color: '#b8b8b8', emoji: '🥈', labelKey: 'badgeTierSilver',   benefitKey: 'badgeBenefitSilver' },
+  { key: 'gold',     color: '#d4a843', emoji: '🥇', labelKey: 'badgeTierGold',     benefitKey: 'badgeBenefitGold' },
+  { key: 'platinum', color: '#9ad0d4', emoji: '💎', labelKey: 'badgeTierPlatinum', benefitKey: 'badgeBenefitPlatinum' },
+] as const
+
+function BadgeProgress({ points, thresholds, tx, accent }: {
+  points: number
+  thresholds: Record<string, number>
+  tx: any
+  accent: string
+}) {
+  // Sort tiers by threshold ascending so we can find the current + next tier
+  const tiers = BADGE_TIERS
+    .map(t => ({ ...t, threshold: Number(thresholds[t.key]) || 0 }))
+    .sort((a, b) => a.threshold - b.threshold)
+
+  // Current tier = highest tier whose threshold the user has met (and which has a positive threshold)
+  let current = tiers.filter(t => t.threshold > 0 && points >= t.threshold).pop() || null
+  // Next tier = first tier strictly above current's threshold (and above current points)
+  const next = tiers.find(t => t.threshold > 0 && t.threshold > points) || null
+
+  const lowerBound = current?.threshold || 0
+  const upperBound = next?.threshold || lowerBound
+  const progressPct = next
+    ? Math.min(100, Math.max(0, ((points - lowerBound) / Math.max(1, upperBound - lowerBound)) * 100))
+    : 100
+  const remaining = next ? Math.max(0, next.threshold - points) : 0
+
+  return (
+    <div style={{ marginBottom: 28 }}>
+      <h2 style={{ color: accent, fontSize: 15, fontWeight: 'normal', letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 14px' }}>
+        🏆 {tx.badgesTitle}
+      </h2>
+
+      <div className="card" style={{ marginBottom: 14 }}>
+        {/* Top: current status */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: '50%',
+              background: current ? `${current.color}22` : 'rgba(255,255,255,0.04)',
+              border: `2px solid ${current ? current.color : '#3a3530'}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30,
+            }}>
+              {current ? current.emoji : '🌱'}
+            </div>
+            <div>
+              <div style={{ color: '#6a5a40', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' }}>
+                {tx.badgeCurrentTier}
+              </div>
+              <div style={{ color: current ? current.color : '#8a7a60', fontSize: 22, fontWeight: 600, lineHeight: 1.1 }}>
+                {current ? tx[current.labelKey] : tx.badgeTierNone}
+              </div>
+              {current && (
+                <div style={{ color: '#6a5a40', fontSize: 12, marginTop: 4 }}>
+                  {tx[current.benefitKey]}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {next ? (
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ color: '#6a5a40', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' }}>
+                {tx.badgeNextTier}
+              </div>
+              <div style={{ color: next.color, fontSize: 16, fontWeight: 600 }}>
+                {next.emoji} {tx[next.labelKey]}
+              </div>
+              <div style={{ color: '#8a7a60', fontSize: 12, marginTop: 2 }}>
+                {tx.badgePointsToGo.replace('{n}', remaining.toLocaleString())}
+              </div>
+            </div>
+          ) : (
+            <div style={{ color: '#7bc87b', fontSize: 12, fontWeight: 600 }}>
+              ⭐ {tx.badgeMaxedOut}
+            </div>
+          )}
+        </div>
+
+        {/* Progress bar */}
+        <div style={{
+          height: 10, borderRadius: 5,
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(180,140,80,0.15)',
+          overflow: 'hidden', position: 'relative',
+        }}>
+          <div style={{
+            width: `${progressPct}%`,
+            height: '100%',
+            background: next
+              ? `linear-gradient(90deg, ${current?.color || '#8a7a60'} 0%, ${next.color} 100%)`
+              : '#7bc87b',
+            transition: 'width 0.4s ease',
+          }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 11, color: '#6a5a40' }}>
+          <span>{lowerBound.toLocaleString()}</span>
+          <span style={{ color: accent, fontWeight: 600 }}>{points.toLocaleString()} {tx.badgePointsShort}</span>
+          <span>{upperBound > lowerBound ? upperBound.toLocaleString() : '∞'}</span>
+        </div>
+      </div>
+
+      {/* All tiers list */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+        {tiers.map(t => {
+          const achieved = t.threshold > 0 && points >= t.threshold
+          return (
+            <div key={t.key} style={{
+              padding: 12,
+              borderRadius: 6,
+              background: achieved ? `${t.color}11` : 'rgba(255,255,255,0.02)',
+              border: `1px solid ${achieved ? t.color + '55' : 'rgba(180,140,80,0.12)'}`,
+              opacity: achieved ? 1 : 0.7,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <span style={{ fontSize: 22, filter: achieved ? 'none' : 'grayscale(0.7)' }}>{t.emoji}</span>
+                <div style={{ color: achieved ? t.color : '#8a7a60', fontWeight: 600, fontSize: 14 }}>
+                  {tx[t.labelKey]}
+                </div>
+                {achieved && <span style={{ marginLeft: 'auto', color: '#7bc87b', fontSize: 14 }}>✓</span>}
+              </div>
+              <div style={{ color: '#8a7a60', fontSize: 11, marginBottom: 4 }}>
+                {t.threshold.toLocaleString()} {tx.badgePointsShort}
+              </div>
+              <div style={{ color: '#6a5a40', fontSize: 11 }}>
+                {tx[t.benefitKey]}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

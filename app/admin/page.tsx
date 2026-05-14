@@ -52,7 +52,9 @@ export default function AdminPage() {
   const [paidFilter, setPaidFilter] = useState<'all' | 'paid' | 'unpaid'>('all')
 
   const [settings, setSettings] = useState<SettingRow[]>([])
-  const [settingsDraft, setSettingsDraft] = useState<Record<string, string>>({})
+  // For known keys (points.signup, points.paid, badges.thresholds) we store parsed
+  // objects. For unknown keys we fall back to a JSON string.
+  const [settingsDraft, setSettingsDraft] = useState<Record<string, any>>({})
   const [savingSettings, setSavingSettings] = useState(false)
   const [settingsSavedAt, setSettingsSavedAt] = useState<number | null>(null)
 
@@ -98,8 +100,16 @@ export default function AdminPage() {
     if (ss.data) {
       const rows = ss.data as SettingRow[]
       setSettings(rows)
-      const draft: Record<string, string> = {}
-      for (const r of rows) draft[r.key] = typeof r.value === 'string' ? r.value : JSON.stringify(r.value, null, 2)
+      const draft: Record<string, any> = {}
+      for (const r of rows) {
+        // Known structured keys → store object directly so the form inputs bind cleanly.
+        if (r.key === 'points.signup' || r.key === 'points.paid' || r.key === 'badges.thresholds') {
+          draft[r.key] = r.value && typeof r.value === 'object' ? r.value : {}
+        } else {
+          // Unknown keys → raw JSON string for the textarea fallback.
+          draft[r.key] = typeof r.value === 'string' ? r.value : JSON.stringify(r.value, null, 2)
+        }
+      }
       setSettingsDraft(draft)
     }
     if (lg.data) setLedger(lg.data as LedgerEntry[])
@@ -185,12 +195,18 @@ export default function AdminPage() {
   const saveSetting = async (key: string) => {
     const supabase = createClient()
     setSavingSettings(true)
+    const draft = settingsDraft[key]
     let parsed: any
-    try {
-      parsed = JSON.parse(settingsDraft[key])
-    } catch {
-      // Treat as plain string
-      parsed = settingsDraft[key]
+    if (typeof draft === 'string') {
+      try {
+        parsed = JSON.parse(draft)
+      } catch {
+        // Treat as plain string
+        parsed = draft
+      }
+    } else {
+      // Already a structured object (points.signup, points.paid, badges.thresholds)
+      parsed = draft
     }
     const { error } = await supabase.from('system_settings').update({ value: parsed, updated_at: new Date().toISOString() }).eq('key', key)
     if (error) {
@@ -202,6 +218,14 @@ export default function AdminPage() {
     }
     setSavingSettings(false)
     setTimeout(() => setStatusMsg(null), 3000)
+  }
+
+  // Update a nested key inside a structured setting (e.g. points.signup.l3 = 5)
+  const updateStructuredSetting = (key: string, subKey: string, value: number) => {
+    setSettingsDraft(prev => ({
+      ...prev,
+      [key]: { ...(prev[key] || {}), [subKey]: value },
+    }))
   }
 
   if (loading) return <div style={{ color: '#6a5a40', padding: 40 }}>{tx.loading}</div>
@@ -437,10 +461,141 @@ export default function AdminPage() {
             {settings.length === 0 ? (
               <div className="card" style={{ textAlign: 'center', padding: 30, color: '#6a5a40' }}>{tx.adminNoSettings}</div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {settings.map(s => (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+                {/* Friendly editors for known structured keys */}
+                {settings.filter(s => s.key === 'points.signup' || s.key === 'points.paid').map(s => {
+                  const isSignup = s.key === 'points.signup'
+                  const draft = (settingsDraft[s.key] as Record<string, number>) || {}
+                  const total = [1, 2, 3, 4, 5].reduce((sum, lvl) => sum + (Number(draft['l' + lvl]) || 0), 0)
+                  const icon = isSignup ? '👋' : '💳'
+                  const titleKey = isSignup ? tx.adminSettingsSignupTitle : tx.adminSettingsPaidTitle
+                  const descKey = isSignup ? tx.adminSettingsSignupDesc : tx.adminSettingsPaidDesc
+                  return (
+                    <div key={s.key} className="card">
+                      <div style={settingsHeaderRow}>
+                        <div>
+                          <h3 style={settingsTitle}>{icon} {titleKey}</h3>
+                          <p style={settingsSubtitle}>{descKey}</p>
+                          <code style={{ color: '#5a4a30', fontSize: 10, fontFamily: 'monospace' }}>{s.key}</code>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                          <div style={{ color: '#6a5a40', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' }}>{tx.adminSettingsTotalPerEvent}</div>
+                          <div style={{ color: accent, fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{total}</div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10, marginTop: 14 }}>
+                        {[1, 2, 3, 4, 5].map(lvl => {
+                          const levelColor = ['#d4a843', '#c0a043', '#a08840', '#806c33', '#605025'][lvl - 1]
+                          return (
+                            <div key={lvl} style={{
+                              background: 'rgba(255,255,255,0.02)',
+                              border: `1px solid ${levelColor}33`,
+                              borderRadius: 6,
+                              padding: 10,
+                            }}>
+                              <div style={{ color: levelColor, fontSize: 11, letterSpacing: 1, fontWeight: 600, marginBottom: 6 }}>
+                                {tx.referralsLevel} {lvl}
+                                <span style={{ color: '#5a4a30', fontWeight: 400, marginLeft: 6 }}>
+                                  · {lvl === 1 ? tx.referralsLevelDirect : tx.referralsLevelIndirect}
+                                </span>
+                              </div>
+                              <input
+                                type="number"
+                                min={0}
+                                step={1}
+                                value={Number(draft['l' + lvl]) || 0}
+                                onChange={e => updateStructuredSetting(s.key, 'l' + lvl, Math.max(0, parseInt(e.target.value || '0', 10)))}
+                                style={{ width: '100%', textAlign: 'center', fontSize: 18, fontWeight: 600, color: accent, padding: '6px 4px' }}
+                              />
+                              <div style={{ color: '#5a4a30', fontSize: 10, marginTop: 4, textAlign: 'center' }}>
+                                {tx.adminSettingsPointsUnit}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
+                        <button
+                          className="btn-gold"
+                          onClick={() => saveSetting(s.key)}
+                          disabled={savingSettings}
+                          style={{ padding: '8px 20px', fontSize: 13 }}
+                        >
+                          💾 {tx.adminSaveSetting}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+
+                {/* Badge thresholds editor */}
+                {settings.filter(s => s.key === 'badges.thresholds').map(s => {
+                  const draft = (settingsDraft[s.key] as Record<string, number>) || {}
+                  const tiers: Array<{ key: string; label: string; color: string; emoji: string }> = [
+                    { key: 'bronze',   label: tx.badgeTierBronze,   color: '#c47b3e', emoji: '🥉' },
+                    { key: 'silver',   label: tx.badgeTierSilver,   color: '#b8b8b8', emoji: '🥈' },
+                    { key: 'gold',     label: tx.badgeTierGold,     color: '#d4a843', emoji: '🥇' },
+                    { key: 'platinum', label: tx.badgeTierPlatinum, color: '#9ad0d4', emoji: '💎' },
+                  ]
+                  return (
+                    <div key={s.key} className="card">
+                      <div style={settingsHeaderRow}>
+                        <div>
+                          <h3 style={settingsTitle}>🏆 {tx.adminSettingsBadgesTitle}</h3>
+                          <p style={settingsSubtitle}>{tx.adminSettingsBadgesDesc}</p>
+                          <code style={{ color: '#5a4a30', fontSize: 10, fontFamily: 'monospace' }}>{s.key}</code>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginTop: 14 }}>
+                        {tiers.map(t => (
+                          <div key={t.key} style={{
+                            background: `${t.color}11`,
+                            border: `1px solid ${t.color}44`,
+                            borderRadius: 6,
+                            padding: 12,
+                          }}>
+                            <div style={{ color: t.color, fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+                              {t.emoji} {t.label}
+                            </div>
+                            <input
+                              type="number"
+                              min={0}
+                              step={50}
+                              value={Number(draft[t.key]) || 0}
+                              onChange={e => updateStructuredSetting(s.key, t.key, Math.max(0, parseInt(e.target.value || '0', 10)))}
+                              style={{ width: '100%', textAlign: 'center', fontSize: 18, fontWeight: 600, color: t.color, padding: '6px 4px' }}
+                            />
+                            <div style={{ color: '#5a4a30', fontSize: 10, marginTop: 4, textAlign: 'center' }}>
+                              {tx.adminSettingsPointsRequired}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
+                        <button
+                          className="btn-gold"
+                          onClick={() => saveSetting(s.key)}
+                          disabled={savingSettings}
+                          style={{ padding: '8px 20px', fontSize: 13 }}
+                        >
+                          💾 {tx.adminSaveSetting}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+
+                {/* JSON fallback for any other unknown keys */}
+                {settings.filter(s =>
+                  s.key !== 'points.signup' && s.key !== 'points.paid' && s.key !== 'badges.thresholds'
+                ).map(s => (
                   <div key={s.key} className="card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
+                    <div style={settingsHeaderRow}>
                       <div>
                         <code style={{ color: accent, fontFamily: 'monospace', fontSize: 13 }}>{s.key}</code>
                         {s.description && (
@@ -457,13 +612,14 @@ export default function AdminPage() {
                       </button>
                     </div>
                     <textarea
-                      value={settingsDraft[s.key] || ''}
+                      value={typeof settingsDraft[s.key] === 'string' ? settingsDraft[s.key] : JSON.stringify(settingsDraft[s.key] || {}, null, 2)}
                       onChange={e => setSettingsDraft({ ...settingsDraft, [s.key]: e.target.value })}
-                      rows={Math.min(8, Math.max(3, (settingsDraft[s.key] || '').split('\n').length))}
+                      rows={6}
                       style={{ width: '100%', fontFamily: 'monospace', fontSize: 12, padding: 10, boxSizing: 'border-box' }}
                     />
                   </div>
                 ))}
+
               </div>
             )}
           </div>
@@ -593,6 +749,29 @@ function pillStyle(color: string): React.CSSProperties {
     display: 'inline-block',
     whiteSpace: 'nowrap',
   }
+}
+
+const settingsHeaderRow: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'flex-start',
+  gap: 12,
+  flexWrap: 'wrap',
+}
+
+const settingsTitle: React.CSSProperties = {
+  margin: 0,
+  color: '#d4a843',
+  fontSize: 15,
+  fontWeight: 'normal',
+  letterSpacing: 0.5,
+}
+
+const settingsSubtitle: React.CSSProperties = {
+  margin: '4px 0 4px',
+  color: '#8a7a60',
+  fontSize: 12,
+  maxWidth: 520,
 }
 
 function smallBtn(color: string): React.CSSProperties {

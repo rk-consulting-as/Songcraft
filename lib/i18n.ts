@@ -470,6 +470,34 @@ export const t = {
     adminLedgerDesc: 'Siste 200 poengtransaksjoner på tvers av alle brukere.',
     adminSaveSetting: 'Lagre',
     adminSettingSaved: 'Innstilling lagret ✓',
+
+    // Admin settings — structured editors (Phase 2)
+    adminSettingsSignupTitle: 'Registreringspoeng',
+    adminSettingsSignupDesc: 'Poeng som deles ut når en ny bruker registrerer seg via en vervelenke. Fordeles oppover i kjeden — direkte verver får nivå 1, deres verver nivå 2, osv.',
+    adminSettingsPaidTitle: 'Konverteringspoeng',
+    adminSettingsPaidDesc: 'Poeng som deles ut når en bruker blir betalende kunde. Vanligvis høyere verdier enn registreringspoeng siden konvertering er mer verdifullt.',
+    adminSettingsBadgesTitle: 'Badge-terskler',
+    adminSettingsBadgesDesc: 'Antall poeng som kreves for å nå hvert badge-nivå. Lavere nivåer åpnes først.',
+    adminSettingsTotalPerEvent: 'Totalt per hendelse',
+    adminSettingsPointsUnit: 'poeng',
+    adminSettingsPointsRequired: 'poeng kreves',
+
+    // Badge tiers (shared between admin + user-facing /referrals)
+    badgesTitle: 'Badges & nivåer',
+    badgeTierBronze: 'Bronse',
+    badgeTierSilver: 'Sølv',
+    badgeTierGold: 'Gull',
+    badgeTierPlatinum: 'Platina',
+    badgeTierNone: 'Ingen badge enda',
+    badgeCurrentTier: 'Nåværende nivå',
+    badgeNextTier: 'Neste nivå',
+    badgePointsShort: 'p',
+    badgePointsToGo: '{n} poeng igjen',
+    badgeMaxedOut: 'Du har nådd høyeste nivå!',
+    badgeBenefitBronze: 'Liten rabatt + bronse-merke',
+    badgeBenefitSilver: 'Større rabatt + tilgang til Pro-funksjoner',
+    badgeBenefitGold: 'Stor rabatt + alle Pro-funksjoner + gull-merke',
+    badgeBenefitPlatinum: 'Maksimal rabatt + tidlig tilgang til nye funksjoner',
   },
 
   en: {
@@ -941,6 +969,34 @@ export const t = {
     adminLedgerDesc: 'Last 200 point transactions across all users.',
     adminSaveSetting: 'Save',
     adminSettingSaved: 'Setting saved ✓',
+
+    // Admin settings — structured editors (Phase 2)
+    adminSettingsSignupTitle: 'Signup points',
+    adminSettingsSignupDesc: 'Points awarded when a new user signs up via a referral link. Distributed up the chain — the direct referrer earns level 1 points, their referrer earns level 2, and so on.',
+    adminSettingsPaidTitle: 'Paid conversion points',
+    adminSettingsPaidDesc: 'Points awarded when a user becomes a paying customer. Typically larger than signup points since conversion is more valuable.',
+    adminSettingsBadgesTitle: 'Badge thresholds',
+    adminSettingsBadgesDesc: 'Points required to unlock each badge tier. Lower tiers unlock first.',
+    adminSettingsTotalPerEvent: 'Total per event',
+    adminSettingsPointsUnit: 'points',
+    adminSettingsPointsRequired: 'points required',
+
+    // Badge tiers (shared between admin + user-facing /referrals)
+    badgesTitle: 'Badges & tiers',
+    badgeTierBronze: 'Bronze',
+    badgeTierSilver: 'Silver',
+    badgeTierGold: 'Gold',
+    badgeTierPlatinum: 'Platinum',
+    badgeTierNone: 'No badge yet',
+    badgeCurrentTier: 'Current tier',
+    badgeNextTier: 'Next tier',
+    badgePointsShort: 'pts',
+    badgePointsToGo: '{n} points to go',
+    badgeMaxedOut: "You've reached the top tier!",
+    badgeBenefitBronze: 'Small discount + bronze badge',
+    badgeBenefitSilver: 'Bigger discount + access to Pro features',
+    badgeBenefitGold: 'Large discount + all Pro features + gold badge',
+    badgeBenefitPlatinum: 'Maximum discount + early access to new features',
   },
 }
 
