@@ -8,6 +8,7 @@ import { parseYoutube, parseInstagram, type SocialLinksMap } from '@/lib/socialL
 import Link from 'next/link'
 import Avatar from '@/components/Avatar'
 import ActivityList, { type ActivityEntry } from '@/components/ActivityList'
+import ProfileMenu from '@/components/ProfileMenu'
 
 type Artist = {
   id: string; name: string; genre: string; description: string
@@ -49,6 +50,13 @@ const emptyForm = {
 }
 
 /** URL-safe slug from arbitrary text. */
+const navLinkStyle: React.CSSProperties = {
+  fontSize: '13px',
+  textDecoration: 'none',
+  padding: '8px 14px',
+  display: 'inline-block',
+}
+
 function slugify(s: string): string {
   return s.toLowerCase().trim()
     .replace(/[^a-z0-9\s-]/g, '')
@@ -517,7 +525,7 @@ export default function Dashboard() {
   const logout = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/login')
+    router.push('/')
   }
 
   return (
@@ -530,25 +538,14 @@ export default function Dashboard() {
             <p style={{ margin: 0, fontSize: '11px', color: '#6a5a40', letterSpacing: '2px' }}>{tx.dashboard.toUpperCase()}</p>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-          {studioPage?.enabled && studioPage.slug ? (
-            <a href={`/studio/${studioPage.slug}`} target="_blank" rel="noopener noreferrer"
-              style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block', background: 'rgba(212,168,67,0.1)', border: '1px solid rgba(212,168,67,0.3)', color: '#d4a843', borderRadius: 4 }}>
-              🌐 {tx.studioPageNavView} ↗
-            </a>
-          ) : (
-            <Link href="/studio-settings"
-              style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block', background: 'rgba(180,140,80,0.08)', border: '1px solid rgba(180,140,80,0.25)', color: '#8a7a60', borderRadius: 4 }}>
-              🌐 {tx.studioPageNavSetup}
-            </Link>
-          )}
-          <Link href="/discover" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>🌍 {tx.discoverNavLink}</Link>
-          <Link href="/charts" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>📈 {tx.chartsNavLink}</Link>
-          <Link href="/feed" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>📰 {tx.feedNavLink}</Link>
+        {/* Compact header: main nav + chat button + profile dropdown */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <Link href="/discover" className="btn-outline" style={navLinkStyle}>🌍 {tx.discoverNavLink}</Link>
+          <Link href="/charts" className="btn-outline" style={navLinkStyle}>📈 {tx.chartsNavLink}</Link>
           <button
             onClick={() => { try { window.dispatchEvent(new CustomEvent('songcraft:open-chat')) } catch {} }}
             className="btn-outline"
-            style={{ fontSize: '13px', padding: '10px 20px', display: 'inline-flex', alignItems: 'center', gap: 6, position: 'relative', cursor: 'pointer', background: 'transparent' }}
+            style={{ ...navLinkStyle, display: 'inline-flex', alignItems: 'center', gap: 6, position: 'relative', cursor: 'pointer', background: 'transparent' }}
           >
             💬 {tx.messagesNavLink}
             {unreadCount > 0 && (
@@ -557,31 +554,23 @@ export default function Dashboard() {
               </span>
             )}
           </button>
-          <Link href="/referrals" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>🤝 {tx.referralsNavLink}</Link>
-          {(userRole === 'admin' || userRole === 'super_admin') && (
-            <Link href="/admin" style={{
-              fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block',
-              background: 'rgba(212,168,67,0.1)', border: '1px solid rgba(212,168,67,0.3)', color: '#d4a843', borderRadius: 4,
-            }}>⚙️ {tx.adminNavLink}</Link>
-          )}
-          <Link href="/settings" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>⚙ {tx.settings}</Link>
-          <Link href="/profile" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            padding: '6px 12px 6px 6px',
-            border: '1px solid rgba(180,140,80,0.25)',
-            borderRadius: 24,
-            background: 'rgba(255,255,255,0.02)',
-            textDecoration: 'none',
-            transition: 'border-color 0.2s, background 0.2s',
-          }}
-            title={tx.profileTitle}
-          >
-            <Avatar value={userProfile?.avatar_url} name={userProfile?.display_name} seed={userProfile?.id} size={28} />
-            <span style={{ color: '#e8e0d0', fontSize: 13, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {userProfile?.display_name || tx.profileGuest}
-            </span>
-          </Link>
-          <button className="btn-outline" onClick={logout} style={{ fontSize: '13px' }}>{tx.logout}</button>
+          <ProfileMenu
+            profile={userProfile}
+            role={userRole}
+            studio={studioPage}
+            unreadCount={unreadCount}
+            texts={{
+              viewProfile: tx.profileViewMine,
+              studioView: tx.studioPageNavView,
+              studioSetup: tx.studioPageNavSetup,
+              feed: tx.feedNavLink,
+              referrals: tx.referralsNavLink,
+              settings: tx.settings,
+              admin: tx.adminNavLink,
+              logout: tx.logout,
+              guest: tx.profileGuest,
+            }}
+          />
         </div>
       </div>
 

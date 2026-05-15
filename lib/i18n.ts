@@ -793,6 +793,25 @@ export const t = {
     adminAffiliateUnique: 'Unike brukere',
     adminAffiliateEstEarn: 'Anslått omsetning',
     adminAffiliateHint: 'Anslag baseres på alle klikk × $7. Faktisk inntekt avhenger av hvor mange som signer opp via DistroKids attribution.',
+
+    // Profile dropdown menu
+    profileViewMine: 'Min profil',
+
+    // Salesy login page
+    loginHeroTitle: 'Lag musikk. Bygg publikum. Publiser overalt.',
+    loginHeroSubtitle: 'Songcraft samler AI-musikkproduksjon, distribusjon og det nordiske kreatør-miljøet i én plattform.',
+    loginLoginSubtitle: 'Velkommen tilbake — logg inn for å fortsette.',
+    loginSignupSubtitle: 'Bli en del av det nordiske skaper-miljøet.',
+    loginFeatLyricsTitle: 'AI-drevet sangtekst + Suno',
+    loginFeatLyricsDesc: 'Skriv tekster, generer Suno-prompter og lag covers — alt i én flyt.',
+    loginFeatDistroTitle: 'Publiser til 100+ plattformer',
+    loginFeatDistroDesc: 'Direkte til Spotify, Apple Music, YouTube Music via DistroKid.',
+    loginFeatCommunityTitle: 'Møt nordiske skapere',
+    loginFeatCommunityDesc: 'Finn samarbeidspartnere, chat i sanntid, og bygg crews.',
+    loginFeatPointsTitle: 'Tjen poeng for engasjement',
+    loginFeatPointsDesc: 'Verving, lytting og badges — bygg ditt rykte i nettverket.',
+    loginExploreCreators: 'Utforsk skapere',
+    loginExploreCharts: 'Se topplistene',
   },
 
   en: {
@@ -1587,6 +1606,25 @@ export const t = {
     adminAffiliateUnique: 'Unique users',
     adminAffiliateEstEarn: 'Estimated revenue',
     adminAffiliateHint: 'Estimate uses all clicks × $7. Actual revenue depends on how many signups DistroKid attributes back.',
+
+    // Profile dropdown menu
+    profileViewMine: 'My profile',
+
+    // Salesy login page
+    loginHeroTitle: 'Make music. Build an audience. Publish everywhere.',
+    loginHeroSubtitle: 'Songcraft brings AI music production, distribution, and the Nordic creator community into one platform.',
+    loginLoginSubtitle: 'Welcome back — sign in to continue.',
+    loginSignupSubtitle: 'Join the Nordic creator community.',
+    loginFeatLyricsTitle: 'AI-powered lyrics + Suno',
+    loginFeatLyricsDesc: 'Write lyrics, generate Suno prompts and create covers — all in one flow.',
+    loginFeatDistroTitle: 'Publish to 100+ platforms',
+    loginFeatDistroDesc: 'Direct to Spotify, Apple Music, YouTube Music via DistroKid.',
+    loginFeatCommunityTitle: 'Meet Nordic creators',
+    loginFeatCommunityDesc: 'Find collaborators, chat in real time, build crews.',
+    loginFeatPointsTitle: 'Earn points for engagement',
+    loginFeatPointsDesc: 'Referrals, listening and badges — build your reputation in the network.',
+    loginExploreCreators: 'Explore creators',
+    loginExploreCharts: 'See the charts',
   },
 }
 

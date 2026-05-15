@@ -36,6 +36,18 @@ const i18n = {
       { icon: '🏢', title: 'Studio / manager page', body: 'For managers / producers: one /studio/ page showing the whole roster with a mini playlist per artist, projects, services and contact form.' },
       { icon: '📢', title: 'Publish everywhere', body: 'Auto-generate WordPress blog posts, Facebook posts, Instagram captions and press releases. English or Norwegian — with or without lyrics.' },
     ],
+    communityBadge: 'BUILT-IN COMMUNITY',
+    communityTitle: 'Connect with creators —',
+    communityTitle2: 'not just upload to streaming.',
+    communitySubtitle: 'Songcraft is also a Nordic creator community. Find collaborators, get feedback on your songs, climb the charts, and reach paying fans.',
+    communityFeatures: [
+      { icon: '🌍', title: 'Discover Nordic creators',     body: 'Search by role (vocalist, producer, songwriter), language, location. See who is open for collaboration.' },
+      { icon: '💬', title: 'Chat, groups & support',      body: 'Real-time direct messages, group rooms for bands/labels, and structured support tickets. Slide-in dock works on any page.' },
+      { icon: '📈', title: 'Charts + reactions',          body: 'Weekly and all-time top songs. Listeners react with emojis and leave comments — discover what works.' },
+      { icon: '🤝', title: 'Referrals + creator points',  body: 'Invite friends — earn points up to 5 levels deep. Listen to others to earn more. Climb badge tiers (Bronze → Platinum).' },
+      { icon: '🚀', title: 'Publish via DistroKid',        body: 'Validated metadata, downloadable bundle, one click to publish to Spotify, Apple Music, YouTube Music + 100+ platforms.' },
+      { icon: '🎁', title: 'Activity feed',                body: 'See what creators you follow are publishing. Get notified when someone messages, follows, or hits a tier.' },
+    ],
     studioBadge: 'FOR PRODUCERS & MANAGERS',
     studioTitle: 'Your whole roster in one place —',
     studioTitle2: 'with a publishable homepage.',
@@ -84,6 +96,18 @@ const i18n = {
       { icon: '🌐', title: 'Offentlig artist-side', body: 'Publiser hver artist på en /p/-URL med hero, bio, social-knapper, Spotify-embed, YouTube-videoer og tracks. Konfigurerbart per artist.' },
       { icon: '🏢', title: 'Studio / manager-side', body: 'For manager/produsent: én /studio/-side som viser hele rosteren med spilleliste per artist, prosjekter, tjenester og kontaktskjema.' },
       { icon: '📢', title: 'Publiser overalt', body: 'Auto-generer WordPress-blogginnlegg, Facebook-poster, Instagram-tekst og pressemelding. Norsk eller engelsk — med eller uten sangtekst.' },
+    ],
+    communityBadge: 'INNEBYGD KREATØR-MILJØ',
+    communityTitle: 'Knytt kontakt med skapere —',
+    communityTitle2: 'ikke bare strøm til Spotify.',
+    communitySubtitle: 'Songcraft er også et nordisk kreatør-community. Finn samarbeidspartnere, få tilbakemelding på sangene dine, kom på topplistene, og bygg et betalende publikum.',
+    communityFeatures: [
+      { icon: '🌍', title: 'Finn nordiske skapere',      body: 'Søk etter rolle (vokalist, produsent, låtskriver), språk, sted. Se hvem som er åpen for samarbeid.' },
+      { icon: '💬', title: 'Chat, grupper & support',   body: 'Direkte meldinger i sanntid, gruppe-rom for band/labels, og strukturerte support-henvendelser. Skyv-inn-panel virker på enhver side.' },
+      { icon: '📈', title: 'Topplister + reaksjoner',   body: 'Ukens og tidenes mest spilte sanger. Lyttere reagerer med emoji og legger kommentarer — oppdag hva som funker.' },
+      { icon: '🤝', title: 'Verving + skaper-poeng',    body: 'Inviter venner — tjen poeng opptil 5 ledd dypt. Lytt til andre for å tjene mer. Klatre i badge-nivåer (Bronse → Platina).' },
+      { icon: '🚀', title: 'Publiser via DistroKid',    body: 'Validert metadata, nedlastbar bundle, ett klikk for å publisere til Spotify, Apple Music, YouTube Music + 100+ plattformer.' },
+      { icon: '🎁', title: 'Aktivitetsfeed',            body: 'Se hva skaperne du følger publiserer. Få varsler når noen sender melding, følger, eller når et nytt nivå.' },
     ],
     studioBadge: 'FOR PRODUSENTER & MANAGERE',
     studioTitle: 'Hele rosteren din på ett sted —',
@@ -323,6 +347,37 @@ export default function Home() {
                 <p style={{ margin: 0, color: '#a09080', fontSize: 13, lineHeight: 1.6 }}>
                   {f.body}
                 </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Community / growth section ──────────────────── */}
+      <section style={{ padding: '80px 24px', borderTop: '1px solid rgba(180,140,80,0.08)' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 50 }}>
+            <p style={{ color: accent, fontSize: 11, letterSpacing: 2, margin: '0 0 12px' }}>{t.communityBadge}</p>
+            <h2 style={{ margin: '0 0 14px', fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>
+              {t.communityTitle}<br />{t.communityTitle2}
+            </h2>
+            <p style={{ color: '#a09080', fontSize: 16, maxWidth: 640, margin: '0 auto', lineHeight: 1.55 }}>
+              {t.communitySubtitle}
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+            {t.communityFeatures.map((f, i) => (
+              <div key={i} style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(180,140,80,0.18)',
+                borderRadius: 10,
+                padding: 22,
+                transition: 'border-color 0.2s, transform 0.2s',
+              }}>
+                <div style={{ fontSize: 28, marginBottom: 12 }}>{f.icon}</div>
+                <h3 style={{ color: '#e8e0d0', fontSize: 16, margin: '0 0 6px', fontWeight: 600 }}>{f.title}</h3>
+                <p style={{ color: '#8a7a60', fontSize: 13, lineHeight: 1.55, margin: 0 }}>{f.body}</p>
               </div>
             ))}
           </div>
