@@ -34,7 +34,20 @@ type LedgerEntry = {
 
 type SettingRow = { key: string; value: any; description: string | null }
 
-type Tab = 'users' | 'settings' | 'ledger' | 'moderation'
+type Tab = 'users' | 'settings' | 'ledger' | 'moderation' | 'tickets'
+
+type Ticket = {
+  id: string
+  subject: string | null
+  ticket_status: string | null
+  ticket_priority: string | null
+  ticket_category: string | null
+  assigned_to: string | null
+  updated_at: string
+  created_at: string
+  participants?: { id: string; display_name: string | null; referral_code: string }[]
+  latest_message?: { content: string; created_at: string } | null
+}
 
 type MessageReport = {
   id: string
@@ -74,6 +87,8 @@ export default function AdminPage() {
 
   const [ledger, setLedger] = useState<LedgerEntry[]>([])
   const [reports, setReports] = useState<MessageReport[]>([])
+  const [tickets, setTickets] = useState<Ticket[]>([])
+  const [ticketStatusFilter, setTicketStatusFilter] = useState<'all' | 'open' | 'in_progress' | 'resolved' | 'closed'>('open')
 
   const [busyUserId, setBusyUserId] = useState<string | null>(null)
   const [statusMsg, setStatusMsg] = useState<string | null>(null)
@@ -136,6 +151,45 @@ export default function AdminPage() {
       setSettingsDraft(draft)
     }
     if (lg.data) setLedger(lg.data as LedgerEntry[])
+
+    // Load support tickets
+    try {
+      const { data: ticketRows } = await supabase
+        .from('conversations')
+        .select('id, subject, ticket_status, ticket_priority, ticket_category, assigned_to, updated_at, created_at')
+        .eq('type', 'support')
+        .order('updated_at', { ascending: false })
+        .limit(100)
+      if (ticketRows && ticketRows.length > 0) {
+        // Fetch latest message + participants for each
+        const ids = (ticketRows as any[]).map(t => t.id)
+        const [partsRes, msgsRes] = await Promise.all([
+          supabase.from('conversation_participants').select('conversation_id, user_id').in('conversation_id', ids),
+          supabase.from('messages').select('conversation_id, content, created_at').in('conversation_id', ids).eq('hidden', false).order('created_at', { ascending: false }),
+        ])
+        const partsByConv: Record<string, string[]> = {}
+        for (const p of (partsRes.data as any[]) || []) {
+          if (!partsByConv[p.conversation_id]) partsByConv[p.conversation_id] = []
+          partsByConv[p.conversation_id].push(p.user_id)
+        }
+        const latestByConv: Record<string, any> = {}
+        for (const m of (msgsRes.data as any[]) || []) {
+          if (!latestByConv[m.conversation_id]) latestByConv[m.conversation_id] = m
+        }
+        const allUserIds = Array.from(new Set(Object.values(partsByConv).flat()))
+        const { data: tpProfs } = await supabase.from('profiles').select('id, display_name, referral_code').in('id', allUserIds)
+        const profMap: Record<string, any> = {}
+        for (const p of (tpProfs as any[]) || []) profMap[p.id] = p
+
+        setTickets((ticketRows as any[]).map(t => ({
+          ...t,
+          participants: (partsByConv[t.id] || []).map(uid => profMap[uid]).filter(Boolean),
+          latest_message: latestByConv[t.id] || null,
+        })))
+      } else {
+        setTickets([])
+      }
+    } catch {}
 
     // Load pending message reports for moderation queue
     try {
@@ -432,6 +486,12 @@ export default function AdminPage() {
             ⚐ {tx.adminTabModeration}
             {reports.length > 0 && (
               <span style={{ marginLeft: 6, background: '#c05050', color: '#fff', fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 8 }}>{reports.length}</span>
+            )}
+          </TabBtn>
+          <TabBtn active={tab === 'tickets'} onClick={() => setTab('tickets')}>
+            🎫 {tx.adminTabTickets}
+            {tickets.filter(t => t.ticket_status === 'open').length > 0 && (
+              <span style={{ marginLeft: 6, background: '#d4a843', color: '#0a0a0f', fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 8 }}>{tickets.filter(t => t.ticket_status === 'open').length}</span>
             )}
           </TabBtn>
         </div>
@@ -880,6 +940,81 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {tab === 'tickets' && (
+          <div>
+            <p style={{ color: '#8a7a60', fontSize: 13, marginTop: 0 }}>{tx.adminTicketsDesc}</p>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+              {(['open','in_progress','resolved','closed','all'] as const).map(s => (
+                <button
+                  key={s}
+                  onClick={() => setTicketStatusFilter(s)}
+                  style={{
+                    padding: '4px 12px',
+                    fontSize: 12,
+                    borderRadius: 12,
+                    border: ticketStatusFilter === s ? '1px solid #d4a843' : '1px solid rgba(180,140,80,0.2)',
+                    background: ticketStatusFilter === s ? 'rgba(212,168,67,0.12)' : 'transparent',
+                    color: ticketStatusFilter === s ? '#d4a843' : '#a09080',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {s === 'all' ? tx.adminTicketsAll : tx[`ticketStatus_${s}` as keyof typeof tx] as string}
+                </button>
+              ))}
+            </div>
+            {(() => {
+              const filtered = ticketStatusFilter === 'all'
+                ? tickets
+                : tickets.filter(t => t.ticket_status === ticketStatusFilter)
+              if (filtered.length === 0) {
+                return <div className="card" style={{ textAlign: 'center', padding: 30, color: '#6a5a40' }}>{tx.adminTicketsEmpty}</div>
+              }
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {filtered.map(t => {
+                    const requester = t.participants?.find(p => p.id !== me?.id && !profileMap[p.id]?.role) || t.participants?.[0]
+                    const priorityColor: Record<string, string> = {
+                      low: '#8a7a60', normal: '#d4a843', high: '#e0a050', urgent: '#c05050',
+                    }
+                    const statusColor: Record<string, string> = {
+                      open: '#7bc87b', in_progress: '#d4a843', resolved: '#8a7a60', closed: '#5a4a30',
+                    }
+                    return (
+                      <Link key={t.id} href={`/messages/${t.id}`} style={{ textDecoration: 'none' }}>
+                        <div className="card" style={{ padding: 14 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
+                            <div style={{ color: '#e8e0d0', fontSize: 15, fontWeight: 600 }}>{t.subject || '(no subject)'}</div>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <span style={pillStyle(statusColor[t.ticket_status || 'open'])}>
+                                {t.ticket_status}
+                              </span>
+                              <span style={pillStyle(priorityColor[t.ticket_priority || 'normal'])}>
+                                {t.ticket_priority}
+                              </span>
+                              {t.ticket_category && (
+                                <span style={pillStyle('#a09080')}>{t.ticket_category}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div style={{ color: '#8a7a60', fontSize: 12, display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                            <span>👤 {requester?.display_name || requester?.referral_code || '—'}</span>
+                            <span>{new Date(t.updated_at).toLocaleString()}</span>
+                          </div>
+                          {t.latest_message && (
+                            <div style={{ color: '#a09080', fontSize: 12, marginTop: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {t.latest_message.content}
+                            </div>
+                          )}
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              )
+            })()}
           </div>
         )}
 

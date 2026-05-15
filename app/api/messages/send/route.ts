@@ -16,8 +16,9 @@ export async function POST(req: NextRequest) {
 
     const conversationId = String(body.conversation_id || '').trim()
     const content = String(body.content || '').trim()
+    const attachments = Array.isArray(body.attachments) ? body.attachments.slice(0, 10) : []
     if (!conversationId) return NextResponse.json({ error: 'missing_conversation_id' }, { status: 400 })
-    if (!content) return NextResponse.json({ error: 'empty_content' }, { status: 400 })
+    if (!content && attachments.length === 0) return NextResponse.json({ error: 'empty_content' }, { status: 400 })
     if (content.length > 4000) return NextResponse.json({ error: 'too_long' }, { status: 400 })
 
     const authHeader = req.headers.get('authorization')
@@ -55,8 +56,8 @@ export async function POST(req: NextRequest) {
 
     const { data: msg, error } = await sb
       .from('messages')
-      .insert({ conversation_id: conversationId, sender_id: user.id, content })
-      .select('id, conversation_id, sender_id, content, created_at')
+      .insert({ conversation_id: conversationId, sender_id: user.id, content, attachments })
+      .select('id, conversation_id, sender_id, content, attachments, created_at')
       .single()
     if (error) {
       console.error('[messages/send] insert failed:', error.message)

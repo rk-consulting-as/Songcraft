@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { t, useLang, type Lang } from '@/lib/i18n'
 import Avatar from '@/components/Avatar'
+import NewGroupModal from '@/components/NewGroupModal'
 
 type ConversationRow = {
   id: string
@@ -23,6 +24,7 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true)
   const [me, setMe] = useState<string | null>(null)
   const [rows, setRows] = useState<ConversationRow[]>([])
+  const [showNewGroup, setShowNewGroup] = useState(false)
 
   useEffect(() => { setLangState(useLang()); init() }, [])
   const tx = t[lang]
@@ -184,15 +186,23 @@ export default function MessagesPage() {
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 22 }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginTop: 22, flexWrap: 'wrap' }}>
           <button
-            onClick={async () => {
-              const supabase = createClient()
-              const { data, error } = await supabase.rpc('get_or_create_support_conversation')
-              if (error) { alert(error.message); return }
-              const conv = (data as any)?.conversation_id
-              if (conv) router.push(`/messages/${conv}`)
+            onClick={() => setShowNewGroup(true)}
+            style={{
+              padding: '10px 20px',
+              background: 'rgba(212,168,67,0.1)',
+              border: '1px solid rgba(212,168,67,0.4)',
+              borderRadius: 6,
+              color: '#d4a843',
+              fontSize: 13,
+              cursor: 'pointer',
             }}
+          >
+            👥 {tx.messagesNewGroup}
+          </button>
+          <button
+            onClick={() => router.push('/support/new')}
             style={{
               padding: '10px 20px',
               background: 'transparent',
@@ -203,10 +213,12 @@ export default function MessagesPage() {
               cursor: 'pointer',
             }}
           >
-            🛟 {tx.messagesContactSupport}
+            🎫 {tx.messagesNewTicket}
           </button>
         </div>
       </div>
+
+      <NewGroupModal open={showNewGroup} onClose={() => setShowNewGroup(false)} />
     </div>
   )
 }

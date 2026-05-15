@@ -707,6 +707,44 @@ export const t = {
     adminModerationHide: 'Skjul melding',
     adminModHidden: 'Melding skjult ✓',
     adminModDismissed: 'Rapport avvist ✓',
+
+    // Chat attachments + groups + tickets
+    messagesAttachTip: 'Legg ved fil (bilde, lyd, dokument)',
+    messagesNewGroup: 'Ny gruppe',
+    messagesNewTicket: 'Ny supporthenvendelse',
+
+    // Tickets
+    ticketNewTitle: 'Ny supporthenvendelse',
+    ticketNewDesc: 'Fyll inn detaljer om hva som hender. En admin vil svare så snart som mulig.',
+    ticketSubject: 'Emne',
+    ticketSubjectPlaceholder: 'Kort oppsummering...',
+    ticketCategory: 'Kategori',
+    ticketCategoryTechnical: 'Teknisk',
+    ticketCategoryBilling: 'Betaling',
+    ticketCategoryAbuse: 'Misbruk/rapport',
+    ticketCategoryFeature: 'Funksjonsønske',
+    ticketCategoryOther: 'Annet',
+    ticketPriority: 'Prioritet',
+    ticketPriorityLow: 'Lav',
+    ticketPriorityNormal: 'Normal',
+    ticketPriorityHigh: 'Høy',
+    ticketPriorityUrgent: 'Haster',
+    ticketMessage: 'Beskrivelse',
+    ticketMessagePlaceholder: 'Beskriv problemet eller spørsmålet ditt så detaljert du kan...',
+    ticketSubmit: 'Opprett henvendelse',
+    ticketErrTooShort: 'Emne må være minst 3 tegn og beskrivelse minst 10 tegn.',
+    ticketStatusLabel: 'Status',
+    ticketPriorityLabel: 'Prioritet',
+    ticketStatus_open: 'Åpen',
+    ticketStatus_in_progress: 'Under behandling',
+    ticketStatus_resolved: 'Løst',
+    ticketStatus_closed: 'Lukket',
+
+    // Admin tickets tab
+    adminTabTickets: 'Tickets',
+    adminTicketsDesc: 'Supporthenvendelser fra brukere. Klikk for å åpne samtale og endre status.',
+    adminTicketsEmpty: 'Ingen supporthenvendelser med dette filteret.',
+    adminTicketsAll: 'Alle',
   },
 
   en: {
@@ -1415,6 +1453,44 @@ export const t = {
     adminModerationHide: 'Hide message',
     adminModHidden: 'Message hidden ✓',
     adminModDismissed: 'Report dismissed ✓',
+
+    // Chat attachments + groups + tickets
+    messagesAttachTip: 'Attach file (image, audio, document)',
+    messagesNewGroup: 'New group',
+    messagesNewTicket: 'New support ticket',
+
+    // Tickets
+    ticketNewTitle: 'New support ticket',
+    ticketNewDesc: 'Fill in details about what is happening. An admin will respond as soon as possible.',
+    ticketSubject: 'Subject',
+    ticketSubjectPlaceholder: 'Brief summary...',
+    ticketCategory: 'Category',
+    ticketCategoryTechnical: 'Technical',
+    ticketCategoryBilling: 'Billing',
+    ticketCategoryAbuse: 'Abuse/report',
+    ticketCategoryFeature: 'Feature request',
+    ticketCategoryOther: 'Other',
+    ticketPriority: 'Priority',
+    ticketPriorityLow: 'Low',
+    ticketPriorityNormal: 'Normal',
+    ticketPriorityHigh: 'High',
+    ticketPriorityUrgent: 'Urgent',
+    ticketMessage: 'Description',
+    ticketMessagePlaceholder: 'Describe your issue or question in as much detail as you can...',
+    ticketSubmit: 'Create ticket',
+    ticketErrTooShort: 'Subject must be at least 3 chars and description at least 10 chars.',
+    ticketStatusLabel: 'Status',
+    ticketPriorityLabel: 'Priority',
+    ticketStatus_open: 'Open',
+    ticketStatus_in_progress: 'In progress',
+    ticketStatus_resolved: 'Resolved',
+    ticketStatus_closed: 'Closed',
+
+    // Admin tickets tab
+    adminTabTickets: 'Tickets',
+    adminTicketsDesc: 'Support tickets from users. Click to open the conversation and change status.',
+    adminTicketsEmpty: 'No tickets with this filter.',
+    adminTicketsAll: 'All',
   },
 }
 
