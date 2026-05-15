@@ -275,13 +275,16 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
                         compact
                       />
                     </div>
-                    {/* Counters */}
-                    {(song.internal_play_count > 0 || song.embed_click_count > 0) && (
-                      <div style={{ color: '#6a5a40', fontSize: 11, display: 'flex', gap: 10, flexShrink: 0 }}>
-                        {song.internal_play_count > 0 && <span>▶ {song.internal_play_count.toLocaleString()}</span>}
-                        {song.embed_click_count > 0 && <span>🔗 {song.embed_click_count.toLocaleString()}</span>}
-                      </div>
-                    )}
+                    {/* Counters + open link */}
+                    <div style={{ color: '#6a5a40', fontSize: 11, display: 'flex', gap: 10, flexShrink: 0, alignItems: 'center' }}>
+                      {song.internal_play_count > 0 && <span>▶ {song.internal_play_count.toLocaleString()}</span>}
+                      {song.embed_click_count > 0 && <span>🔗 {song.embed_click_count.toLocaleString()}</span>}
+                      {song.comment_count > 0 && <span>💬 {song.comment_count}</span>}
+                      {song.reaction_count > 0 && <span>👍 {song.reaction_count}</span>}
+                      <Link href={`/s/${song.id}`} style={{ color: accent, textDecoration: 'none', padding: '4px 10px', border: `1px solid ${accent}55`, borderRadius: 12, fontSize: 11 }}>
+                        Open →
+                      </Link>
+                    </div>
                   </div>
                 )
               })}

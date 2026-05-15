@@ -764,6 +764,20 @@ export const t = {
     profileNotifTicket: 'Ticket-oppdateringer',
     profileNotifTicketHint: 'Når status endres på en supporthenvendelse',
     profileNotifSaved: 'Varslingsinnstillinger lagret ✓',
+
+    // Song detail page + comments
+    songCommentsTitle: 'Kommentarer',
+    songReactionsTitle: 'Reaksjoner',
+    songLyricsTitle: 'Tekst',
+    songCommentPlaceholder: 'Legg til en kommentar...',
+    songCommentSignInPlaceholder: 'Logg inn for å kommentere',
+    songCommentPost: 'Send kommentar',
+    songCommentDelete: 'Slett',
+    songCommentReply: 'Svar',
+    songCommentReplyPlaceholder: 'Skriv et svar...',
+    songCommentPostReply: 'Send svar',
+    songCommentEmpty: 'Ingen kommentarer ennå. Bli den første!',
+    songOpenLink: 'Åpne',
   },
 
   en: {
@@ -1529,6 +1543,20 @@ export const t = {
     profileNotifTicket: 'Ticket updates',
     profileNotifTicketHint: 'When status changes on a support ticket',
     profileNotifSaved: 'Notification preferences saved ✓',
+
+    // Song detail page + comments
+    songCommentsTitle: 'Comments',
+    songReactionsTitle: 'Reactions',
+    songLyricsTitle: 'Lyrics',
+    songCommentPlaceholder: 'Add a comment...',
+    songCommentSignInPlaceholder: 'Sign in to comment',
+    songCommentPost: 'Post comment',
+    songCommentDelete: 'Delete',
+    songCommentReply: 'Reply',
+    songCommentReplyPlaceholder: 'Write a reply...',
+    songCommentPostReply: 'Post reply',
+    songCommentEmpty: 'No comments yet. Be the first!',
+    songOpenLink: 'Open',
   },
 }
 
