@@ -545,14 +545,18 @@ export default function Dashboard() {
           <Link href="/discover" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>🌍 {tx.discoverNavLink}</Link>
           <Link href="/charts" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>📈 {tx.chartsNavLink}</Link>
           <Link href="/feed" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>📰 {tx.feedNavLink}</Link>
-          <Link href="/messages" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-flex', alignItems: 'center', gap: 6, position: 'relative' }}>
+          <button
+            onClick={() => { try { window.dispatchEvent(new CustomEvent('songcraft:open-chat')) } catch {} }}
+            className="btn-outline"
+            style={{ fontSize: '13px', padding: '10px 20px', display: 'inline-flex', alignItems: 'center', gap: 6, position: 'relative', cursor: 'pointer', background: 'transparent' }}
+          >
             💬 {tx.messagesNavLink}
             {unreadCount > 0 && (
               <span style={{ background: '#d4a843', color: '#0a0a0f', fontSize: 11, fontWeight: 700, padding: '1px 7px', borderRadius: 10, marginLeft: 2 }}>
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
-          </Link>
+          </button>
           <Link href="/referrals" className="btn-outline" style={{ fontSize: '13px', textDecoration: 'none', padding: '10px 20px', display: 'inline-block' }}>🤝 {tx.referralsNavLink}</Link>
           {(userRole === 'admin' || userRole === 'super_admin') && (
             <Link href="/admin" style={{

@@ -53,7 +53,15 @@ export default function MessageButton({
     }
     const convId = (data as any)?.conversation_id
     if (convId) {
-      router.push(`/messages/${convId}`)
+      // Prefer opening in ChatDock (stays open while user works elsewhere).
+      // Falls back to /messages/[id] full page on /messages routes where dock is hidden.
+      try {
+        window.dispatchEvent(new CustomEvent('songcraft:open-chat', { detail: { conversationId: convId } }))
+      } catch {}
+      // If the dock can't open (e.g. on a chat-hiding route), still route to the full page.
+      if (window.location.pathname.startsWith('/messages') || window.location.pathname.startsWith('/login')) {
+        router.push(`/messages/${convId}`)
+      }
     } else {
       const msg = 'No conversation_id returned from RPC.'
       setErrorMsg(msg)

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import DynamicFavicon from '@/components/DynamicFavicon'
+import ChatDock from '@/components/ChatDock'
 
 export const metadata: Metadata = {
   title: 'Songcraft',
@@ -17,6 +18,7 @@ export default function RootLayout({
       <body>
         <DynamicFavicon />
         {children}
+        <ChatDock />
       </body>
     </html>
   )
