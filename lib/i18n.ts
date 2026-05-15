@@ -745,6 +745,25 @@ export const t = {
     adminTicketsDesc: 'Supporthenvendelser fra brukere. Klikk for å åpne samtale og endre status.',
     adminTicketsEmpty: 'Ingen supporthenvendelser med dette filteret.',
     adminTicketsAll: 'Alle',
+
+    // Notification preferences
+    profileSectionNotifications: 'Varslinger',
+    profileNotifIntro: 'Velg hvilke e-postvarsler du vil motta. Slå av alt midlertidig med pause-bryteren øverst.',
+    profileNotifPaused: 'Pause alle e-postvarsler',
+    profileNotifPausedHint: 'Skru på for å midlertidig stoppe alle varsler uten å miste innstillingene dine.',
+    profileNotifMessage: 'Nye meldinger',
+    profileNotifMessageHint: 'Når noen sender deg en direkte melding',
+    profileNotifFollower: 'Nye følgere',
+    profileNotifFollowerHint: 'Når noen starter å følge deg',
+    profileNotifSignup: 'Nye verving',
+    profileNotifSignupHint: 'Når noen registrerer seg via din lenke',
+    profileNotifPaid: 'Betalt konvertering',
+    profileNotifPaidHint: 'Når noen i nedlinjen din blir betalende kunde',
+    profileNotifBadge: 'Badge-oppgradering',
+    profileNotifBadgeHint: 'Når du krysser bronse/sølv/gull/platina-tersklene',
+    profileNotifTicket: 'Ticket-oppdateringer',
+    profileNotifTicketHint: 'Når status endres på en supporthenvendelse',
+    profileNotifSaved: 'Varslingsinnstillinger lagret ✓',
   },
 
   en: {
@@ -1491,6 +1510,25 @@ export const t = {
     adminTicketsDesc: 'Support tickets from users. Click to open the conversation and change status.',
     adminTicketsEmpty: 'No tickets with this filter.',
     adminTicketsAll: 'All',
+
+    // Notification preferences
+    profileSectionNotifications: 'Notifications',
+    profileNotifIntro: 'Choose which email notifications you want. Pause everything temporarily with the toggle at the top.',
+    profileNotifPaused: 'Pause all email notifications',
+    profileNotifPausedHint: 'Turn on to temporarily stop all emails without losing your preferences.',
+    profileNotifMessage: 'New messages',
+    profileNotifMessageHint: 'When someone sends you a direct message',
+    profileNotifFollower: 'New followers',
+    profileNotifFollowerHint: "When someone starts following you",
+    profileNotifSignup: 'New referrals',
+    profileNotifSignupHint: 'When someone signs up via your link',
+    profileNotifPaid: 'Paid conversion',
+    profileNotifPaidHint: 'When someone in your downline becomes a paying customer',
+    profileNotifBadge: 'Badge tier reached',
+    profileNotifBadgeHint: 'When you cross the bronze/silver/gold/platinum thresholds',
+    profileNotifTicket: 'Ticket updates',
+    profileNotifTicketHint: 'When status changes on a support ticket',
+    profileNotifSaved: 'Notification preferences saved ✓',
   },
 }
 

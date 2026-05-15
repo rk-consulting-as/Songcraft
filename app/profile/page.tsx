@@ -52,6 +52,16 @@ export default function ProfilePage() {
   const [visibleInCatalog, setVisibleInCatalog] = useState(true)
   const [savingCreator, setSavingCreator] = useState(false)
 
+  // Notification preferences
+  const [notifPaused, setNotifPaused] = useState(false)
+  const [notifMessage, setNotifMessage] = useState(true)
+  const [notifFollower, setNotifFollower] = useState(true)
+  const [notifSignup, setNotifSignup] = useState(true)
+  const [notifPaid, setNotifPaid] = useState(true)
+  const [notifBadge, setNotifBadge] = useState(true)
+  const [notifTicket, setNotifTicket] = useState(true)
+  const [savingNotif, setSavingNotif] = useState(false)
+
   const [avatarUploading, setAvatarUploading] = useState(false)
   const avatarFileRef = useRef<HTMLInputElement | null>(null)
   const [savingIdentity, setSavingIdentity] = useState(false)
@@ -89,6 +99,20 @@ export default function ProfilePage() {
       setCreationLangs(Array.isArray(p.languages) ? p.languages : [])
       setOpenToCollab(!!p.open_to_collab)
       setVisibleInCatalog(p.visible_in_catalog !== false)
+
+      // Load notification preferences (may not exist for older accounts)
+      try {
+        const { data: np } = await supabase.from('notification_preferences').select('*').eq('user_id', p.id).maybeSingle()
+        if (np) {
+          setNotifPaused(!!(np as any).email_paused)
+          setNotifMessage((np as any).email_new_message !== false)
+          setNotifFollower((np as any).email_new_follower !== false)
+          setNotifSignup((np as any).email_signup_referral !== false)
+          setNotifPaid((np as any).email_paid_referral !== false)
+          setNotifBadge((np as any).email_badge_reached !== false)
+          setNotifTicket((np as any).email_ticket_update !== false)
+        }
+      } catch {}
     }
     setEmail(session.user.email || '')
     setLoading(false)
@@ -195,6 +219,28 @@ export default function ProfilePage() {
     setSavingCreator(false)
     if (error) { showErr(`${tx.profileErrSave}: ${error.message}`); return }
     showOk(tx.profileCreatorSaved)
+  }
+
+  const saveNotificationPrefs = async () => {
+    if (!profile) return
+    setSavingNotif(true)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('notification_preferences')
+      .upsert({
+        user_id: profile.id,
+        email_paused: notifPaused,
+        email_new_message: notifMessage,
+        email_new_follower: notifFollower,
+        email_signup_referral: notifSignup,
+        email_paid_referral: notifPaid,
+        email_badge_reached: notifBadge,
+        email_ticket_update: notifTicket,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' })
+    setSavingNotif(false)
+    if (error) { showErr(`${tx.profileErrSave}: ${error.message}`); return }
+    showOk(tx.profileNotifSaved)
   }
 
   const toggleRole = (key: string) => {
@@ -474,6 +520,35 @@ export default function ProfilePage() {
         </Section>
 
         {/* ===== Account & security ===== */}
+        {/* ===== Notifications ===== */}
+        <Section title={`📧 ${tx.profileSectionNotifications}`}>
+          <p style={{ color: '#8a7a60', fontSize: 13, marginTop: 0 }}>{tx.profileNotifIntro}</p>
+
+          <div id="notifications" style={{ marginTop: 14 }}>
+            <ToggleRow
+              label={`🔕 ${tx.profileNotifPaused}`}
+              hint={tx.profileNotifPausedHint}
+              checked={notifPaused}
+              onChange={setNotifPaused}
+              accent={accent}
+            />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10, marginTop: 14, opacity: notifPaused ? 0.4 : 1, pointerEvents: notifPaused ? 'none' : 'auto' }}>
+              <ToggleRow label={`💬 ${tx.profileNotifMessage}`}  hint={tx.profileNotifMessageHint}  checked={notifMessage}  onChange={setNotifMessage}  accent={accent} />
+              <ToggleRow label={`👤 ${tx.profileNotifFollower}`} hint={tx.profileNotifFollowerHint} checked={notifFollower} onChange={setNotifFollower} accent={accent} />
+              <ToggleRow label={`✨ ${tx.profileNotifSignup}`}   hint={tx.profileNotifSignupHint}   checked={notifSignup}   onChange={setNotifSignup}   accent={accent} />
+              <ToggleRow label={`💳 ${tx.profileNotifPaid}`}     hint={tx.profileNotifPaidHint}     checked={notifPaid}     onChange={setNotifPaid}     accent={accent} />
+              <ToggleRow label={`🏆 ${tx.profileNotifBadge}`}    hint={tx.profileNotifBadgeHint}    checked={notifBadge}    onChange={setNotifBadge}    accent={accent} />
+              <ToggleRow label={`🎫 ${tx.profileNotifTicket}`}   hint={tx.profileNotifTicketHint}   checked={notifTicket}   onChange={setNotifTicket}   accent={accent} />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+            <button className="btn-gold" onClick={saveNotificationPrefs} disabled={savingNotif}>
+              {savingNotif ? tx.saving : '💾 ' + tx.save}
+            </button>
+          </div>
+        </Section>
+
         <Section title={`🔐 ${tx.profileSectionAccount}`}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
             <ReadOnlyRow label={tx.profileFieldEmail} value={email} mono />

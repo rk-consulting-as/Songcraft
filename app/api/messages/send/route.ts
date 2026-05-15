@@ -64,6 +64,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'send_failed', message: error.message }, { status: 500 })
     }
 
+    // Fire-and-forget email notifications to all other participants.
+    // Done after the response is sent so the user doesn't wait for SMTP.
+    ;(async () => {
+      try {
+        const { sendNotificationEmail } = await import('@/lib/email')
+        const { data: senderProf } = await sb.from('profiles').select('display_name').eq('id', user.id).maybeSingle()
+        const senderName = (senderProf as any)?.display_name || 'A user'
+        for (const recipientId of otherUserIds) {
+          sendNotificationEmail({
+            kind: 'new_message',
+            recipientUserId: recipientId,
+            payload: {
+              sender_name: senderName,
+              preview: content,
+              conversation_id: conversationId,
+            },
+          }).catch(e => console.warn('[messages/send] notify failed:', e?.message))
+        }
+      } catch (e: any) {
+        console.warn('[messages/send] notify dispatch error:', e?.message)
+      }
+    })()
+
     return NextResponse.json({ ok: true, message: msg })
   } catch (e: any) {
     return NextResponse.json({ error: 'crashed', message: e?.message || String(e) }, { status: 500 })

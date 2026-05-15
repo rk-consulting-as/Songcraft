@@ -62,7 +62,28 @@ export default function FollowButton({
       const { error } = await supabase
         .from('follows')
         .insert({ follower_id: meId, following_id: targetUserId })
-      if (!error) { setFollowing(true); setCount(c => c + 1) }
+      if (!error) {
+        setFollowing(true); setCount(c => c + 1)
+        // Fire-and-forget email notification to the followed user
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session) {
+            const { data: myProf } = await supabase.from('profiles').select('display_name, referral_code').eq('id', meId).maybeSingle()
+            fetch('/api/notify/dispatch', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+              body: JSON.stringify({
+                kind: 'new_follower',
+                recipient_id: targetUserId,
+                payload: {
+                  follower_name: (myProf as any)?.display_name || 'A creator',
+                  follower_code: (myProf as any)?.referral_code,
+                },
+              }),
+            }).catch(() => {})
+          }
+        } catch {}
+      }
     }
     setBusy(false)
   }
