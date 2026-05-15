@@ -778,6 +778,21 @@ export const t = {
     songCommentPostReply: 'Send svar',
     songCommentEmpty: 'Ingen kommentarer ennå. Bli den første!',
     songOpenLink: 'Åpne',
+
+    // Distribution / publish to streaming
+    distributePublishTitle: 'Publiser til Spotify, Apple Music, YouTube Music + 100+ plattformer',
+    distributePublishDesc: 'Songcraft har samlet sangmetadata. Vi sender deg videre til DistroKid for selve opplastningen.',
+    distributePublishCta: 'Publiser',
+    distributeAlreadyExported: 'Allerede eksportert til',
+
+    // Admin affiliate analytics
+    adminAffiliateTitle: 'Affiliate-statistikk',
+    adminAffiliateDesc: 'Klikk gjennom Songcraft til DistroKid. Estimat baseres på $7 per signup-konvertering.',
+    adminAffiliateTotal: 'Klikk totalt',
+    adminAffiliateLast30d: 'Siste 30 dager',
+    adminAffiliateUnique: 'Unike brukere',
+    adminAffiliateEstEarn: 'Anslått omsetning',
+    adminAffiliateHint: 'Anslag baseres på alle klikk × $7. Faktisk inntekt avhenger av hvor mange som signer opp via DistroKids attribution.',
   },
 
   en: {
@@ -1557,6 +1572,21 @@ export const t = {
     songCommentPostReply: 'Post reply',
     songCommentEmpty: 'No comments yet. Be the first!',
     songOpenLink: 'Open',
+
+    // Distribution / publish to streaming
+    distributePublishTitle: 'Publish to Spotify, Apple Music, YouTube Music + 100+ platforms',
+    distributePublishDesc: "Songcraft has gathered the song metadata. We'll send you to DistroKid for the actual upload.",
+    distributePublishCta: 'Publish',
+    distributeAlreadyExported: 'Already exported to',
+
+    // Admin affiliate analytics
+    adminAffiliateTitle: 'Affiliate stats',
+    adminAffiliateDesc: 'Clicks through from Songcraft to DistroKid. Estimate is based on $7 per signup conversion.',
+    adminAffiliateTotal: 'Total clicks',
+    adminAffiliateLast30d: 'Last 30 days',
+    adminAffiliateUnique: 'Unique users',
+    adminAffiliateEstEarn: 'Estimated revenue',
+    adminAffiliateHint: 'Estimate uses all clicks × $7. Actual revenue depends on how many signups DistroKid attributes back.',
   },
 }
 

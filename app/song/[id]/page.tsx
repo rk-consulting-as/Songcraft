@@ -8,6 +8,7 @@ import AIProviderPicker from '@/components/AIProviderPicker'
 import ZoomableImage from '@/components/ZoomableImage'
 import { cleanLyricsText } from '@/lib/lyricsCleanup'
 import Link from 'next/link'
+import DistributionModal from '@/components/DistributionModal'
 
 const PLATFORMS = ['TikTok', 'Instagram', 'Facebook', 'YouTube', 'X/Twitter']
 const MEDIA_PLATFORMS = ['Spotify', 'YouTube', 'TikTok', 'Instagram', 'Facebook', 'Apple Music', 'SoundCloud', 'Other']
@@ -54,6 +55,7 @@ export default function SongPage() {
   const [newLabel, setNewLabel] = useState('')
 
   const [publishContent, setPublishContent] = useState<Record<string,string>>({})
+  const [showDistribution, setShowDistribution] = useState(false)
   const [title, setTitle] = useState('')
 
   // AI provider (persisted in localStorage)
@@ -1667,6 +1669,42 @@ export default function SongPage() {
         {tab === 'publish' && (
           <div>
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>{tx.publishTitle}</h2>
+
+            {/* Distribute to streaming platforms */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(212,168,67,0.12) 0%, rgba(30,215,96,0.08) 100%)',
+              border: '1px solid rgba(212,168,67,0.3)',
+              borderRadius: 8,
+              padding: 18,
+              marginBottom: 24,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 16,
+              flexWrap: 'wrap',
+            }}>
+              <div style={{ fontSize: 36 }}>🚀</div>
+              <div style={{ flex: '1 1 280px', minWidth: 0 }}>
+                <h3 style={{ color: '#e8e0d0', margin: 0, fontSize: 16, fontWeight: 600 }}>
+                  {tx.distributePublishTitle}
+                </h3>
+                <p style={{ color: '#a09080', fontSize: 13, margin: '6px 0 0' }}>
+                  {tx.distributePublishDesc}
+                </p>
+                {(song?.distribution_status === 'exported' || song?.distribution_status === 'submitted') && (
+                  <p style={{ color: '#7bc87b', fontSize: 12, margin: '6px 0 0' }}>
+                    ✓ {tx.distributeAlreadyExported}: {song.distribution_partner || '—'}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => setShowDistribution(true)}
+                className="btn-gold"
+                style={{ padding: '10px 22px', fontSize: 14, fontWeight: 700 }}
+              >
+                📤 {tx.distributePublishCta}
+              </button>
+            </div>
+
             {!lyrics && <p style={{ color: '#e07070', fontSize: '13px' }}>{tx.sunoNoLyrics}</p>}
 
             {/* Options bar — language + include-lyrics flag */}
@@ -1710,6 +1748,26 @@ export default function SongPage() {
           </div>
         )}
       </div>
+
+      {song && (
+        <DistributionModal
+          open={showDistribution}
+          onClose={() => setShowDistribution(false)}
+          song={{
+            id: song.id,
+            title: song.title,
+            lyrics_text: song.lyrics_text,
+            suno_audio_url: song.suno_audio_url,
+            spotify_url: song.spotify_url,
+            cover_image_url: song.cover_image_url,
+            spotify_cover_url: song.spotify_cover_url,
+            isrc: (song as any).isrc,
+            spotify_album: song.spotify_album,
+            spotify_release_date: song.spotify_release_date,
+            artists: artist ? { name: artist.name, genre: artist.genre } : null,
+          }}
+        />
+      )}
     </div>
   )
 }

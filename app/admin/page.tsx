@@ -89,6 +89,7 @@ export default function AdminPage() {
   const [reports, setReports] = useState<MessageReport[]>([])
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [ticketStatusFilter, setTicketStatusFilter] = useState<'all' | 'open' | 'in_progress' | 'resolved' | 'closed'>('open')
+  const [affiliateStats, setAffiliateStats] = useState<{ total: number; last_30d: number; unique_users: number }>({ total: 0, last_30d: 0, unique_users: 0 })
 
   const [busyUserId, setBusyUserId] = useState<string | null>(null)
   const [statusMsg, setStatusMsg] = useState<string | null>(null)
@@ -151,6 +152,23 @@ export default function AdminPage() {
       setSettingsDraft(draft)
     }
     if (lg.data) setLedger(lg.data as LedgerEntry[])
+
+    // Load affiliate clicks stats
+    try {
+      const sinceDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      const [totalRes, recentRes, allRes] = await Promise.all([
+        supabase.from('affiliate_clicks').select('*', { count: 'exact', head: true }).eq('partner', 'distrokid'),
+        supabase.from('affiliate_clicks').select('*', { count: 'exact', head: true }).eq('partner', 'distrokid').gt('created_at', sinceDate),
+        supabase.from('affiliate_clicks').select('user_id').eq('partner', 'distrokid'),
+      ])
+      const uniq = new Set<string>()
+      for (const r of (allRes.data as any[]) || []) if (r.user_id) uniq.add(r.user_id)
+      setAffiliateStats({
+        total: totalRes.count || 0,
+        last_30d: recentRes.count || 0,
+        unique_users: uniq.size,
+      })
+    } catch {}
 
     // Load support tickets
     try {
@@ -852,6 +870,37 @@ export default function AdminPage() {
                     </div>
                   </div>
                 ))}
+
+                {/* Affiliate analytics summary */}
+                <div className="card">
+                  <div style={settingsHeaderRow}>
+                    <div>
+                      <h3 style={settingsTitle}>📤 {tx.adminAffiliateTitle}</h3>
+                      <p style={settingsSubtitle}>{tx.adminAffiliateDesc}</p>
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginTop: 14 }}>
+                    <div style={{ background: 'rgba(212,168,67,0.06)', border: '1px solid rgba(212,168,67,0.25)', borderRadius: 6, padding: 12, textAlign: 'center' }}>
+                      <div style={{ fontSize: 26, fontWeight: 700, color: accent }}>{affiliateStats.total}</div>
+                      <div style={{ color: '#8a7a60', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', marginTop: 4 }}>{tx.adminAffiliateTotal}</div>
+                    </div>
+                    <div style={{ background: 'rgba(212,168,67,0.06)', border: '1px solid rgba(212,168,67,0.25)', borderRadius: 6, padding: 12, textAlign: 'center' }}>
+                      <div style={{ fontSize: 26, fontWeight: 700, color: accent }}>{affiliateStats.last_30d}</div>
+                      <div style={{ color: '#8a7a60', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', marginTop: 4 }}>{tx.adminAffiliateLast30d}</div>
+                    </div>
+                    <div style={{ background: 'rgba(212,168,67,0.06)', border: '1px solid rgba(212,168,67,0.25)', borderRadius: 6, padding: 12, textAlign: 'center' }}>
+                      <div style={{ fontSize: 26, fontWeight: 700, color: accent }}>{affiliateStats.unique_users}</div>
+                      <div style={{ color: '#8a7a60', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', marginTop: 4 }}>{tx.adminAffiliateUnique}</div>
+                    </div>
+                    <div style={{ background: 'rgba(123,200,123,0.06)', border: '1px solid rgba(123,200,123,0.25)', borderRadius: 6, padding: 12, textAlign: 'center' }}>
+                      <div style={{ fontSize: 26, fontWeight: 700, color: '#7bc87b' }}>${(affiliateStats.total * 7).toLocaleString()}</div>
+                      <div style={{ color: '#8a7a60', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', marginTop: 4 }}>{tx.adminAffiliateEstEarn}</div>
+                    </div>
+                  </div>
+                  <p style={{ color: '#5a4a30', fontSize: 11, marginTop: 12 }}>
+                    {tx.adminAffiliateHint}
+                  </p>
+                </div>
 
                 {/* JSON fallback for any other unknown keys */}
                 {settings.filter(s =>
