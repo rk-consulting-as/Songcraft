@@ -34,16 +34,31 @@ export default function MessageButton({
     setBusy(true)
     setErrorMsg(null)
     const supabase = createClient()
+    console.log('[MessageButton] Calling get_or_create_direct_conversation:', { other_user_id: targetUserId })
     const { data, error } = await supabase.rpc('get_or_create_direct_conversation', { other_user_id: targetUserId })
+    console.log('[MessageButton] RPC response:', { data, error })
     setBusy(false)
-    if (error) { setErrorMsg(error.message); return }
+    if (error) {
+      const msg = `Couldn't open conversation: ${error.message}${error.message?.includes('does not exist') ? ' — chat migration not applied?' : ''}`
+      setErrorMsg(msg)
+      alert(msg)
+      return
+    }
     if (data && (data as any).error) {
       const errKey = (data as any).error
-      setErrorMsg(errKey === 'blocked' ? 'Blocked' : errKey)
+      const msg = errKey === 'blocked' ? 'You cannot start a conversation with this user (blocked).' : `Error: ${errKey}`
+      setErrorMsg(msg)
+      alert(msg)
       return
     }
     const convId = (data as any)?.conversation_id
-    if (convId) router.push(`/messages/${convId}`)
+    if (convId) {
+      router.push(`/messages/${convId}`)
+    } else {
+      const msg = 'No conversation_id returned from RPC.'
+      setErrorMsg(msg)
+      alert(msg)
+    }
   }
 
   if (loading || meId === targetUserId) return null
