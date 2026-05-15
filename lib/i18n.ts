@@ -812,6 +812,20 @@ export const t = {
     loginFeatPointsDesc: 'Verving, lytting og badges — bygg ditt rykte i nettverket.',
     loginExploreCreators: 'Utforsk skapere',
     loginExploreCharts: 'Se topplistene',
+
+    // Public-page templates
+    publicPageTemplate: 'Visuell stil',
+    studioTemplateLabel: 'Visuell stil for studio-side',
+    templateDefault: 'Standard',
+    templateDefaultHint: 'Klassisk hero + tracks + albums',
+    templateMinimal: 'Minimal',
+    templateMinimalHint: 'Typografi-fokusert, mye luft',
+    templateCinematic: 'Cinematisk',
+    templateCinematicHint: 'Full-skjerm hero med bakgrunnsbilde',
+    templateMagazine: 'Magasin',
+    templateStudioDefaultHint: 'Klassisk roster + prosjekter',
+    templateStudioMinimalHint: 'Distrhaksjonsfri liste',
+    templateStudioMagazineHint: 'Redaksjonell utforming',
   },
 
   en: {
@@ -1625,6 +1639,20 @@ export const t = {
     loginFeatPointsDesc: 'Referrals, listening and badges — build your reputation in the network.',
     loginExploreCreators: 'Explore creators',
     loginExploreCharts: 'See the charts',
+
+    // Public-page templates
+    publicPageTemplate: 'Visual style',
+    studioTemplateLabel: 'Visual style for studio page',
+    templateDefault: 'Default',
+    templateDefaultHint: 'Classic hero + tracks + albums',
+    templateMinimal: 'Minimal',
+    templateMinimalHint: 'Typography-focused, lots of whitespace',
+    templateCinematic: 'Cinematic',
+    templateCinematicHint: 'Full-screen hero with background image',
+    templateMagazine: 'Magazine',
+    templateStudioDefaultHint: 'Classic roster + projects',
+    templateStudioMinimalHint: 'Distraction-free list',
+    templateStudioMagazineHint: 'Editorial layout',
   },
 }
 

@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import ClientEmbedPlayer from '@/components/ClientEmbedPlayer'
+import ArtistPageMinimal from '@/components/artist-templates/ArtistPageMinimal'
+import ArtistPageCinematic from '@/components/artist-templates/ArtistPageCinematic'
 
 // Public artist landing page. Server-rendered, anonymous Supabase client (RLS gates by page_enabled).
 // URL: /p/{slug}
@@ -97,6 +99,17 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
   const data = await fetchPageData(params.slug)
   if (!data) notFound()
   const { artist, songs, albums } = data
+
+  // Route to the selected template
+  const template = (artist as any).page_template || 'default'
+  if (template === 'minimal') {
+    return <ArtistPageMinimal artist={artist} songs={songs} albums={albums} />
+  }
+  if (template === 'cinematic') {
+    return <ArtistPageCinematic artist={artist} songs={songs} albums={albums} />
+  }
+
+  // Default template (continues with existing layout below)
   const settings: PageSettings = artist.page_settings || {}
   const s: PageSections = settings.sections || {
     hero: true, spotify: true, youtube: true, albums: true, songs: true, bio: true, social: true,

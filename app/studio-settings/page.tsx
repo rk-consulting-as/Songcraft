@@ -289,6 +289,45 @@ export default function StudioSettings() {
               )}
             </div>
 
+            {/* Template picker */}
+            {page.enabled && (
+              <div style={{ marginBottom: 22 }}>
+                <label style={{ display: 'block', color: '#8a7a60', fontSize: 11, letterSpacing: 1, marginBottom: 8 }}>
+                  {tx.studioTemplateLabel}
+                </label>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {[
+                    { key: 'default',  label: tx.templateDefault,  emoji: '🪟', hint: tx.templateStudioDefaultHint },
+                    { key: 'minimal',  label: tx.templateMinimal,  emoji: '◇',  hint: tx.templateStudioMinimalHint },
+                    { key: 'magazine', label: tx.templateMagazine, emoji: '📰', hint: tx.templateStudioMagazineHint },
+                  ].map(t => {
+                    const active = ((page as any).template || 'default') === t.key
+                    return (
+                      <button
+                        key={t.key}
+                        type="button"
+                        onClick={() => update({ template: t.key } as any)}
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: 6,
+                          border: active ? '1px solid #d4a843' : '1px solid rgba(180,140,80,0.2)',
+                          background: active ? 'rgba(212,168,67,0.12)' : 'rgba(255,255,255,0.02)',
+                          color: active ? '#d4a843' : '#a09080',
+                          cursor: 'pointer',
+                          fontSize: 12,
+                          textAlign: 'left',
+                          minWidth: 140,
+                        }}
+                      >
+                        <div style={{ fontSize: 14, marginBottom: 2 }}>{t.emoji} {t.label}</div>
+                        <div style={{ fontSize: 10, color: active ? '#d4a843' : '#6a5a40', opacity: 0.8 }}>{t.hint}</div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Hero */}
             <Section title={tx.studioSectionHero}>
               <Field label={tx.studioName + ' *'}>

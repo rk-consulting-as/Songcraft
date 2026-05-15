@@ -19,6 +19,7 @@ type Artist = {
   spotify_genres?: string[] | null
   social_links?: SocialLinksMap | null
   page_enabled?: boolean
+  page_template?: string
   page_slug?: string | null
   page_settings?: any
   favicon_url?: string | null
@@ -45,6 +46,7 @@ const emptyForm = {
   social_links: {} as SocialLinksMap,
   page_enabled: false,
   page_slug: '',
+  page_template: 'default',
   page_settings: DEFAULT_PAGE_SETTINGS as any,
   favicon_url: '',
 }
@@ -447,6 +449,7 @@ export default function Dashboard() {
       social_links: artist.social_links || {},
       page_enabled: artist.page_enabled || false,
       page_slug: artist.page_slug || '',
+      page_template: (artist as any).page_template || 'default',
       page_settings: { ...DEFAULT_PAGE_SETTINGS, ...(artist.page_settings || {}), sections: { ...DEFAULT_PAGE_SETTINGS.sections, ...((artist.page_settings as any)?.sections || {}) } },
       favicon_url: artist.favicon_url || '',
     })
@@ -1007,6 +1010,43 @@ export default function Dashboard() {
 
                 {form.page_enabled && (
                   <>
+                    {/* Template picker */}
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={{ display: 'block', color: '#8a7a60', fontSize: 10, letterSpacing: 1, marginBottom: 6 }}>
+                        {tx.publicPageTemplate}
+                      </label>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {[
+                          { key: 'default',   label: tx.templateDefault,   emoji: '🪟', hint: tx.templateDefaultHint },
+                          { key: 'minimal',   label: tx.templateMinimal,   emoji: '◇',  hint: tx.templateMinimalHint },
+                          { key: 'cinematic', label: tx.templateCinematic, emoji: '🎬', hint: tx.templateCinematicHint },
+                        ].map(t => {
+                          const active = (form.page_template || 'default') === t.key
+                          return (
+                            <button
+                              key={t.key}
+                              type="button"
+                              onClick={() => setForm({ ...form, page_template: t.key })}
+                              style={{
+                                padding: '8px 12px',
+                                borderRadius: 6,
+                                border: active ? '1px solid #d4a843' : '1px solid rgba(180,140,80,0.2)',
+                                background: active ? 'rgba(212,168,67,0.12)' : 'rgba(255,255,255,0.02)',
+                                color: active ? '#d4a843' : '#a09080',
+                                cursor: 'pointer',
+                                fontSize: 12,
+                                textAlign: 'left',
+                                minWidth: 130,
+                              }}
+                            >
+                              <div style={{ fontSize: 16, marginBottom: 2 }}>{t.emoji} {t.label}</div>
+                              <div style={{ fontSize: 10, color: active ? '#d4a843' : '#6a5a40', opacity: 0.8 }}>{t.hint}</div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
                     <div style={{ marginBottom: 12 }}>
                       <label style={{ display: 'block', color: '#8a7a60', fontSize: 10, letterSpacing: 1, marginBottom: 4 }}>{tx.publicPageSlug}</label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

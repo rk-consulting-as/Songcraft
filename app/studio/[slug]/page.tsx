@@ -4,6 +4,8 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { markdownToHtml } from '@/lib/markdown'
 import ContactForm from './ContactForm'
+import StudioPageMinimal from '@/components/studio-templates/StudioPageMinimal'
+import StudioPageMagazine from '@/components/studio-templates/StudioPageMagazine'
 
 // Public studio / manager landing page. Server-rendered.
 // URL: /studio/{slug}
@@ -82,6 +84,16 @@ export default async function StudioPublicPage({ params }: { params: { slug: str
   const data = await fetchStudio(params.slug)
   if (!data) notFound()
   const { page, artists, featuredSongs } = data
+
+  // Route to the selected template
+  const template = (page as any).template || 'default'
+  if (template === 'minimal') {
+    return <StudioPageMinimal studioPage={page} artists={artists} featuredSongs={featuredSongs} />
+  }
+  if (template === 'magazine') {
+    return <StudioPageMagazine studioPage={page} artists={artists} featuredSongs={featuredSongs} />
+  }
+
   // Pre-group featured songs by artist for fast lookup in the roster grid below.
   const songsByArtist: Record<string, any[]> = {}
   for (const s of featuredSongs) {
