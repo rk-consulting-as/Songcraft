@@ -1051,7 +1051,7 @@ export default function SongPage() {
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>📖 {tx.backstoryTitle}</h2>
             <p style={{ color: '#8a7a60', fontSize: 13, marginTop: 6 }}>{tx.backstoryDesc}</p>
 
-            <div style={{ marginTop: 14, marginBottom: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ marginTop: 14, marginBottom: 10, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <button
                 className="btn-gold"
                 onClick={generateBackstory}
@@ -1060,6 +1060,26 @@ export default function SongPage() {
               >
                 {isLoading('backstory') ? tx.generating : (backstory ? '🔄 ' + tx.backstoryRegenerate : '✨ ' + tx.backstoryGenerate)}
               </button>
+              {backstory && (
+                <button
+                  className="btn-outline"
+                  onClick={() => copy(backstory)}
+                  style={{ padding: '8px 14px', fontSize: 13 }}
+                  title={lang === 'no' ? 'Kopier backstory til utklippstavlen' : 'Copy backstory to clipboard'}
+                >
+                  📋 {tx.copy}
+                </button>
+              )}
+              {backstory && (
+                <button
+                  className="btn-outline"
+                  onClick={async () => { await save({ backstory }); }}
+                  style={{ padding: '8px 14px', fontSize: 13 }}
+                  title={lang === 'no' ? 'Lagre nå' : 'Save now'}
+                >
+                  💾 {tx.save}
+                </button>
+              )}
               <span style={{ color: '#5a4a30', fontSize: 11, alignSelf: 'center' }}>
                 {tx.backstoryAiHint}
               </span>
