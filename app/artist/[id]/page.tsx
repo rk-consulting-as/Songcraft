@@ -7,6 +7,7 @@ import { type AIProvider, getStoredProvider, setStoredProvider } from '@/lib/aiP
 import AIProviderPicker from '@/components/AIProviderPicker'
 import ZoomableImage from '@/components/ZoomableImage'
 import Link from 'next/link'
+import ClickStats from '@/components/ClickStats'
 
 import type { SocialLinksMap } from '@/lib/socialLinks'
 
@@ -1442,6 +1443,21 @@ export default function ArtistPage() {
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {/* Click stats — total outbound clicks across all this artist's songs */}
+        {artist?.id && (
+          <div className="card" style={{ marginTop: 36 }}>
+            <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: 16, letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 6px' }}>
+              📊 {lang === 'no' ? 'Klikkstatistikk for artist' : 'Click stats for artist'}
+            </h2>
+            <p style={{ color: '#8a7a60', fontSize: 12, margin: '0 0 16px' }}>
+              {lang === 'no'
+                ? 'Hvor mange klikker på lenker fra denne artistens offentlige sider.'
+                : 'How many people click through links on this artist\'s public pages.'}
+            </p>
+            <ClickStats artistId={artist.id} />
           </div>
         )}
       </div>

@@ -9,6 +9,7 @@ import ZoomableImage from '@/components/ZoomableImage'
 import { cleanLyricsText } from '@/lib/lyricsCleanup'
 import Link from 'next/link'
 import DistributionModal from '@/components/DistributionModal'
+import ClickStats from '@/components/ClickStats'
 
 const PLATFORMS = ['TikTok', 'Instagram', 'Facebook', 'YouTube', 'X/Twitter']
 const MEDIA_PLATFORMS = ['Spotify', 'YouTube', 'TikTok', 'Instagram', 'Facebook', 'Apple Music', 'SoundCloud', 'Other']
@@ -33,6 +34,7 @@ export default function SongPage() {
   const [useProfileForLyrics, setUseProfileForLyrics] = useState(true)
 
   const [sunoPrompt, setSunoPrompt] = useState('')
+  const [backstory, setBackstory] = useState('')
 
   const [captions, setCaptions] = useState<Record<string, string>>({})
   const [captionTone, setCaptionTone] = useState('')
@@ -128,6 +130,7 @@ export default function SongPage() {
 
   const TAB_LABELS: Record<string, string> = {
     lyrics: `🎵 ${tx.lyrics}`,
+    backstory: `📖 ${tx.backstory}`,
     suno: `🤖 ${tx.suno}`,
     captions: `📱 ${tx.captions}`,
     cover: `🖼️ ${tx.cover}`,
@@ -160,6 +163,7 @@ export default function SongPage() {
       setLyrics(data.lyrics_text || '')
       setLyricsHistory(data.lyrics_history || [])
       setSunoPrompt(data.suno_prompt || '')
+      setBackstory(data.backstory || '')
       setCaptions(data.captions || {})
       setCoverStyle(data.cover_style || '')
       setCoverPrompt(data.cover_prompt || '')
@@ -551,6 +555,27 @@ export default function SongPage() {
     const newHistory = [...msgs, { role: 'assistant', content: result }]
     setLyrics(result); setLyricsHistory(newHistory)
     await save({ lyrics_instructions: lyricsInstructions, lyrics_text: result, lyrics_history: newHistory, status: 'in_progress' })
+  }
+
+  const generateBackstory = async () => {
+    const artistCtx = buildArtistContext()
+    const lang = aiOutputLang === 'no' ? 'Norwegian' : 'English'
+    const parts: string[] = []
+    if (lyrics) parts.push(`LYRICS:\n${lyrics}`)
+    if (sunoPrompt) parts.push(`SUNO PROMPT:\n${sunoPrompt}`)
+    if (captions && Object.keys(captions).length > 0) {
+      const captionsText = Object.entries(captions).map(([k, v]) => `${k}: ${v}`).join('\n')
+      parts.push(`CAPTIONS:\n${captionsText}`)
+    }
+    const context = parts.join('\n\n')
+    const userMsg = `Write a short, engaging backstory for this song (3-5 paragraphs). Tell the story behind the song: inspiration, theme, the emotion it captures, what listeners should know. Write in ${lang}, first person from the artist's perspective if natural. Don't quote the lyrics verbatim — describe what they're about.${artistCtx}\n\n${context}`
+    const result = await callAI(
+      [{ role: 'user', content: userMsg }],
+      `You are a music journalist + the artist's storyteller. Craft a compelling backstory for a song that gives context, mood, and motivation. ${lang}. Markdown OK. Aim for 3-5 paragraphs.`,
+      'backstory'
+    )
+    setBackstory(result)
+    await save({ backstory: result })
   }
 
   const refineLyrics = async () => {
@@ -1017,6 +1042,44 @@ export default function SongPage() {
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {/* BACKSTORY TAB */}
+        {tab === 'backstory' && (
+          <div>
+            <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>📖 {tx.backstoryTitle}</h2>
+            <p style={{ color: '#8a7a60', fontSize: 13, marginTop: 6 }}>{tx.backstoryDesc}</p>
+
+            <div style={{ marginTop: 14, marginBottom: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                className="btn-gold"
+                onClick={generateBackstory}
+                disabled={isLoading('backstory')}
+                style={{ padding: '8px 18px', fontSize: 13 }}
+              >
+                {isLoading('backstory') ? tx.generating : (backstory ? '🔄 ' + tx.backstoryRegenerate : '✨ ' + tx.backstoryGenerate)}
+              </button>
+              <span style={{ color: '#5a4a30', fontSize: 11, alignSelf: 'center' }}>
+                {tx.backstoryAiHint}
+              </span>
+            </div>
+
+            <textarea
+              value={backstory}
+              onChange={e => setBackstory(e.target.value)}
+              onBlur={() => save({ backstory })}
+              placeholder={tx.backstoryPlaceholder}
+              rows={14}
+              maxLength={5000}
+              style={{ width: '100%', boxSizing: 'border-box', fontSize: 14, padding: 14, fontFamily: 'inherit', resize: 'vertical', minHeight: 240 }}
+            />
+            <div style={{ color: '#5a4a30', fontSize: 11, textAlign: 'right', marginTop: 4 }}>
+              {backstory.length} / 5000
+            </div>
+            <p style={{ color: '#6a5a40', fontSize: 12, marginTop: 14 }}>
+              💡 {tx.backstoryTip}
+            </p>
           </div>
         )}
 
@@ -1662,6 +1725,19 @@ export default function SongPage() {
                 ))}
               </div>
             )}
+
+            {/* Click stats */}
+            <div className="card" style={{ marginTop: 28 }}>
+              <h3 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: 14, letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 14px' }}>
+                📊 {lang === 'no' ? 'Klikkstatistikk' : 'Click stats'}
+              </h3>
+              <p style={{ color: '#8a7a60', fontSize: 12, margin: '0 0 14px' }}>
+                {lang === 'no'
+                  ? 'Klikk fra den offentlige låt-siden (/s/...) på Spotify, YouTube og andre lenker.'
+                  : 'Clicks from the public song page (/s/...) on Spotify, YouTube and other links.'}
+              </p>
+              <ClickStats songId={songId} />
+            </div>
           </div>
         )}
 

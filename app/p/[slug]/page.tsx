@@ -5,6 +5,7 @@ import type { Metadata } from 'next'
 import ClientEmbedPlayer from '@/components/ClientEmbedPlayer'
 import ArtistPageMinimal from '@/components/artist-templates/ArtistPageMinimal'
 import ArtistPageCinematic from '@/components/artist-templates/ArtistPageCinematic'
+import ShareButtons from '@/components/ShareButtons'
 
 // Public artist landing page. Server-rendered, anonymous Supabase client (RLS gates by page_enabled).
 // URL: /p/{slug}
@@ -304,6 +305,17 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
             </div>
           </section>
         )}
+
+        {/* Share */}
+        <section style={{ marginTop: 48, marginBottom: 32 }}>
+          <h2 style={{ margin: '0 0 14px', fontSize: 13, letterSpacing: 2, color: accent, textTransform: 'uppercase' }}>Share this artist</h2>
+          <ShareButtons
+            url={`/p/${artist.page_slug}`}
+            title={`${artist.name} — Songcraft`}
+            text={`Check out ${artist.name} on Songcraft`}
+            accent={accent}
+          />
+        </section>
 
         {/* Footer */}
         <footer style={{ marginTop: 60, paddingTop: 24, borderTop: '1px solid rgba(255,255,255,0.08)', textAlign: 'center', color: '#5a4a30', fontSize: 12 }}>

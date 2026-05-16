@@ -5,6 +5,9 @@ import type { Metadata } from 'next'
 import ClientEmbedPlayer from '@/components/ClientEmbedPlayer'
 import ReactionBar from '@/components/ReactionBar'
 import CommentsThread from '@/components/CommentsThread'
+import MediaLinksGrid from '@/components/MediaLinksGrid'
+import BackstoryDisplay from '@/components/BackstoryDisplay'
+import ShareButtons from '@/components/ShareButtons'
 
 // Public song detail page. Server-rendered with anon client; RLS gates by artist.page_enabled.
 export const dynamic = 'force-dynamic'
@@ -20,7 +23,7 @@ async function fetchSong(songId: string) {
   try {
     const { data: song, error } = await sb
       .from('songs')
-      .select('id, title, lyrics_text, suno_audio_url, spotify_url, suno_url, media_links, cover_image_url, spotify_cover_url, spotify_album, spotify_release_date, internal_play_count, embed_click_count, comment_count, reaction_count, artist_id, user_id, artists(id, name, page_enabled, page_slug, avatar_url, spotify_image_url)')
+      .select('id, title, lyrics_text, suno_audio_url, spotify_url, suno_url, media_links, backstory, cover_image_url, spotify_cover_url, spotify_album, spotify_release_date, internal_play_count, embed_click_count, comment_count, reaction_count, artist_id, user_id, artists(id, name, page_enabled, page_slug, avatar_url, spotify_image_url)')
       .eq('id', songId)
       .maybeSingle()
     if (error || !song) return null
@@ -127,8 +130,43 @@ export default async function PublicSongPage({ params }: { params: { id: string 
           }}
         />
 
+        {/* Listen / find on … (media links) */}
+        {(song.media_links?.length > 0 || song.spotify_url || song.suno_url) && (
+          <div style={{ marginTop: 28 }}>
+            <h2 style={sectionH2}>Listen / Find on</h2>
+            <MediaLinksGrid
+              links={[
+                ...(song.spotify_url ? [{ platform: 'Spotify', url: song.spotify_url, label: 'Spotify' }] : []),
+                ...(song.suno_url ? [{ platform: 'Suno', url: song.suno_url, label: 'Suno' }] : []),
+                ...(Array.isArray(song.media_links) ? song.media_links : []),
+              ]}
+              songId={song.id}
+              artistId={artist.id}
+              sourcePage={`/s/${song.id}`}
+            />
+          </div>
+        )}
+
+        {/* Backstory */}
+        {song.backstory && (
+          <div style={{ marginTop: 28 }}>
+            <h2 style={sectionH2}>The story behind</h2>
+            <BackstoryDisplay text={song.backstory} />
+          </div>
+        )}
+
+        {/* Share */}
+        <div style={{ marginTop: 28 }}>
+          <h2 style={sectionH2}>Share</h2>
+          <ShareButtons
+            url={`/s/${song.id}`}
+            title={`${song.title} · ${artist.name}`}
+            text={`Listen to "${song.title}" by ${artist.name} on Songcraft`}
+          />
+        </div>
+
         {/* Reactions */}
-        <div style={{ marginTop: 24 }}>
+        <div style={{ marginTop: 28 }}>
           <h2 style={sectionH2}>Reactions</h2>
           <ReactionBar songId={song.id} />
         </div>

@@ -319,11 +319,24 @@ export const t = {
     // Song tabs
     lyrics: 'Sangtekst',
     suno: 'Suno',
+    backstory: 'Backstory',
     captions: 'Captions',
     cover: 'Cover',
     canvas: 'Canvas',
     media: 'Media',
     publish: 'Publiser',
+
+    // Backstory tab
+    backstoryTitle: 'Backstory',
+    backstoryDesc: 'Fortell historien bak låten — inspirasjon, tema, og hva lytteren bør vite. Vises på den offentlige låt-siden.',
+    backstoryGenerate: 'Generer backstory',
+    backstoryRegenerate: 'Generer ny',
+    backstoryAiHint: 'AI bruker sangtekst, Suno prompt og captions som kontekst.',
+    backstoryPlaceholder: 'Skriv historien bak låten her, eller bruk Generer-knappen for å la AI lage et utkast.',
+    backstoryTip: 'Tips: Personlige detaljer (sted, øyeblikk, følelse) gjør backstoryen unik. Hold den til 3-5 avsnitt.',
+    backstoryShareTitle: 'Historien bak',
+    backstoryReadMore: 'Les mer',
+    backstoryReadLess: 'Vis mindre',
 
     // Lyrics tab
     instructions: 'INSTRUKSER',
@@ -1146,11 +1159,24 @@ export const t = {
     // Song tabs
     lyrics: 'Lyrics',
     suno: 'Suno',
+    backstory: 'Backstory',
     captions: 'Captions',
     cover: 'Cover',
     canvas: 'Canvas',
     media: 'Media',
     publish: 'Publish',
+
+    // Backstory tab
+    backstoryTitle: 'Backstory',
+    backstoryDesc: 'Tell the story behind the song — inspiration, theme, and what the listener should know. Shown on the public song page.',
+    backstoryGenerate: 'Generate backstory',
+    backstoryRegenerate: 'Regenerate',
+    backstoryAiHint: 'AI uses lyrics, Suno prompt and captions as context.',
+    backstoryPlaceholder: 'Write the story behind the song here, or use Generate to let AI draft one for you.',
+    backstoryTip: 'Tip: Personal details (place, moment, feeling) make the backstory unique. Aim for 3-5 paragraphs.',
+    backstoryShareTitle: 'The story behind',
+    backstoryReadMore: 'Read more',
+    backstoryReadLess: 'Show less',
 
     // Lyrics tab
     instructions: 'INSTRUCTIONS',
