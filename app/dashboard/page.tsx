@@ -545,6 +545,7 @@ export default function Dashboard() {
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
           <Link href="/discover" className="btn-outline" style={navLinkStyle}>🌍 {tx.discoverNavLink}</Link>
           <Link href="/charts" className="btn-outline" style={navLinkStyle}>📈 {tx.chartsNavLink}</Link>
+          <Link href="/analytics" className="btn-outline" style={navLinkStyle}>📊 {tx.analyticsNavLink}</Link>
           <button
             onClick={() => { try { window.dispatchEvent(new CustomEvent('songcraft:open-chat')) } catch {} }}
             className="btn-outline"
@@ -567,6 +568,7 @@ export default function Dashboard() {
               studioView: tx.studioPageNavView,
               studioSetup: tx.studioPageNavSetup,
               feed: tx.feedNavLink,
+              analytics: tx.analyticsNavLink,
               referrals: tx.referralsNavLink,
               settings: tx.settings,
               admin: tx.adminNavLink,

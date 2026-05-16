@@ -26,6 +26,7 @@ export default function ProfileMenu({
     studioView: string
     studioSetup: string
     feed: string
+    analytics: string
     referrals: string
     settings: string
     admin: string
@@ -124,6 +125,10 @@ export default function ProfileMenu({
 
           <Link href="/feed" onClick={() => setOpen(false)} style={item}>
             📰 {texts.feed}
+          </Link>
+
+          <Link href="/analytics" onClick={() => setOpen(false)} style={item}>
+            📊 {texts.analytics}
           </Link>
 
           <Link href="/referrals" onClick={() => setOpen(false)} style={item}>

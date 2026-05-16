@@ -658,6 +658,9 @@ export const t = {
     adminTransferErrSelf: 'En bruker kan ikke verve seg selv',
     adminTransferErrCycle: 'Dette ville skapt en sirkel i verve-kjeden (ny verver er allerede i brukerens nedlinje)',
 
+    // Analytics
+    analyticsNavLink: 'Analyse',
+
     // Charts page
     chartsNavLink: 'Topplister',
     chartsTitle: 'Topp-listene på Songcraft',
@@ -1497,6 +1500,9 @@ export const t = {
     adminTransferErrReferrerMissing: 'Referrer not found',
     adminTransferErrSelf: 'A user cannot refer themselves',
     adminTransferErrCycle: 'This would create a cycle in the referral chain (the new referrer is already in this user\'s downline)',
+
+    // Analytics
+    analyticsNavLink: 'Analytics',
 
     // Charts page
     chartsNavLink: 'Charts',
