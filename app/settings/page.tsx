@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { t, useLang, setLang, type Lang } from '@/lib/i18n'
 import { PLATFORM_RULES, type Platform } from '@/lib/platformRules'
 import Link from 'next/link'
+import AppVersionLabel from '@/components/AppVersionLabel'
 
 const PLATFORMS = Object.keys(PLATFORM_RULES) as Platform[]
 
@@ -201,6 +202,10 @@ export default function SettingsPage() {
           <button className="btn-gold" onClick={saveRules} disabled={saving}>
             {saving ? tx.saving : saved ? (lang === 'no' ? '✓ Lagret!' : '✓ Saved!') : (lang === 'no' ? 'Lagre alle regler' : 'Save all rules')}
           </button>
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: 24 }}>
+          <AppVersionLabel />
         </div>
       </div>
     </div>

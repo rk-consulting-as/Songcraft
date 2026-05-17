@@ -69,6 +69,7 @@ export async function GET(req: NextRequest) {
     auditRes,
     subEventsRes,
     plansRes,
+    feedbackRes,
   ] = await Promise.all([
     safeCount(sb.from('profiles').select('id', { count: 'exact', head: true })),
     safeCount(sb.from('profiles').select('id', { count: 'exact', head: true }).gte('updated_at', since7)),
@@ -87,6 +88,7 @@ export async function GET(req: NextRequest) {
     sb.from('admin_audit_log').select('*').order('created_at', { ascending: false }).limit(80),
     sb.from('subscription_events').select('*').order('created_at', { ascending: false }).limit(80),
     sb.from('plans').select('id, name, stripe_price_id'),
+    sb.from('beta_feedback').select('id, user_id, page, type, message, status, created_at, profiles(display_name, referral_code)').order('created_at', { ascending: false }).limit(100),
   ])
 
   const subscriptions = subscriptionsRes.data || []
@@ -191,6 +193,19 @@ export async function GET(req: NextRequest) {
       reported_placeholder: [],
     },
     audit_log: auditRes.data || [],
+    feedback: feedbackRes.data || [],
+    sanity: {
+      supabase_connected: totalUsers >= 0,
+      supabase_url: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      supabase_anon_key: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      supabase_service_role: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      stripe_configured: !!process.env.STRIPE_SECRET_KEY && !!process.env.STRIPE_WEBHOOK_SECRET,
+      resend_configured: !!process.env.RESEND_API_KEY && (!!process.env.RESEND_FROM_EMAIL || !!process.env.RESEND_FROM),
+      anthropic_configured: !!process.env.ANTHROPIC_API_KEY,
+      openai_configured: !!process.env.OPENAI_API_KEY,
+      app_version: process.env.NEXT_PUBLIC_APP_VERSION || '0.1.0',
+      build_id: process.env.NEXT_PUBLIC_BUILD_ID || process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || 'local',
+    },
     stripe: {
       configured: !!process.env.STRIPE_SECRET_KEY && !!process.env.STRIPE_WEBHOOK_SECRET,
       webhook_secret_configured: !!process.env.STRIPE_WEBHOOK_SECRET,
@@ -281,6 +296,16 @@ export async function POST(req: NextRequest) {
         status: 'queued',
         metadata: { actor_id: actor.id },
       })
+    } else if (action === 'update_feedback_status') {
+      const feedbackId = String(body.feedback_id || '')
+      const nextStatus = ['new', 'reviewed', 'resolved', 'dismissed'].includes(body.status) ? body.status : 'reviewed'
+      await sb.from('beta_feedback').update({
+        status: nextStatus,
+        reviewed_by: actor.id,
+        reviewed_at: new Date().toISOString(),
+      }).eq('id', feedbackId)
+      metadata.feedback_id = feedbackId
+      metadata.status = nextStatus
     } else {
       return NextResponse.json({ error: 'unknown_action' }, { status: 400 })
     }

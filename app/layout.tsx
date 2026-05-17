@@ -4,6 +4,7 @@ import DynamicFavicon from '@/components/DynamicFavicon'
 import ChatDock from '@/components/ChatDock'
 import MobileBottomNav from '@/components/MobileBottomNav'
 import PWARegister from '@/components/PWARegister'
+import BetaLaunchKit from '@/components/BetaLaunchKit'
 
 export const metadata: Metadata = {
   title: 'Songcraft',
@@ -41,6 +42,7 @@ export default function RootLayout({
         <DynamicFavicon />
         <PWARegister />
         {children}
+        <BetaLaunchKit />
         <MobileBottomNav />
         <ChatDock />
       </body>

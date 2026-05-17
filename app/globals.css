@@ -178,6 +178,83 @@ select option:checked {
   display: none;
 }
 
+.beta-banner {
+  position: sticky;
+  top: 0;
+  z-index: 75;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 9px 16px;
+  background: rgba(212,168,67,0.12);
+  border-bottom: 1px solid rgba(212,168,67,0.28);
+  color: #e8e0d0;
+  backdrop-filter: blur(12px);
+  font-size: 12px;
+}
+
+.beta-banner strong {
+  color: #d4a843;
+  margin-right: 8px;
+}
+
+.beta-banner button {
+  background: rgba(10,10,15,0.55);
+  border: 1px solid rgba(212,168,67,0.35);
+  color: #d4a843;
+  border-radius: 999px;
+  padding: 5px 11px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.known-issues-notice {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 74;
+  max-width: 420px;
+  padding: 9px 12px;
+  border: 1px solid rgba(224,112,112,0.26);
+  border-radius: 10px;
+  background: rgba(20,16,26,0.92);
+  color: #a09080;
+  box-shadow: 0 10px 34px rgba(0,0,0,0.35);
+  font-size: 11px;
+}
+
+.known-issues-notice strong {
+  color: #e07070;
+  margin-right: 8px;
+}
+
+.beta-checklist-panel {
+  position: fixed;
+  top: 62px;
+  right: 18px;
+  z-index: 90;
+  width: min(360px, calc(100vw - 36px));
+  background: #14101a;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+
+.feedback-fab {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 76;
+  border: 1px solid rgba(212,168,67,0.38);
+  background: rgba(212,168,67,0.14);
+  color: #d4a843;
+  border-radius: 999px;
+  padding: 9px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 34px rgba(0,0,0,0.35);
+}
+
 @media (max-width: 760px) {
   .mobile-bottom-nav {
     position: fixed;
@@ -268,6 +345,31 @@ select option:checked {
   .mobile-quick-actions button:disabled,
   .mobile-quick-actions a[aria-disabled="true"] {
     opacity: 0.45;
+  }
+
+  .beta-banner {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 8px 14px;
+  }
+
+  .known-issues-notice {
+    left: 10px;
+    right: 10px;
+    bottom: calc(var(--mobile-nav-height) + 10px + env(safe-area-inset-bottom));
+    max-width: none;
+  }
+
+  .feedback-fab {
+    right: 12px;
+    bottom: calc(var(--mobile-nav-height) + 12px + env(safe-area-inset-bottom));
+  }
+
+  .beta-checklist-panel {
+    top: 96px;
+    right: 10px;
+    left: 10px;
+    width: auto;
   }
 }
 

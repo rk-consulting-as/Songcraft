@@ -16,6 +16,8 @@ const labels = {
     billing: 'Abonnement',
     newsletter: 'Nyhetsbrev',
     moderation: 'Moderering',
+    feedback: 'Feedback',
+    sanity: 'Sanity',
     audit: 'Audit logg',
     totalUsers: 'Totale brukere',
     active7: 'Aktive 7d',
@@ -56,6 +58,15 @@ const labels = {
     noData: 'Ingen data ennå.',
     updated: 'Oppdatert.',
     error: 'Kunne ikke utføre handlingen.',
+    feedbackInbox: 'Feedback inbox',
+    feedbackEmpty: 'Ingen feedback ennå.',
+    markReviewed: 'Marker lest',
+    markResolved: 'Løst',
+    markDismissed: 'Avvis',
+    sanityTitle: 'Beta sanity checks',
+    sanityDesc: 'Rask sjekk av miljøvariabler og integrasjoner før beta-testing.',
+    ok: 'OK',
+    missing: 'Mangler',
   },
   en: {
     title: 'SaaS Control Center',
@@ -68,6 +79,8 @@ const labels = {
     billing: 'Subscriptions',
     newsletter: 'Newsletter',
     moderation: 'Moderation',
+    feedback: 'Feedback',
+    sanity: 'Sanity',
     audit: 'Audit log',
     totalUsers: 'Total users',
     active7: 'Active 7d',
@@ -108,10 +121,19 @@ const labels = {
     noData: 'No data yet.',
     updated: 'Updated.',
     error: 'Could not perform action.',
+    feedbackInbox: 'Feedback inbox',
+    feedbackEmpty: 'No feedback yet.',
+    markReviewed: 'Mark reviewed',
+    markResolved: 'Resolved',
+    markDismissed: 'Dismiss',
+    sanityTitle: 'Beta sanity checks',
+    sanityDesc: 'Quick check of environment variables and integrations before beta testing.',
+    ok: 'OK',
+    missing: 'Missing',
   },
 }
 
-type Section = 'users' | 'ai' | 'settings' | 'billing' | 'newsletter' | 'moderation' | 'audit'
+type Section = 'users' | 'ai' | 'settings' | 'billing' | 'newsletter' | 'moderation' | 'feedback' | 'sanity' | 'audit'
 
 export default function AdminControlCenter() {
   const [lang, setLang] = useState<Lang>('no')
@@ -211,7 +233,7 @@ export default function AdminControlCenter() {
       </div>
 
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
-        {(['users', 'ai', 'settings', 'billing', 'newsletter', 'moderation', 'audit'] as Section[]).map(s => (
+        {(['users', 'ai', 'settings', 'billing', 'newsletter', 'moderation', 'feedback', 'sanity', 'audit'] as Section[]).map(s => (
           <button key={s} onClick={() => setSection(s)} style={tabStyle(section === s)}>{(tx as any)[s]}</button>
         ))}
       </div>
@@ -301,6 +323,45 @@ export default function AdminControlCenter() {
             <p style={{ color: '#8a7a60', fontSize: 12 }}>Use the user list and public page records below for targeted moderation. API actions are audit logged.</p>
           </Panel>
         </Grid>
+      )}
+
+      {section === 'feedback' && (
+        <Panel title={tx.feedbackInbox}>
+          {(data.feedback || []).length === 0 ? (
+            <p style={{ color: '#6a5a40', fontSize: 13 }}>{tx.feedbackEmpty}</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {(data.feedback || []).map((item: any) => (
+                <div key={item.id} style={{ border: '1px solid rgba(180,140,80,0.16)', borderRadius: 8, padding: 12, background: 'rgba(255,255,255,0.02)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+                    <div>
+                      <Badge color={item.type === 'bug' ? '#e07070' : '#d4a843'}>{item.type}</Badge>
+                      <span style={{ color: '#8a7a60', fontSize: 11, marginLeft: 8 }}>{item.page}</span>
+                    </div>
+                    <span style={{ color: '#6a5a40', fontSize: 11 }}>{new Date(item.created_at).toLocaleString()} · {item.status}</span>
+                  </div>
+                  <p style={{ color: '#c8c0b0', whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.5 }}>{item.message}</p>
+                  <Small>{item.profiles?.display_name || item.profiles?.referral_code || item.user_id?.slice(0, 8) || 'anon'}</Small>
+                  <ActionRow>
+                    <button style={smallBtn('#d4a843')} onClick={() => postAction({ action: 'update_feedback_status', feedback_id: item.id, status: 'reviewed' })}>{tx.markReviewed}</button>
+                    <button style={smallBtn('#7bc87b')} onClick={() => postAction({ action: 'update_feedback_status', feedback_id: item.id, status: 'resolved' })}>{tx.markResolved}</button>
+                    <button style={smallBtn('#8a7a60')} onClick={() => postAction({ action: 'update_feedback_status', feedback_id: item.id, status: 'dismissed' })}>{tx.markDismissed}</button>
+                  </ActionRow>
+                </div>
+              ))}
+            </div>
+          )}
+        </Panel>
+      )}
+
+      {section === 'sanity' && (
+        <Panel title={tx.sanityTitle}>
+          <p style={{ color: '#8a7a60', fontSize: 13, marginTop: 0 }}>{tx.sanityDesc}</p>
+          <Rows rows={Object.entries(data.sanity || {}).map(([key, value]) => [
+            key.replace(/_/g, ' '),
+            typeof value === 'boolean' ? (value ? tx.ok : tx.missing) : String(value),
+          ])} />
+        </Panel>
       )}
 
       {section === 'audit' && (
