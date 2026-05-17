@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import ClientEmbedPlayer from '@/components/ClientEmbedPlayer'
+import NewsletterSignup from '@/components/NewsletterSignup'
+import PublicEventsList from '@/components/PublicEventsList'
 
 /**
  * Minimal artist template — typography-first. Centered text hero (no big avatar),
@@ -10,13 +12,16 @@ export default function ArtistPageMinimal({
   artist,
   songs,
   albums,
+  events,
 }: {
   artist: any
   songs: any[]
   albums: any[]
+  events: any[]
 }) {
   const accent = artist.page_settings?.accent_color || '#d4a843'
   const releasedSongs = songs.filter(s => s.status === 'released')
+  const sections = { newsletter: true, events: true, ...(artist.page_settings?.sections || {}) }
 
   return (
     <div style={{
@@ -63,6 +68,16 @@ export default function ArtistPageMinimal({
             </p>
           )}
         </header>
+
+        {sections.newsletter !== false && (
+          <section style={{ marginBottom: 64 }}>
+            <NewsletterSignup artistId={artist.id} sourcePage={`/p/${artist.page_slug}`} accent={accent} compact />
+          </section>
+        )}
+
+        {sections.events !== false && (
+          <PublicEventsList events={events} accent={accent} />
+        )}
 
         {/* Albums — simple list */}
         {albums.length > 0 && (

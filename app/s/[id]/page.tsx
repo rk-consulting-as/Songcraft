@@ -8,6 +8,7 @@ import CommentsThread from '@/components/CommentsThread'
 import MediaLinksGrid from '@/components/MediaLinksGrid'
 import BackstoryDisplay from '@/components/BackstoryDisplay'
 import ShareButtons from '@/components/ShareButtons'
+import NewsletterSignup from '@/components/NewsletterSignup'
 
 // Public song detail page. Server-rendered with anon client; RLS gates by artist.page_enabled.
 export const dynamic = 'force-dynamic'
@@ -129,6 +130,10 @@ export default async function PublicSongPage({ params }: { params: { id: string 
             artist_name: artist.name,
           }}
         />
+
+        <div style={{ marginTop: 28 }}>
+          <NewsletterSignup artistId={artist.id} sourcePage={`/s/${song.id}`} accent={accent} />
+        </div>
 
         {/* Listen / find on … (media links) */}
         {(song.media_links?.length > 0 || song.spotify_url || song.suno_url) && (

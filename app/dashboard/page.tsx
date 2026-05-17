@@ -30,7 +30,7 @@ type SpotifyArtist = {
   spotifyUrl: string | null
 }
 const DEFAULT_PAGE_SETTINGS = {
-  sections: { hero: true, spotify: true, youtube: true, albums: true, songs: true, bio: true, social: true },
+  sections: { hero: true, spotify: true, youtube: true, albums: true, songs: true, bio: true, social: true, events: true, newsletter: true },
   accent_color: '#d4a843',
   youtube_videos: [] as string[],
 }
@@ -1081,6 +1081,8 @@ export default function Dashboard() {
                           ['youtube', tx.publicSectionYoutube],
                           ['albums', tx.publicSectionAlbums],
                           ['songs', tx.publicSectionSongs],
+                          ['events', tx.publicSectionEvents],
+                          ['newsletter', tx.publicSectionNewsletter],
                         ] as const).map(([key, label]) => {
                           const active = form.page_settings?.sections?.[key] !== false
                           return (

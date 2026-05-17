@@ -6,6 +6,8 @@ import ClientEmbedPlayer from '@/components/ClientEmbedPlayer'
 import ArtistPageMinimal from '@/components/artist-templates/ArtistPageMinimal'
 import ArtistPageCinematic from '@/components/artist-templates/ArtistPageCinematic'
 import ShareButtons from '@/components/ShareButtons'
+import NewsletterSignup from '@/components/NewsletterSignup'
+import PublicEventsList from '@/components/PublicEventsList'
 
 // Public artist landing page. Server-rendered, anonymous Supabase client (RLS gates by page_enabled).
 // URL: /p/{slug}
@@ -28,6 +30,8 @@ type PageSections = {
   songs?: boolean
   bio?: boolean
   social?: boolean
+  events?: boolean
+  newsletter?: boolean
 }
 
 type PageSettings = {
@@ -54,7 +58,14 @@ async function fetchPageData(slug: string) {
   const { data: albums, error: albumsErr } = await sb.from('albums').select('*').eq('artist_id', artist.id)
     .order('release_date', { ascending: false, nullsFirst: false })
   if (albumsErr) console.error('[public-page] albums query error:', albumsErr)
-  return { artist, songs: songs || [], albums: albums || [] }
+  const { data: events, error: eventsErr } = await sb
+    .from('artist_events')
+    .select('id, title, date, venue, city, country, ticket_url, status')
+    .eq('artist_id', artist.id)
+    .in('status', ['scheduled', 'sold_out'])
+    .order('date', { ascending: true })
+  if (eventsErr) console.error('[public-page] events query error:', eventsErr)
+  return { artist, songs: songs || [], albums: albums || [], events: events || [] }
 }
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
@@ -99,21 +110,22 @@ function youtubeId(url: string): string | null {
 export default async function ArtistPublicPage({ params }: { params: { slug: string } }) {
   const data = await fetchPageData(params.slug)
   if (!data) notFound()
-  const { artist, songs, albums } = data
+  const { artist, songs, albums, events } = data
 
   // Route to the selected template
   const template = (artist as any).page_template || 'default'
   if (template === 'minimal') {
-    return <ArtistPageMinimal artist={artist} songs={songs} albums={albums} />
+    return <ArtistPageMinimal artist={artist} songs={songs} albums={albums} events={events} />
   }
   if (template === 'cinematic') {
-    return <ArtistPageCinematic artist={artist} songs={songs} albums={albums} />
+    return <ArtistPageCinematic artist={artist} songs={songs} albums={albums} events={events} />
   }
 
   // Default template (continues with existing layout below)
   const settings: PageSettings = artist.page_settings || {}
-  const s: PageSections = settings.sections || {
-    hero: true, spotify: true, youtube: true, albums: true, songs: true, bio: true, social: true,
+  const s: PageSections = {
+    hero: true, spotify: true, youtube: true, albums: true, songs: true, bio: true, social: true, events: true, newsletter: true,
+    ...(settings.sections || {}),
   }
   const accent = settings.accent_color || '#d4a843'
   const ytIds = (settings.youtube_videos || []).map(youtubeId).filter(Boolean) as string[]
@@ -193,6 +205,17 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
       </section>
 
       <div style={{ maxWidth: 980, margin: '0 auto', padding: '40px 24px 80px' }}>
+        {/* Spotify artist embed */}
+        {s.newsletter !== false && (
+          <section style={{ marginBottom: 48 }}>
+            <NewsletterSignup artistId={artist.id} sourcePage={`/p/${artist.page_slug}`} accent={accent} />
+          </section>
+        )}
+
+        {s.events !== false && (
+          <PublicEventsList events={events} accent={accent} />
+        )}
+
         {/* Spotify artist embed */}
         {s.spotify && artist.spotify_id && (
           <section style={{ marginBottom: 48 }}>

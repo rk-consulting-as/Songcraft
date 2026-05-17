@@ -10,6 +10,7 @@ import { cleanLyricsText } from '@/lib/lyricsCleanup'
 import Link from 'next/link'
 import DistributionModal from '@/components/DistributionModal'
 import ClickStats from '@/components/ClickStats'
+import QRCodeCard from '@/components/QRCodeCard'
 
 const PLATFORMS = ['TikTok', 'Instagram', 'Facebook', 'YouTube', 'X/Twitter']
 const MEDIA_PLATFORMS = ['Spotify', 'YouTube', 'TikTok', 'Instagram', 'Facebook', 'Apple Music', 'SoundCloud', 'Other']
@@ -1765,6 +1766,10 @@ export default function SongPage() {
         {tab === 'publish' && (
           <div>
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>{tx.publishTitle}</h2>
+
+            <div style={{ marginBottom: 24 }}>
+              <QRCodeCard path={`/s/${songId}`} title={tx.qrSongHint} />
+            </div>
 
             {/* Distribute to streaming platforms */}
             <div style={{

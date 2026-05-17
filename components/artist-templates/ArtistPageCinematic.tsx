@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import ClientEmbedPlayer from '@/components/ClientEmbedPlayer'
+import NewsletterSignup from '@/components/NewsletterSignup'
+import PublicEventsList from '@/components/PublicEventsList'
 
 /**
  * Cinematic artist template — full-bleed dramatic. Avatar fills viewport as blurred
@@ -10,14 +12,17 @@ export default function ArtistPageCinematic({
   artist,
   songs,
   albums,
+  events,
 }: {
   artist: any
   songs: any[]
   albums: any[]
+  events: any[]
 }) {
   const accent = artist.page_settings?.accent_color || '#d4a843'
   const releasedSongs = songs.filter(s => s.status === 'released')
   const heroImage = artist.spotify_image_url || artist.avatar_url
+  const sections = { newsletter: true, events: true, ...(artist.page_settings?.sections || {}) }
 
   return (
     <div style={{
@@ -131,6 +136,16 @@ export default function ArtistPageCinematic({
 
       {/* Content sections — glass-morphism cards */}
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 80px' }}>
+        {sections.newsletter !== false && (
+          <section style={{ marginBottom: 40 }}>
+            <NewsletterSignup artistId={artist.id} sourcePage={`/p/${artist.page_slug}`} accent={accent} />
+          </section>
+        )}
+
+        {sections.events !== false && (
+          <PublicEventsList events={events} accent={accent} />
+        )}
+
         {/* Tracks */}
         {releasedSongs.length > 0 && (
           <section style={{ marginBottom: 60 }}>

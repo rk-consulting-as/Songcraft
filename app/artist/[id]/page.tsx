@@ -8,6 +8,7 @@ import AIProviderPicker from '@/components/AIProviderPicker'
 import ZoomableImage from '@/components/ZoomableImage'
 import Link from 'next/link'
 import ClickStats from '@/components/ClickStats'
+import QRCodeCard from '@/components/QRCodeCard'
 
 import type { SocialLinksMap } from '@/lib/socialLinks'
 
@@ -43,6 +44,28 @@ type Artist = {
   social_links?: SocialLinksMap | null
   page_enabled?: boolean
   page_slug?: string | null
+}
+
+type Subscriber = {
+  id: string
+  email: string
+  name?: string | null
+  source_page?: string | null
+  confirmed: boolean
+  created_at: string
+}
+
+type ArtistEvent = {
+  id: string
+  artist_id: string
+  user_id: string
+  title: string
+  date: string
+  venue?: string | null
+  city?: string | null
+  country?: string | null
+  ticket_url?: string | null
+  status: 'scheduled' | 'sold_out' | 'cancelled' | 'past' | 'hidden'
 }
 
 type SpotifyTrack = {
@@ -110,6 +133,22 @@ export default function ArtistPage() {
   const [importError, setImportError] = useState<string | null>(null)
   const [selectedTrackIds, setSelectedTrackIds] = useState<Set<string>>(new Set())
 
+  // Fan growth
+  const [subscribers, setSubscribers] = useState<Subscriber[]>([])
+  const [events, setEvents] = useState<ArtistEvent[]>([])
+  const [showEventForm, setShowEventForm] = useState(false)
+  const [editingEvent, setEditingEvent] = useState<ArtistEvent | null>(null)
+  const [savingEvent, setSavingEvent] = useState(false)
+  const [eventForm, setEventForm] = useState({
+    title: '',
+    date: '',
+    venue: '',
+    city: '',
+    country: '',
+    ticket_url: '',
+    status: 'scheduled' as ArtistEvent['status'],
+  })
+
   // Spotify import via URL (single track)
   const [urlInput, setUrlInput] = useState('')
   const [urlLoading, setUrlLoading] = useState(false)
@@ -158,6 +197,20 @@ export default function ArtistPage() {
     if (s) setSongs(s)
     const { data: al } = await supabase.from('albums').select('*').eq('artist_id', artistId).order('release_date', { ascending: false, nullsFirst: false })
     if (al) setAlbums(al)
+    const { data: subs } = await supabase
+      .from('newsletter_subscribers')
+      .select('id, email, name, source_page, confirmed, created_at')
+      .eq('user_id', user.id)
+      .eq('artist_id', artistId)
+      .order('created_at', { ascending: false })
+    if (subs) setSubscribers(subs as Subscriber[])
+    const { data: ev } = await supabase
+      .from('artist_events')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('artist_id', artistId)
+      .order('date', { ascending: true })
+    if (ev) setEvents(ev as ArtistEvent[])
     setLoading(false)
   }
 
@@ -350,6 +403,83 @@ export default function ArtistPage() {
     const supabase = createClient()
     const { data } = await supabase.from('songs').update({ album_id: albumId }).eq('id', songId).select().single()
     if (data) setSongs(songs.map(s => s.id === songId ? { ...s, album_id: data.album_id } : s))
+  }
+
+  const openEventCreate = () => {
+    setEditingEvent(null)
+    setEventForm({ title: '', date: '', venue: '', city: '', country: '', ticket_url: '', status: 'scheduled' })
+    setShowEventForm(true)
+  }
+
+  const openEventEdit = (event: ArtistEvent) => {
+    setEditingEvent(event)
+    setEventForm({
+      title: event.title || '',
+      date: event.date || '',
+      venue: event.venue || '',
+      city: event.city || '',
+      country: event.country || '',
+      ticket_url: event.ticket_url || '',
+      status: event.status || 'scheduled',
+    })
+    setShowEventForm(true)
+  }
+
+  const saveEvent = async () => {
+    if (!eventForm.title.trim() || !eventForm.date) return
+    setSavingEvent(true)
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setSavingEvent(false); return }
+    const payload = {
+      artist_id: artistId,
+      user_id: user.id,
+      title: eventForm.title.trim(),
+      date: eventForm.date,
+      venue: eventForm.venue.trim() || null,
+      city: eventForm.city.trim() || null,
+      country: eventForm.country.trim() || null,
+      ticket_url: eventForm.ticket_url.trim() || null,
+      status: eventForm.status,
+    }
+    if (editingEvent) {
+      const { data, error } = await supabase
+        .from('artist_events')
+        .update(payload)
+        .eq('id', editingEvent.id)
+        .eq('user_id', user.id)
+        .select()
+        .single()
+      if (error) alert(error.message)
+      if (data) setEvents(events.map(e => e.id === editingEvent.id ? data as ArtistEvent : e))
+    } else {
+      const { data, error } = await supabase
+        .from('artist_events')
+        .insert(payload)
+        .select()
+        .single()
+      if (error) alert(error.message)
+      if (data) setEvents([...events, data as ArtistEvent].sort((a, b) => a.date.localeCompare(b.date)))
+    }
+    setShowEventForm(false)
+    setSavingEvent(false)
+  }
+
+  const deleteEvent = async (event: ArtistEvent) => {
+    if (!confirm(tx.eventDeleteConfirm)) return
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { error } = await supabase
+      .from('artist_events')
+      .delete()
+      .eq('id', event.id)
+      .eq('user_id', user.id)
+    if (error) alert(error.message)
+    else {
+      setEvents(events.filter(e => e.id !== event.id))
+      setShowEventForm(false)
+    }
   }
 
   // Toggle whether a song is featured on the user's studio page (mini playlist under the artist).
@@ -1443,6 +1573,133 @@ export default function ArtistPage() {
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {/* Fan growth pack */}
+        <div className="card" style={{ marginTop: 36, borderColor: 'rgba(212,168,67,0.25)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
+            <div>
+              <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: 16, letterSpacing: 1, textTransform: 'uppercase', margin: 0 }}>
+                {tx.subscribersTitle}
+              </h2>
+              <p style={{ color: '#8a7a60', fontSize: 12, margin: '4px 0 0' }}>
+                {tx.subscribersCount}: {subscribers.length}
+              </p>
+            </div>
+            {artist?.page_enabled && artist?.page_slug && (
+              <a href={`/p/${artist.page_slug}`} target="_blank" rel="noopener noreferrer" style={{ color: '#d4a843', fontSize: 12, textDecoration: 'none' }}>
+                /p/{artist.page_slug} ↗
+              </a>
+            )}
+          </div>
+
+          {subscribers.length === 0 ? (
+            <p style={{ color: '#5a4a30', fontSize: 13, margin: 0 }}>{tx.subscribersEmpty}</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 260, overflowY: 'auto' }}>
+              {subscribers.map(sub => (
+                <div key={sub.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(180,140,80,0.12)', borderRadius: 6, padding: '10px 12px', flexWrap: 'wrap' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ color: '#e8e0d0', fontSize: 13 }}>{sub.name || sub.email}</div>
+                    {sub.name && <div style={{ color: '#8a7a60', fontSize: 12 }}>{sub.email}</div>}
+                  </div>
+                  <div style={{ color: '#5a4a30', fontSize: 11, textAlign: 'right' }}>
+                    <div>{new Date(sub.created_at).toLocaleDateString(lang === 'no' ? 'nb-NO' : 'en-US')}</div>
+                    {sub.source_page && <div>{tx.subscribersSource}: {sub.source_page}</div>}
+                    <div>{tx.subscribersConfirmed}: {sub.confirmed ? tx.yes : tx.no}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="card" style={{ marginTop: 18, borderColor: 'rgba(212,168,67,0.25)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
+            <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: 16, letterSpacing: 1, textTransform: 'uppercase', margin: 0 }}>
+              {tx.eventsTitle}
+            </h2>
+            <button type="button" onClick={openEventCreate} className="btn-outline" style={{ padding: '6px 14px', fontSize: 12 }}>
+              {tx.eventNew}
+            </button>
+          </div>
+
+          {showEventForm && (
+            <div style={{ background: 'rgba(212,168,67,0.04)', border: '1px solid rgba(212,168,67,0.18)', borderRadius: 6, padding: 14, marginBottom: 16 }}>
+              <h3 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: 14, margin: '0 0 12px' }}>
+                {editingEvent ? tx.eventEdit : tx.eventNew}
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 160px', gap: 10, marginBottom: 10 }}>
+                <input value={eventForm.title} onChange={e => setEventForm({ ...eventForm, title: e.target.value })} placeholder={tx.eventTitlePlaceholder} />
+                <input type="date" value={eventForm.date} onChange={e => setEventForm({ ...eventForm, date: e.target.value })} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+                <input value={eventForm.venue} onChange={e => setEventForm({ ...eventForm, venue: e.target.value })} placeholder={tx.eventVenuePlaceholder} />
+                <input value={eventForm.city} onChange={e => setEventForm({ ...eventForm, city: e.target.value })} placeholder={tx.eventCity} />
+                <input value={eventForm.country} onChange={e => setEventForm({ ...eventForm, country: e.target.value })} placeholder={tx.eventCountry} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 170px', gap: 10, marginBottom: 12 }}>
+                <input value={eventForm.ticket_url} onChange={e => setEventForm({ ...eventForm, ticket_url: e.target.value })} placeholder="https://..." />
+                <select value={eventForm.status} onChange={e => setEventForm({ ...eventForm, status: e.target.value as ArtistEvent['status'] })}>
+                  <option value="scheduled">{tx.eventStatusScheduled}</option>
+                  <option value="sold_out">{tx.eventStatusSoldOut}</option>
+                  <option value="cancelled">{tx.eventStatusCancelled}</option>
+                  <option value="past">{tx.eventStatusPast}</option>
+                  <option value="hidden">{tx.eventStatusHidden}</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn-gold" onClick={saveEvent} disabled={savingEvent || !eventForm.title.trim() || !eventForm.date}>
+                    {savingEvent ? tx.saving : tx.save}
+                  </button>
+                  <button className="btn-outline" onClick={() => setShowEventForm(false)}>{tx.cancel}</button>
+                </div>
+                {editingEvent && (
+                  <button onClick={() => deleteEvent(editingEvent)} style={{ background: 'none', border: '1px solid rgba(200,80,80,0.3)', color: '#c05050', padding: '8px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>
+                    {tx.delete}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {events.length === 0 ? (
+            <p style={{ color: '#5a4a30', fontSize: 13, margin: 0 }}>{tx.eventsEmpty}</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {events.map(event => {
+                const location = [event.venue, event.city, event.country].filter(Boolean).join(' · ')
+                const statusMap: Record<string, string> = {
+                  scheduled: tx.eventStatusScheduled,
+                  sold_out: tx.eventStatusSoldOut,
+                  cancelled: tx.eventStatusCancelled,
+                  past: tx.eventStatusPast,
+                  hidden: tx.eventStatusHidden,
+                }
+                return (
+                  <button key={event.id} type="button" onClick={() => openEventEdit(event)} style={{ textAlign: 'left', background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(180,140,80,0.12)', borderRadius: 6, padding: '12px 14px', cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                      <div>
+                        <div style={{ color: '#e8e0d0', fontSize: 14, fontWeight: 500 }}>{event.title}</div>
+                        {location && <div style={{ color: '#8a7a60', fontSize: 12, marginTop: 3 }}>{location}</div>}
+                      </div>
+                      <div style={{ color: '#6a5a40', fontSize: 12, textAlign: 'right' }}>
+                        <div>{event.date}</div>
+                        <div>{statusMap[event.status] || event.status}</div>
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {artist?.page_enabled && artist?.page_slug && (
+          <div style={{ marginTop: 18 }}>
+            <QRCodeCard path={`/p/${artist.page_slug}`} title={tx.qrArtistHint} />
           </div>
         )}
 
