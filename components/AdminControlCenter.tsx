@@ -1,0 +1,360 @@
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
+import { createClient } from '@/lib/supabase'
+import { useLang, type Lang } from '@/lib/i18n'
+
+const labels = {
+  no: {
+    title: 'SaaS kontrollsenter',
+    desc: 'Intern oversikt for drift, abonnement, AI, fanvekst og moderering.',
+    refresh: 'Oppdater',
+    loading: 'Laster kontrollsenter...',
+    users: 'Brukere',
+    ai: 'AI-bruk',
+    settings: 'Feature flags',
+    billing: 'Abonnement',
+    newsletter: 'Nyhetsbrev',
+    moderation: 'Moderering',
+    audit: 'Audit logg',
+    totalUsers: 'Totale brukere',
+    active7: 'Aktive 7d',
+    active30: 'Aktive 30d',
+    pro: 'Pro-abonnenter',
+    mrr: 'MRR estimat',
+    aiMonth: 'AI-genereringer',
+    pageViews: 'Off. sidevisninger',
+    subscribers: 'Subscribers',
+    embeds: 'Embeds',
+    songsPublished: 'Publiserte låter',
+    searchUsers: 'Søk bruker, kode eller id...',
+    plan: 'Plan',
+    usage: 'Bruk',
+    adminNotes: 'Adminnotater',
+    overrides: 'Feature overrides JSON',
+    disable: 'Deaktiver',
+    enable: 'Aktiver',
+    makeFree: 'Sett Free',
+    makePro: 'Sett Pro',
+    save: 'Lagre',
+    refreshSub: 'Recheck',
+    providerModel: 'Provider / model',
+    estimatedCost: 'Estimert AI-kost',
+    failedCalls: 'Feilede kall',
+    topUsers: 'Toppbrukere',
+    monthlyTrends: 'Månedstrender',
+    stripeReady: 'Stripe konfigurert',
+    stripeMissing: 'Stripe mangler env vars',
+    webhookLogs: 'Webhook / subscription events',
+    sourceAnalytics: 'Signup-kilder',
+    topFanArtists: 'Toppartister fanvekst',
+    reportedPlaceholder: 'Rapportert innhold kommer her. Meldingsrapporter finnes fortsatt i Moderering-fanen.',
+    hiddenArtists: 'Skjulte artistsider',
+    hiddenSongs: 'Skjulte låtsider',
+    hideArtist: 'Skjul artist',
+    hideSong: 'Skjul låt',
+    noData: 'Ingen data ennå.',
+    updated: 'Oppdatert.',
+    error: 'Kunne ikke utføre handlingen.',
+  },
+  en: {
+    title: 'SaaS Control Center',
+    desc: 'Internal operating view for users, subscriptions, AI, fan growth, and moderation.',
+    refresh: 'Refresh',
+    loading: 'Loading control center...',
+    users: 'Users',
+    ai: 'AI usage',
+    settings: 'Feature flags',
+    billing: 'Subscriptions',
+    newsletter: 'Newsletter',
+    moderation: 'Moderation',
+    audit: 'Audit log',
+    totalUsers: 'Total users',
+    active7: 'Active 7d',
+    active30: 'Active 30d',
+    pro: 'Pro subscribers',
+    mrr: 'MRR estimate',
+    aiMonth: 'AI generations',
+    pageViews: 'Public page views',
+    subscribers: 'Subscribers',
+    embeds: 'Embeds',
+    songsPublished: 'Songs published',
+    searchUsers: 'Search user, code, or id...',
+    plan: 'Plan',
+    usage: 'Usage',
+    adminNotes: 'Admin notes',
+    overrides: 'Feature overrides JSON',
+    disable: 'Disable',
+    enable: 'Enable',
+    makeFree: 'Set Free',
+    makePro: 'Set Pro',
+    save: 'Save',
+    refreshSub: 'Recheck',
+    providerModel: 'Provider / model',
+    estimatedCost: 'Estimated AI cost',
+    failedCalls: 'Failed calls',
+    topUsers: 'Top users',
+    monthlyTrends: 'Monthly trends',
+    stripeReady: 'Stripe configured',
+    stripeMissing: 'Stripe env vars missing',
+    webhookLogs: 'Webhook / subscription events',
+    sourceAnalytics: 'Signup sources',
+    topFanArtists: 'Top fan-growth artists',
+    reportedPlaceholder: 'Reported content placeholder. Message reports still live in the Moderation tab.',
+    hiddenArtists: 'Hidden artist pages',
+    hiddenSongs: 'Hidden song pages',
+    hideArtist: 'Hide artist',
+    hideSong: 'Hide song',
+    noData: 'No data yet.',
+    updated: 'Updated.',
+    error: 'Could not perform action.',
+  },
+}
+
+type Section = 'users' | 'ai' | 'settings' | 'billing' | 'newsletter' | 'moderation' | 'audit'
+
+export default function AdminControlCenter() {
+  const [lang, setLang] = useState<Lang>('no')
+  const tx = labels[lang]
+  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState<any>(null)
+  const [section, setSection] = useState<Section>('users')
+  const [search, setSearch] = useState('')
+  const [status, setStatus] = useState('')
+  const [busy, setBusy] = useState('')
+  const [drafts, setDrafts] = useState<Record<string, any>>({})
+
+  useEffect(() => {
+    setLang(useLang())
+    load()
+  }, [])
+
+  const authHeaders = async (): Promise<Record<string, string>> => {
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+  }
+
+  const load = async () => {
+    setLoading(true)
+    const headers = await authHeaders()
+    const res = await fetch('/api/admin/control-center', { headers })
+    const next = await res.json()
+    setData(next)
+    const nextDrafts: Record<string, any> = {}
+    for (const s of next.settings || []) nextDrafts[`setting:${s.key}`] = JSON.stringify(s.value || {}, null, 2)
+    for (const u of next.users || []) {
+      nextDrafts[`notes:${u.id}`] = u.admin_notes || ''
+      nextDrafts[`overrides:${u.id}`] = JSON.stringify(u.feature_overrides || {}, null, 2)
+    }
+    setDrafts(nextDrafts)
+    setLoading(false)
+  }
+
+  const postAction = async (body: Record<string, any>) => {
+    setBusy(`${body.action}:${body.user_id || body.key || body.artist_id || body.song_id || ''}`)
+    setStatus('')
+    try {
+      const headers = await authHeaders()
+      const res = await fetch('/api/admin/control-center', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) throw new Error('failed')
+      setStatus(tx.updated)
+      await load()
+    } catch {
+      setStatus(tx.error)
+    }
+    setBusy('')
+  }
+
+  const users = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return (data?.users || []).filter((u: any) => {
+      if (!q) return true
+      return `${u.id} ${u.display_name || ''} ${u.referral_code || ''}`.toLowerCase().includes(q)
+    })
+  }, [data, search])
+
+  if (loading) return <div className="card" style={{ color: '#8a7a60' }}>{tx.loading}</div>
+  if (!data?.overview) return <div className="card" style={{ color: '#c05050' }}>{tx.error}</div>
+
+  const overview = data.overview
+  const statRows = [
+    [tx.totalUsers, overview.total_users],
+    [tx.active7, overview.active_7d],
+    [tx.active30, overview.active_30d],
+    [tx.pro, overview.pro_subscribers],
+    [tx.mrr, `$${overview.mrr_estimate}`],
+    [tx.aiMonth, overview.ai_generations_month],
+    [tx.pageViews, overview.public_page_views_30d],
+    [tx.subscribers, overview.newsletter_subscribers],
+    [tx.embeds, overview.embeds_created_30d],
+    [tx.songsPublished, overview.songs_published],
+  ]
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 16 }}>
+        <div>
+          <h2 style={{ color: '#d4a843', margin: 0, fontWeight: 'normal' }}>{tx.title}</h2>
+          <p style={{ color: '#8a7a60', margin: '6px 0 0', fontSize: 13 }}>{tx.desc}</p>
+        </div>
+        <button className="btn-outline" onClick={load}>{tx.refresh}</button>
+      </div>
+      {status && <div style={{ color: status === tx.updated ? '#7bc87b' : '#c05050', marginBottom: 12, fontSize: 13 }}>{status}</div>}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 18 }}>
+        {statRows.map(([label, value]) => <Metric key={label} label={label} value={value} />)}
+      </div>
+
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+        {(['users', 'ai', 'settings', 'billing', 'newsletter', 'moderation', 'audit'] as Section[]).map(s => (
+          <button key={s} onClick={() => setSection(s)} style={tabStyle(section === s)}>{(tx as any)[s]}</button>
+        ))}
+      </div>
+
+      {section === 'users' && (
+        <div>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder={tx.searchUsers} style={{ marginBottom: 12 }} />
+          <DataTable headers={['User', tx.plan, tx.usage, tx.adminNotes, tx.overrides, '']}>
+            {users.map((u: any) => {
+              const plan = u.subscription?.plan_id || 'free'
+              const disabled = !!u.disabled
+              return (
+                <tr key={u.id}>
+                  <Td><strong>{u.display_name || u.referral_code || u.id.slice(0, 8)}</strong><Small>{u.id}</Small>{disabled && <Small color="#c05050">disabled</Small>}</Td>
+                  <Td><Badge color={plan === 'pro' ? '#7bc87b' : '#8a7a60'}>{plan}</Badge><Small>{u.subscription?.status || 'free'}</Small></Td>
+                  <Td><Small>AI {u.ai_usage} / fail {u.ai_failed}</Small><Small>{u.artists} artists · {u.songs} songs</Small></Td>
+                  <Td><textarea value={drafts[`notes:${u.id}`] || ''} onChange={e => setDrafts({ ...drafts, [`notes:${u.id}`]: e.target.value })} rows={3} style={{ minWidth: 180 }} /></Td>
+                  <Td><textarea value={drafts[`overrides:${u.id}`] || '{}'} onChange={e => setDrafts({ ...drafts, [`overrides:${u.id}`]: e.target.value })} rows={3} style={{ minWidth: 180, fontFamily: 'monospace', fontSize: 11 }} /></Td>
+                  <Td>
+                    <ActionRow>
+                      <button style={smallBtn('#7bc87b')} onClick={() => postAction({ action: 'set_plan', user_id: u.id, plan: 'pro' })}>{tx.makePro}</button>
+                      <button style={smallBtn('#8a7a60')} onClick={() => postAction({ action: 'set_plan', user_id: u.id, plan: 'free' })}>{tx.makeFree}</button>
+                      <button style={smallBtn(disabled ? '#7bc87b' : '#c05050')} onClick={() => postAction({ action: 'disable_user', user_id: u.id, disabled: !disabled })}>{disabled ? tx.enable : tx.disable}</button>
+                      <button style={smallBtn('#d4a843')} onClick={() => {
+                        let overrides = {}
+                        try { overrides = JSON.parse(drafts[`overrides:${u.id}`] || '{}') } catch {}
+                        postAction({ action: 'update_user_admin', user_id: u.id, admin_notes: drafts[`notes:${u.id}`] || '', feature_overrides: overrides })
+                      }}>{tx.save}</button>
+                      <button style={smallBtn('#9ad0d4')} onClick={() => postAction({ action: 'refresh_subscription', user_id: u.id })}>{tx.refreshSub}</button>
+                    </ActionRow>
+                  </Td>
+                </tr>
+              )
+            })}
+          </DataTable>
+        </div>
+      )}
+
+      {section === 'ai' && (
+        <Grid>
+          <Panel title={tx.providerModel}><Rows rows={(data.ai.usage_by_provider || []).map((r: any) => [`${r.provider} / ${r.model}`, `${r.total} · $${r.estimated_cost.toFixed(2)}`])} /></Panel>
+          <Panel title={tx.topUsers}><Rows rows={(data.ai.top_users || []).map((r: any) => [r.profile?.display_name || r.user_id?.slice(0, 8), `${r.total} / fail ${r.failed}`])} /></Panel>
+          <Panel title={tx.failedCalls}><Rows rows={(data.ai.failed_calls || []).slice(0, 12).map((r: any) => [r.provider || 'unknown', new Date(r.created_at).toLocaleString()])} /></Panel>
+          <Panel title={`${tx.estimatedCost}: $${Number(data.ai.estimated_cost || 0).toFixed(2)}`}><Rows rows={(data.ai.monthly_trends || []).map((r: any) => [r.month, `${r.ai} / fail ${r.failed}`])} /></Panel>
+        </Grid>
+      )}
+
+      {section === 'settings' && (
+        <Grid>
+          {(data.settings || []).map((s: any) => (
+            <Panel key={s.key} title={s.key}>
+              <textarea value={drafts[`setting:${s.key}`] || '{}'} onChange={e => setDrafts({ ...drafts, [`setting:${s.key}`]: e.target.value })} rows={8} style={{ fontFamily: 'monospace', fontSize: 12 }} />
+              <button className="btn-gold" style={{ marginTop: 8 }} onClick={() => {
+                let value = {}
+                try { value = JSON.parse(drafts[`setting:${s.key}`] || '{}') } catch {}
+                postAction({ action: 'update_setting', key: s.key, value, description: s.description })
+              }}>{tx.save}</button>
+            </Panel>
+          ))}
+        </Grid>
+      )}
+
+      {section === 'billing' && (
+        <Grid>
+          <Panel title={data.stripe.configured ? tx.stripeReady : tx.stripeMissing}>
+            <Rows rows={(data.subscriptions || []).slice(0, 15).map((s: any) => [s.user_id?.slice(0, 8), `${s.plan_id} · ${s.status}`])} />
+          </Panel>
+          <Panel title={tx.webhookLogs}>
+            <Rows rows={(data.subscription_events || []).map((e: any) => [e.event_type, `${e.status} · ${new Date(e.created_at).toLocaleString()}`])} />
+          </Panel>
+        </Grid>
+      )}
+
+      {section === 'newsletter' && (
+        <Grid>
+          <Panel title={tx.sourceAnalytics}><Rows rows={(data.newsletter.sources || []).map((r: any) => [r.source, r.total])} /></Panel>
+          <Panel title={tx.topFanArtists}><Rows rows={(data.newsletter.top_artists || []).map((r: any) => [r.artist_name, r.total])} /></Panel>
+        </Grid>
+      )}
+
+      {section === 'moderation' && (
+        <Grid>
+          <Panel title={tx.reportedPlaceholder}><p style={{ color: '#8a7a60', fontSize: 13 }}>{tx.reportedPlaceholder}</p></Panel>
+          <Panel title={tx.hiddenArtists}><Rows rows={(data.moderation.hidden_artists || []).map((a: any) => [a.name, a.page_slug || a.id.slice(0, 8)])} /></Panel>
+          <Panel title={tx.hiddenSongs}><Rows rows={(data.moderation.hidden_songs || []).map((s: any) => [s.title, s.status])} /></Panel>
+          <Panel title="Quick hide">
+            <p style={{ color: '#8a7a60', fontSize: 12 }}>Use the user list and public page records below for targeted moderation. API actions are audit logged.</p>
+          </Panel>
+        </Grid>
+      )}
+
+      {section === 'audit' && (
+        <DataTable headers={['Action', 'Actor', 'Target', 'Date']}>
+          {(data.audit_log || []).map((a: any) => (
+            <tr key={a.id}><Td>{a.action}</Td><Td>{a.actor_id?.slice(0, 8)}</Td><Td>{a.target_type || a.target_user_id?.slice(0, 8) || '-'}</Td><Td>{new Date(a.created_at).toLocaleString()}</Td></tr>
+          ))}
+        </DataTable>
+      )}
+    </div>
+  )
+}
+
+function Metric({ label, value }: { label: any; value: any }) {
+  return <div className="card" style={{ padding: 12 }}><div style={{ color: '#e8e0d0', fontSize: 22, fontWeight: 800 }}>{value}</div><div style={{ color: '#6a5a40', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</div></div>
+}
+
+function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+  return <div className="card"><h3 style={{ margin: '0 0 10px', color: '#d4a843', fontSize: 14, fontWeight: 'normal' }}>{title}</h3>{children}</div>
+}
+
+function Grid({ children }: { children: React.ReactNode }) {
+  return <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>{children}</div>
+}
+
+function Rows({ rows }: { rows: any[][] }) {
+  if (!rows.length) return <p style={{ color: '#6a5a40', fontSize: 13, margin: 0 }}>-</p>
+  return <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>{rows.map((r, i) => <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, borderBottom: '1px solid rgba(180,140,80,0.08)', paddingBottom: 6 }}><span style={{ color: '#c8c0b0', fontSize: 12 }}>{r[0]}</span><span style={{ color: '#8a7a60', fontSize: 12, textAlign: 'right' }}>{r[1]}</span></div>)}</div>
+}
+
+function DataTable({ headers, children }: { headers: string[]; children: React.ReactNode }) {
+  return <div className="card" style={{ padding: 0, overflow: 'auto' }}><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 980, fontSize: 12 }}><thead><tr>{headers.map(h => <th key={h} style={{ textAlign: 'left', padding: 10, color: '#8a7a60', fontWeight: 'normal', textTransform: 'uppercase', fontSize: 10, letterSpacing: 1 }}>{h}</th>)}</tr></thead><tbody>{children}</tbody></table></div>
+}
+
+function Td({ children }: { children: React.ReactNode }) {
+  return <td style={{ padding: 10, borderTop: '1px solid rgba(180,140,80,0.08)', verticalAlign: 'top', color: '#c8c0b0' }}>{children}</td>
+}
+
+function Small({ children, color = '#6a5a40' }: { children: React.ReactNode; color?: string }) {
+  return <div style={{ color, fontSize: 10, marginTop: 3, wordBreak: 'break-all' }}>{children}</div>
+}
+
+function Badge({ children, color }: { children: React.ReactNode; color: string }) {
+  return <span style={{ color, border: `1px solid ${color}55`, borderRadius: 10, padding: '2px 8px', fontSize: 10 }}>{children}</span>
+}
+
+function ActionRow({ children }: { children: React.ReactNode }) {
+  return <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>{children}</div>
+}
+
+function smallBtn(color: string): React.CSSProperties {
+  return { background: 'transparent', border: `1px solid ${color}66`, color, borderRadius: 4, padding: '4px 8px', fontSize: 10, cursor: 'pointer' }
+}
+
+function tabStyle(active: boolean): React.CSSProperties {
+  return { background: active ? 'rgba(212,168,67,0.12)' : 'transparent', color: active ? '#d4a843' : '#8a7a60', border: active ? '1px solid #d4a843' : '1px solid rgba(180,140,80,0.18)', borderRadius: 16, padding: '6px 12px', cursor: 'pointer', fontSize: 12 }
+}

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { t, useLang, type Lang } from '@/lib/i18n'
 import Avatar from '@/components/Avatar'
+import AdminControlCenter from '@/components/AdminControlCenter'
 
 type Role = 'user' | 'moderator' | 'admin' | 'super_admin'
 
@@ -34,7 +35,7 @@ type LedgerEntry = {
 
 type SettingRow = { key: string; value: any; description: string | null }
 
-type Tab = 'users' | 'settings' | 'ledger' | 'moderation' | 'tickets'
+type Tab = 'saas' | 'users' | 'settings' | 'ledger' | 'moderation' | 'tickets'
 
 type Ticket = {
   id: string
@@ -70,7 +71,7 @@ export default function AdminPage() {
   const [me, setMe] = useState<Profile | null>(null)
   const [accessDenied, setAccessDenied] = useState(false)
 
-  const [tab, setTab] = useState<Tab>('users')
+  const [tab, setTab] = useState<Tab>('saas')
 
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [profileMap, setProfileMap] = useState<Record<string, Profile>>({})
@@ -497,6 +498,7 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid rgba(180,140,80,0.2)', marginBottom: 20, flexWrap: 'wrap' }}>
+          <TabBtn active={tab === 'saas'} onClick={() => setTab('saas')}>🏢 {tx.adminTabSaas}</TabBtn>
           <TabBtn active={tab === 'users'} onClick={() => setTab('users')}>👥 {tx.adminTabUsers} ({counts.total})</TabBtn>
           <TabBtn active={tab === 'settings'} onClick={() => setTab('settings')}>⚙️ {tx.adminTabSettings}</TabBtn>
           <TabBtn active={tab === 'ledger'} onClick={() => setTab('ledger')}>📊 {tx.adminTabLedger} ({ledger.length})</TabBtn>
@@ -513,6 +515,8 @@ export default function AdminPage() {
             )}
           </TabBtn>
         </div>
+
+        {tab === 'saas' && <AdminControlCenter />}
 
         {tab === 'users' && (
           <div>

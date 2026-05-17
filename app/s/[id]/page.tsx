@@ -25,12 +25,12 @@ async function fetchSong(songId: string) {
   try {
     const { data: song, error } = await sb
       .from('songs')
-      .select('id, title, lyrics_text, suno_audio_url, spotify_url, suno_url, media_links, backstory, cover_image_url, spotify_cover_url, spotify_album, spotify_release_date, internal_play_count, embed_click_count, comment_count, reaction_count, artist_id, user_id, artists(id, name, page_enabled, page_slug, avatar_url, spotify_image_url)')
+      .select('id, title, lyrics_text, suno_audio_url, spotify_url, suno_url, media_links, backstory, cover_image_url, spotify_cover_url, spotify_album, spotify_release_date, internal_play_count, embed_click_count, comment_count, reaction_count, artist_id, user_id, public_hidden, artists(id, name, page_enabled, page_slug, avatar_url, spotify_image_url, admin_hidden)')
       .eq('id', songId)
       .maybeSingle()
     if (error || !song) return null
     const a = (song as any).artists
-    if (!a?.page_enabled) return null  // Not public
+    if (!a?.page_enabled || a?.admin_hidden || (song as any).public_hidden) return null  // Not public
     return song as any
   } catch (e: any) {
     console.error('[s/id] fetchSong crashed:', e?.message)

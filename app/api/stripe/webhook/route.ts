@@ -36,6 +36,20 @@ async function upsertSubscription(stripe: Stripe, subscriptionId: string) {
   }
 }
 
+async function logSubscriptionEvent(event: Stripe.Event, status: string, error?: string, userId?: string | null) {
+  try {
+    const sb = serviceClient()
+    await sb.from('subscription_events').insert({
+      user_id: userId || null,
+      stripe_event_id: event.id,
+      event_type: event.type,
+      status,
+      error: error || null,
+      metadata: { livemode: event.livemode },
+    })
+  } catch {}
+}
+
 export async function POST(req: NextRequest) {
   const secretKey = process.env.STRIPE_SECRET_KEY
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
@@ -55,8 +69,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    let relatedUserId: string | null = null
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session
+      relatedUserId = typeof session.metadata?.user_id === 'string' ? session.metadata.user_id : null
       const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id
       if (subscriptionId) await upsertSubscription(stripe, subscriptionId)
     }
@@ -67,12 +83,15 @@ export async function POST(req: NextRequest) {
       event.type === 'customer.subscription.deleted'
     ) {
       const subscription = event.data.object as Stripe.Subscription
+      relatedUserId = typeof subscription.metadata?.user_id === 'string' ? subscription.metadata.user_id : null
       await upsertSubscription(stripe, subscription.id)
     }
 
+    await logSubscriptionEvent(event, 'processed', undefined, relatedUserId)
     return NextResponse.json({ received: true })
   } catch (e: any) {
     console.error('[stripe/webhook] handler failed:', e?.message)
+    await logSubscriptionEvent(event, 'failed', e?.message)
     return NextResponse.json({ error: 'handler_failed' }, { status: 500 })
   }
 }

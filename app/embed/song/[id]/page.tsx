@@ -15,12 +15,12 @@ const sb = createClient(
 async function fetchSong(songId: string) {
   const { data: song, error } = await sb
     .from('songs')
-    .select('id, title, backstory, spotify_url, suno_url, media_links, cover_image_url, spotify_cover_url, artist_id, user_id, artists(id, name, page_enabled, page_slug)')
+    .select('id, title, backstory, spotify_url, suno_url, media_links, cover_image_url, spotify_cover_url, artist_id, user_id, public_hidden, artists(id, name, page_enabled, page_slug, admin_hidden)')
     .eq('id', songId)
     .maybeSingle()
   if (error || !song) return null
   const artist = (song as any).artists
-  if (!artist?.page_enabled) return null
+  if (!artist?.page_enabled || artist?.admin_hidden || (song as any).public_hidden) return null
   return song as any
 }
 

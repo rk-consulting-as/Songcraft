@@ -43,7 +43,7 @@ type PageSettings = {
 
 async function fetchPageData(slug: string) {
   console.log(`[public-page] Fetching slug="${slug}"`)
-  const { data: artist, error: artistErr } = await sb.from('artists').select('*').eq('page_slug', slug).eq('page_enabled', true).maybeSingle()
+  const { data: artist, error: artistErr } = await sb.from('artists').select('*').eq('page_slug', slug).eq('page_enabled', true).eq('admin_hidden', false).maybeSingle()
   if (artistErr) {
     console.error('[public-page] artist query error:', artistErr)
   }
@@ -52,7 +52,7 @@ async function fetchPageData(slug: string) {
     return null
   }
   console.log(`[public-page] Found artist: ${artist.name} (id=${artist.id})`)
-  const { data: songs, error: songsErr } = await sb.from('songs').select('*').eq('artist_id', artist.id)
+  const { data: songs, error: songsErr } = await sb.from('songs').select('*').eq('artist_id', artist.id).eq('public_hidden', false)
     .order('position', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: false })
   if (songsErr) console.error('[public-page] songs query error:', songsErr)

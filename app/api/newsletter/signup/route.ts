@@ -10,6 +10,12 @@ const sb = createClient(
   { auth: { persistSession: false } }
 )
 
+function serviceClient() {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!key) return null
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key, { auth: { persistSession: false } })
+}
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -43,6 +49,16 @@ export async function POST(req: NextRequest) {
 
     if (!UUID_RE.test(artistId)) return NextResponse.json({ error: 'invalid_artist' }, { status: 400 })
     if (!EMAIL_RE.test(email) || email.length > 254) return NextResponse.json({ error: 'invalid_email' }, { status: 400 })
+
+    const service = serviceClient()
+    if (service) {
+      const { data: setting } = await service
+        .from('admin_platform_settings')
+        .select('value')
+        .eq('key', 'public_signup')
+        .maybeSingle()
+      if (setting?.value?.enabled === false) return NextResponse.json({ error: 'signup_disabled' }, { status: 403 })
+    }
 
     const { error } = await sb.from('newsletter_subscribers').insert({
       artist_id: artistId,

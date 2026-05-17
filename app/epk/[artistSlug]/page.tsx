@@ -31,6 +31,7 @@ async function fetchEpk(slug: string) {
     .select('*')
     .eq('page_slug', slug)
     .eq('page_enabled', true)
+    .eq('admin_hidden', false)
     .maybeSingle()
   if (!artist) return null
   const epk = artist.page_settings?.epk
@@ -41,6 +42,7 @@ async function fetchEpk(slug: string) {
     .from('songs')
     .select('id, title, status, backstory, lyrics_instructions, spotify_url, suno_url, media_links, cover_image_url, spotify_cover_url, spotify_release_date')
     .eq('artist_id', artist.id)
+    .eq('public_hidden', false)
     .order('position', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: false })
   const selectedSongs = selectedIds.length
