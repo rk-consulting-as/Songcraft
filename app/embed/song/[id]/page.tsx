@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import MediaLinksGrid from '@/components/MediaLinksGrid'
 import PublicAnalyticsTracker from '@/components/PublicAnalyticsTracker'
+import { getUserPlan } from '@/lib/subscription'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -28,12 +29,8 @@ async function canRemoveBranding(userId: string) {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!serviceKey) return false
   const service = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey, { auth: { persistSession: false } })
-  const { data } = await service
-    .from('subscriptions')
-    .select('plan_id, status')
-    .eq('user_id', userId)
-    .maybeSingle()
-  return data?.plan_id === 'pro' && ['active', 'trialing', 'past_due'].includes(data?.status)
+  const plan = await getUserPlan(service, userId)
+  return plan.id === 'pro'
 }
 
 export default async function EmbedSongPage({

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import { canUseFeature } from '@/lib/subscription'
+import { canUseFeature, getUserPlan } from '@/lib/subscription'
 import { setLang, t, useLang, type Lang } from '@/lib/i18n'
 import QRCodeCard from '@/components/QRCodeCard'
 import EmbedCodeGenerator from '@/components/EmbedCodeGenerator'
@@ -121,18 +121,18 @@ export default function OnboardingPage() {
     }
     setUserId(user.id)
 
-    const [progressRes, artistsRes, songsRes, planRes] = await Promise.all([
+    const [progressRes, artistsRes, songsRes, planData] = await Promise.all([
       supabase.from('onboarding_progress').select('*').eq('user_id', user.id).maybeSingle(),
       supabase.from('artists').select('id, name, genre, page_enabled, page_slug').eq('user_id', user.id).order('created_at', { ascending: true }),
       supabase.from('songs').select('id, title, artist_id, lyrics_instructions, spotify_url, media_links').eq('user_id', user.id).order('created_at', { ascending: true }),
-      supabase.from('subscriptions').select('plan_id, status').eq('user_id', user.id).maybeSingle(),
+      getUserPlan(supabase, user.id),
     ])
 
     const ownedArtists = (artistsRes.data || []) as ArtistRow[]
     const ownedSongs = (songsRes.data || []) as SongRow[]
     setArtists(ownedArtists)
     setSongs(ownedSongs)
-    if (planRes.data?.plan_id === 'pro' && ['active', 'trialing', 'past_due'].includes(planRes.data.status)) setPlanId('pro')
+    if (planData.id === 'pro') setPlanId('pro')
 
     if (restartRequested) {
       await supabase.from('onboarding_progress').upsert({

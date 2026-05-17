@@ -36,8 +36,13 @@ const labels = {
     overrides: 'Feature overrides JSON',
     disable: 'Deaktiver',
     enable: 'Aktiver',
-    makeFree: 'Sett Free',
-    makePro: 'Sett Pro',
+    freePlan: 'Free',
+    proStripe: 'Pro via Stripe',
+    proManual: 'Pro manual',
+    grantManualPro: 'Gi manual Pro',
+    removeManualPro: 'Fjern manual Pro',
+    manualProExpiry: 'Utløp (valgfritt)',
+    manualProReason: 'Årsak / beta-note',
     save: 'Lagre',
     refreshSub: 'Recheck',
     providerModel: 'Provider / model',
@@ -99,8 +104,13 @@ const labels = {
     overrides: 'Feature overrides JSON',
     disable: 'Disable',
     enable: 'Enable',
-    makeFree: 'Set Free',
-    makePro: 'Set Pro',
+    freePlan: 'Free',
+    proStripe: 'Pro via Stripe',
+    proManual: 'Pro manual',
+    grantManualPro: 'Grant manual Pro',
+    removeManualPro: 'Remove manual Pro',
+    manualProExpiry: 'Expiry (optional)',
+    manualProReason: 'Reason / beta note',
     save: 'Save',
     refreshSub: 'Recheck',
     providerModel: 'Provider / model',
@@ -168,6 +178,8 @@ export default function AdminControlCenter() {
     for (const u of next.users || []) {
       nextDrafts[`notes:${u.id}`] = u.admin_notes || ''
       nextDrafts[`overrides:${u.id}`] = JSON.stringify(u.feature_overrides || {}, null, 2)
+      nextDrafts[`manual_expiry:${u.id}`] = u.manual_plan_override?.expires_at ? String(u.manual_plan_override.expires_at).slice(0, 10) : ''
+      nextDrafts[`manual_reason:${u.id}`] = u.manual_plan_override?.reason || ''
     }
     setDrafts(nextDrafts)
     setLoading(false)
@@ -179,6 +191,25 @@ export default function AdminControlCenter() {
     try {
       const headers = await authHeaders()
       const res = await fetch('/api/admin/control-center', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) throw new Error('failed')
+      setStatus(tx.updated)
+      await load()
+    } catch {
+      setStatus(tx.error)
+    }
+    setBusy('')
+  }
+
+  const postUserAdminRoute = async (userId: string, route: 'grant-manual-pro' | 'remove-manual-pro', body: Record<string, any>) => {
+    setBusy(`${route}:${userId}`)
+    setStatus('')
+    try {
+      const headers = await authHeaders()
+      const res = await fetch(`/api/admin/users/${userId}/${route}`, {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -243,19 +274,27 @@ export default function AdminControlCenter() {
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder={tx.searchUsers} style={{ marginBottom: 12 }} />
           <DataTable headers={['User', tx.plan, tx.usage, tx.adminNotes, tx.overrides, '']}>
             {users.map((u: any) => {
-              const plan = u.subscription?.plan_id || 'free'
+              const stripePro = u.subscription?.plan_id === 'pro' && ['active', 'trialing', 'past_due'].includes(u.subscription?.status)
+              const manualPro = !!u.manual_plan_override
+              const planLabel = stripePro ? tx.proStripe : manualPro ? tx.proManual : tx.freePlan
+              const planColor = stripePro ? '#7bc87b' : manualPro ? '#d4a843' : '#8a7a60'
               const disabled = !!u.disabled
               return (
                 <tr key={u.id}>
                   <Td><strong>{u.display_name || u.referral_code || u.id.slice(0, 8)}</strong><Small>{u.id}</Small>{disabled && <Small color="#c05050">disabled</Small>}</Td>
-                  <Td><Badge color={plan === 'pro' ? '#7bc87b' : '#8a7a60'}>{plan}</Badge><Small>{u.subscription?.status || 'free'}</Small></Td>
+                  <Td>
+                    <Badge color={planColor}>{planLabel}</Badge>
+                    <Small>{stripePro ? u.subscription?.status : manualPro ? (u.manual_plan_override.expires_at ? `expires ${String(u.manual_plan_override.expires_at).slice(0, 10)}` : 'no expiry') : 'free'}</Small>
+                  </Td>
                   <Td><Small>AI {u.ai_usage} / fail {u.ai_failed}</Small><Small>{u.artists} artists · {u.songs} songs</Small></Td>
                   <Td><textarea value={drafts[`notes:${u.id}`] || ''} onChange={e => setDrafts({ ...drafts, [`notes:${u.id}`]: e.target.value })} rows={3} style={{ minWidth: 180 }} /></Td>
                   <Td><textarea value={drafts[`overrides:${u.id}`] || '{}'} onChange={e => setDrafts({ ...drafts, [`overrides:${u.id}`]: e.target.value })} rows={3} style={{ minWidth: 180, fontFamily: 'monospace', fontSize: 11 }} /></Td>
                   <Td>
                     <ActionRow>
-                      <button style={smallBtn('#7bc87b')} onClick={() => postAction({ action: 'set_plan', user_id: u.id, plan: 'pro' })}>{tx.makePro}</button>
-                      <button style={smallBtn('#8a7a60')} onClick={() => postAction({ action: 'set_plan', user_id: u.id, plan: 'free' })}>{tx.makeFree}</button>
+                      <input type="date" value={drafts[`manual_expiry:${u.id}`] || ''} onChange={e => setDrafts({ ...drafts, [`manual_expiry:${u.id}`]: e.target.value })} title={tx.manualProExpiry} style={{ maxWidth: 138, fontSize: 11, padding: '5px 7px' }} />
+                      <input value={drafts[`manual_reason:${u.id}`] || ''} onChange={e => setDrafts({ ...drafts, [`manual_reason:${u.id}`]: e.target.value })} placeholder={tx.manualProReason} style={{ maxWidth: 170, fontSize: 11, padding: '5px 7px' }} />
+                      <button style={smallBtn('#7bc87b')} disabled={busy === `grant-manual-pro:${u.id}`} onClick={() => postUserAdminRoute(u.id, 'grant-manual-pro', { expires_at: drafts[`manual_expiry:${u.id}`] || null, reason: drafts[`manual_reason:${u.id}`] || '' })}>{tx.grantManualPro}</button>
+                      <button style={smallBtn('#8a7a60')} disabled={busy === `remove-manual-pro:${u.id}`} onClick={() => postUserAdminRoute(u.id, 'remove-manual-pro', { reason: drafts[`manual_reason:${u.id}`] || '' })}>{tx.removeManualPro}</button>
                       <button style={smallBtn(disabled ? '#7bc87b' : '#c05050')} onClick={() => postAction({ action: 'disable_user', user_id: u.id, disabled: !disabled })}>{disabled ? tx.enable : tx.disable}</button>
                       <button style={smallBtn('#d4a843')} onClick={() => {
                         let overrides = {}

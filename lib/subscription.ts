@@ -5,6 +5,8 @@ export type UserPlan = {
   name: string
   status: string
   current_period_end?: string | null
+  source?: 'stripe' | 'manual' | 'free'
+  manual_expires_at?: string | null
 }
 
 export type FeatureKey =
@@ -65,10 +67,38 @@ export async function getUserPlan(supabase: any, userId: string): Promise<UserPl
       name: (data.plans as any)?.name || 'Pro',
       status: data.status,
       current_period_end: data.current_period_end,
+      source: 'stripe',
     }
   }
 
-  return { id: 'free', name: 'Free', status: data?.status || 'free', current_period_end: data?.current_period_end || null }
+  const { data: overrides } = await supabase
+    .from('manual_plan_overrides')
+    .select('plan_key, expires_at, revoked_at, created_at')
+    .eq('user_id', userId)
+    .eq('plan_key', 'pro')
+    .is('revoked_at', null)
+    .order('created_at', { ascending: false })
+    .limit(5)
+
+  const now = Date.now()
+  const manualPro = (overrides || []).find((override: any) => {
+    if (override.revoked_at) return false
+    if (!override.expires_at) return true
+    return new Date(override.expires_at).getTime() > now
+  })
+
+  if (manualPro) {
+    return {
+      id: 'pro',
+      name: 'Pro',
+      status: 'manual',
+      current_period_end: manualPro.expires_at || null,
+      source: 'manual',
+      manual_expires_at: manualPro.expires_at || null,
+    }
+  }
+
+  return { id: 'free', name: 'Free', status: data?.status || 'free', current_period_end: data?.current_period_end || null, source: 'free' }
 }
 
 export async function canUseFeature(

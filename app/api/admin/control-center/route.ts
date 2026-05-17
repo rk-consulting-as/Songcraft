@@ -39,6 +39,14 @@ function monthKey(value: string) {
   return value.slice(0, 7)
 }
 
+function activeManualOverride(overrides: any[], userId: string) {
+  const now = Date.now()
+  return overrides
+    .filter((override: any) => override.user_id === userId && override.plan_key === 'pro' && !override.revoked_at)
+    .sort((a: any, b: any) => String(b.created_at).localeCompare(String(a.created_at)))
+    .find((override: any) => !override.expires_at || new Date(override.expires_at).getTime() > now) || null
+}
+
 export async function GET(req: NextRequest) {
   const auth = await requireAdmin(req)
   if ('error' in auth) return auth.error
@@ -70,6 +78,8 @@ export async function GET(req: NextRequest) {
     subEventsRes,
     plansRes,
     feedbackRes,
+    profilesRes,
+    manualOverridesRes,
   ] = await Promise.all([
     safeCount(sb.from('profiles').select('id', { count: 'exact', head: true })),
     safeCount(sb.from('profiles').select('id', { count: 'exact', head: true }).gte('updated_at', since7)),
@@ -89,6 +99,8 @@ export async function GET(req: NextRequest) {
     sb.from('subscription_events').select('*').order('created_at', { ascending: false }).limit(80),
     sb.from('plans').select('id, name, stripe_price_id'),
     sb.from('beta_feedback').select('id, user_id, page, type, message, status, created_at, profiles(display_name, referral_code)').order('created_at', { ascending: false }).limit(100),
+    sb.from('profiles').select('id, display_name, referral_code, role, disabled, admin_notes, feature_overrides, created_at, updated_at').order('created_at', { ascending: false }).limit(500),
+    sb.from('manual_plan_overrides').select('id, user_id, plan_key, expires_at, granted_by, reason, created_at, revoked_at, revoked_by').order('created_at', { ascending: false }).limit(500),
   ])
 
   const subscriptions = subscriptionsRes.data || []
@@ -97,6 +109,7 @@ export async function GET(req: NextRequest) {
   const subscribers = subscribersRes.data || []
   const artists = artistsRes.data || []
   const songs = songsRes.data || []
+  const manualOverrides = manualOverridesRes.data || []
 
   const proSubscribers = subscriptions.filter((s: any) => s.plan_id === 'pro' && ACTIVE_STATUSES.has(s.status)).length
   const proPrice = Number(process.env.SONGCRAFT_PRO_MONTHLY_PRICE || 19)
@@ -147,14 +160,18 @@ export async function GET(req: NextRequest) {
     ...topAiUsers.map((u: any) => u.user_id),
     ...artists.map((a: any) => a.user_id),
   ].filter(Boolean)))
-  const { data: profiles } = userIds.length
-    ? await sb.from('profiles').select('id, display_name, referral_code, role, disabled, admin_notes, feature_overrides, created_at, updated_at').in('id', userIds)
+  const profileRows = profilesRes.data || []
+  const missingUserIds = userIds.filter((id: string) => !profileRows.some((p: any) => p.id === id))
+  const { data: missingProfiles } = missingUserIds.length
+    ? await sb.from('profiles').select('id, display_name, referral_code, role, disabled, admin_notes, feature_overrides, created_at, updated_at').in('id', missingUserIds)
     : { data: [] as any[] }
+  const profiles = [...profileRows, ...(missingProfiles || [])]
   const profileMap = Object.fromEntries((profiles || []).map((p: any) => [p.id, p]))
 
   const users = (profiles || []).map((p: any) => ({
     ...p,
     subscription: subscriptions.find((s: any) => s.user_id === p.id) || null,
+    manual_plan_override: activeManualOverride(manualOverrides, p.id),
     ai_usage: aiUsage.filter((e: any) => e.user_id === p.id).length,
     ai_failed: aiUsage.filter((e: any) => e.user_id === p.id && e.status === 'error').length,
     artists: artists.filter((a: any) => a.user_id === p.id).length,
@@ -183,6 +200,7 @@ export async function GET(req: NextRequest) {
       estimated_cost: usageByProvider.reduce((sum: number, row: any) => sum + row.estimated_cost, 0),
     },
     subscriptions,
+    manual_plan_overrides: manualOverrides,
     subscription_events: subEventsRes.data || [],
     settings: settingsRes.data || [],
     plans: plansRes.data || [],
@@ -226,12 +244,23 @@ export async function POST(req: NextRequest) {
     if (action === 'set_plan') {
       if (!targetUserId) return NextResponse.json({ error: 'missing_user' }, { status: 400 })
       const plan = body.plan === 'pro' ? 'pro' : 'free'
-      await sb.from('subscriptions').upsert({
-        user_id: targetUserId,
-        plan_id: plan,
-        status: plan === 'pro' ? 'active' : 'free',
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' })
+      if (plan === 'pro') {
+        await sb.from('manual_plan_overrides').update({
+          revoked_at: new Date().toISOString(),
+          revoked_by: actor.id,
+        }).eq('user_id', targetUserId).eq('plan_key', 'pro').is('revoked_at', null)
+        await sb.from('manual_plan_overrides').insert({
+          user_id: targetUserId,
+          plan_key: 'pro',
+          granted_by: actor.id,
+          reason: 'Legacy admin set_plan action',
+        })
+      } else {
+        await sb.from('manual_plan_overrides').update({
+          revoked_at: new Date().toISOString(),
+          revoked_by: actor.id,
+        }).eq('user_id', targetUserId).eq('plan_key', 'pro').is('revoked_at', null)
+      }
       metadata.plan = plan
     } else if (action === 'disable_user') {
       if (!targetUserId) return NextResponse.json({ error: 'missing_user' }, { status: 400 })
