@@ -9,6 +9,7 @@ import ZoomableImage from '@/components/ZoomableImage'
 import { cleanLyricsText } from '@/lib/lyricsCleanup'
 import Link from 'next/link'
 import DistributionModal from '@/components/DistributionModal'
+import DistributionWorkflow from '@/components/DistributionWorkflow'
 import ClickStats from '@/components/ClickStats'
 import QRCodeCard from '@/components/QRCodeCard'
 import UpgradePrompt from '@/components/UpgradePrompt'
@@ -147,6 +148,7 @@ export default function SongPage() {
     canvas: `🎬 ${tx.canvas}`,
     media: `🔗 ${tx.media}`,
     campaign: `📣 ${tx.campaign}`,
+    distribution: `📤 ${tx.distributionTab}`,
     publish: `📢 ${tx.publish}`,
   }
 
@@ -811,6 +813,8 @@ export default function SongPage() {
   const campaignChecklistState = (publishContent.campaign_checklist || {}) as Record<string, boolean>
   const campaignReleaseDate = String(publishContent.campaign_release_date || song?.spotify_release_date || '').slice(0, 10)
   const publicArtistPath = artist?.page_enabled && artist?.page_slug ? `/p/${artist.page_slug}` : ''
+  const audioReady = !!song?.suno_audio_url || !!song?.audio_url || mediaLinks.some(l => ['suno', 'soundcloud'].includes((l.platform || '').toLowerCase()))
+  const coverReady = !!coverImageUrl || !!song?.spotify_cover_url
   const campaignTimeline = Array.isArray(publishContent.campaign_timeline) ? publishContent.campaign_timeline : []
   const campaignAssetCount = campaignAssets.filter(asset => !!publishContent[`campaign_${asset.key}`]).length
   const artistEpk = (artist?.page_settings || {}).epk || {}
@@ -819,7 +823,7 @@ export default function SongPage() {
     { key: 'lyrics', label: tx.reviewCheckLyrics, points: 12, done: !!lyrics?.trim(), action: tx.reviewActionLyrics },
     { key: 'suno', label: tx.reviewCheckSuno, points: 8, done: !!sunoPrompt?.trim(), action: tx.reviewActionSuno },
     { key: 'backstory', label: tx.reviewCheckBackstory, points: 10, done: !!backstory?.trim(), action: tx.reviewActionBackstory },
-    { key: 'cover', label: tx.reviewCheckCover, points: 10, done: !!coverImageUrl || !!song?.spotify_cover_url, action: tx.reviewActionCover },
+    { key: 'cover', label: tx.reviewCheckCover, points: 10, done: coverReady, action: tx.reviewActionCover },
     { key: 'canvas', label: tx.reviewCheckCanvas, points: 8, done: !!canvasPrompt?.trim() || !!canvasUrl, action: tx.reviewActionCanvas },
     { key: 'media', label: tx.reviewCheckMedia, points: 10, done: !!song?.spotify_url || mediaLinks.length > 0, action: tx.reviewActionMedia },
     { key: 'public', label: tx.reviewCheckPublicPage, points: 8, done: !!publicArtistPath, action: tx.reviewActionPublicPage },
@@ -2283,6 +2287,27 @@ export default function SongPage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* DISTRIBUTION TAB */}
+        {tab === 'distribution' && (
+          <DistributionWorkflow
+            songId={songId}
+            title={title || song?.title || ''}
+            artist={artist}
+            publishContent={publishContent}
+            lyrics={lyrics}
+            sunoPrompt={sunoPrompt}
+            backstory={backstory}
+            coverReady={coverReady}
+            audioReady={audioReady}
+            releaseDate={campaignReleaseDate}
+            planId={planId}
+            aiLoading={aiLoading}
+            callAI={callAI}
+            updatePublishContent={updatePublishContent}
+            copy={copy}
+          />
         )}
 
         {/* PUBLISH TAB */}

@@ -49,6 +49,14 @@ type ReleaseReadinessSong = {
   score: number
   missing: string[]
 }
+type DistributionOverviewSong = {
+  id: string
+  title: string
+  artist_name: string
+  status: 'setup' | 'submitted' | 'live'
+  score: number
+  distributor?: string
+}
 const DEFAULT_PAGE_SETTINGS = {
   sections: { hero: true, spotify: true, youtube: true, albums: true, songs: true, bio: true, social: true, events: true, newsletter: true },
   accent_color: '#d4a843',
@@ -144,6 +152,34 @@ function calculateReadiness(song: any, lang: Lang): ReleaseReadinessSong {
   }
 }
 
+function calculateDistribution(song: any): DistributionOverviewSong {
+  const distribution = song.publish_content?.distribution || {}
+  const artist = song.artists || {}
+  const coverReady = !!song.cover_image_url || !!song.spotify_cover_url
+  const audioReady = !!song.suno_audio_url || !!song.audio_url
+  const checks = [
+    !!artist.name,
+    !!song.title,
+    !!distribution.release_date,
+    coverReady,
+    distribution.audio_status === 'ready' || audioReady,
+    distribution.explicit === 'yes' || distribution.explicit === 'no',
+    !!artist.genre,
+    !!distribution.language,
+    !!(distribution.songwriter_credits || distribution.producer_credits),
+    !!distribution.copyright_owner,
+    !!distribution.publishing_owner,
+  ]
+  return {
+    id: song.id,
+    title: song.title,
+    artist_name: artist.name || '',
+    status: distribution.status === 'live' ? 'live' : distribution.status === 'submitted' ? 'submitted' : 'setup',
+    score: Math.round((checks.filter(Boolean).length / checks.length) * 100),
+    distributor: distribution.distributor || '',
+  }
+}
+
 export default function Dashboard() {
   const router = useRouter()
   const [lang, setLangState] = useState<Lang>('no')
@@ -216,6 +252,9 @@ export default function Dashboard() {
   const [upcomingReleaseTasks, setUpcomingReleaseTasks] = useState<ReleaseTask[]>([])
   const [almostReadySongs, setAlmostReadySongs] = useState<ReleaseReadinessSong[]>([])
   const [missingKeySongs, setMissingKeySongs] = useState<ReleaseReadinessSong[]>([])
+  const [distributionSetupSongs, setDistributionSetupSongs] = useState<DistributionOverviewSong[]>([])
+  const [distributionSubmittedSongs, setDistributionSubmittedSongs] = useState<DistributionOverviewSong[]>([])
+  const [distributionLiveSongs, setDistributionLiveSongs] = useState<DistributionOverviewSong[]>([])
 
   // Unread messages count for the nav badge
   const [unreadCount, setUnreadCount] = useState(0)
@@ -356,17 +395,24 @@ export default function Dashboard() {
         try {
           const { data: reviewSongs } = await supabase
             .from('songs')
-            .select('id, title, lyrics_text, suno_prompt, backstory, cover_image_url, spotify_cover_url, canvas_prompt, canvas_video_url, spotify_url, media_links, publish_content, artists(name, page_enabled, page_slug, page_settings)')
+            .select('id, title, lyrics_text, suno_prompt, backstory, cover_image_url, spotify_cover_url, canvas_prompt, canvas_video_url, spotify_url, media_links, publish_content, suno_audio_url, artists(name, genre, page_enabled, page_slug, page_settings)')
             .eq('user_id', user.id)
             .limit(100)
           const scored = ((reviewSongs as any[]) || []).map(song => calculateReadiness(song, lang))
           setAlmostReadySongs(scored.filter(song => song.score >= 75 && song.score < 100).sort((a, b) => b.score - a.score).slice(0, 5))
           setMissingKeySongs(scored.filter(song => song.score < 55).sort((a, b) => a.score - b.score).slice(0, 5))
+          const distribution = ((reviewSongs as any[]) || []).map(calculateDistribution)
+          setDistributionSetupSongs(distribution.filter(song => song.status === 'setup' && song.score < 85).sort((a, b) => a.score - b.score).slice(0, 5))
+          setDistributionSubmittedSongs(distribution.filter(song => song.status === 'submitted').slice(0, 5))
+          setDistributionLiveSongs(distribution.filter(song => song.status === 'live').slice(0, 5))
         } catch {}
       } else {
         setUpcomingReleaseTasks([])
         setAlmostReadySongs([])
         setMissingKeySongs([])
+        setDistributionSetupSongs([])
+        setDistributionSubmittedSongs([])
+        setDistributionLiveSongs([])
       }
 
       // Fetch recent activity from people the user follows (top 5)
@@ -878,6 +924,48 @@ export default function Dashboard() {
         {planId === 'free' && (
           <div style={{ marginBottom: 24 }}>
             <UpgradePrompt compact title={tx.dashboardReadinessProTitle} description={tx.dashboardReadinessProDesc} />
+          </div>
+        )}
+
+        {/* Distribution preparation overview */}
+        {planId === 'pro' && (distributionSetupSongs.length > 0 || distributionSubmittedSongs.length > 0 || distributionLiveSongs.length > 0) && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+              <h2 style={{ color: '#d4a843', fontSize: 13, fontWeight: 'normal', letterSpacing: 1, textTransform: 'uppercase', margin: 0 }}>
+                📤 {tx.dashboardDistributionTitle}
+              </h2>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
+              {[
+                [tx.dashboardDistributionNeedsSetup, distributionSetupSongs, '#e07070'],
+                [tx.dashboardDistributionSubmitted, distributionSubmittedSongs, '#d4a843'],
+                [tx.dashboardDistributionLive, distributionLiveSongs, '#7bc87b'],
+              ].map(([label, rows, color]) => (
+                <div key={String(label)} className="card" style={{ borderColor: `${color}40` }}>
+                  <h3 style={{ color: String(color), fontWeight: 'normal', fontSize: 13, margin: '0 0 10px' }}>{String(label)}</h3>
+                  {(rows as DistributionOverviewSong[]).length === 0 ? (
+                    <p style={{ color: '#6a5a40', fontSize: 12, margin: 0 }}>{tx.dashboardDistributionEmpty}</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {(rows as DistributionOverviewSong[]).map(song => (
+                        <Link key={song.id} href={`/song/${song.id}#distribution`} style={{ textDecoration: 'none', padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.025)', border: `1px solid ${color}25` }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                            <span style={{ color: '#e8e0d0', fontSize: 13, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{song.title}</span>
+                            <span style={{ color: String(color), fontSize: 13, fontWeight: 700 }}>{song.score}</span>
+                          </div>
+                          <div style={{ color: '#8a7a60', fontSize: 11, marginTop: 3 }}>{song.distributor || song.artist_name || '—'}</div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {planId === 'free' && (
+          <div style={{ marginBottom: 24 }}>
+            <UpgradePrompt compact title={tx.dashboardDistributionProTitle} description={tx.dashboardDistributionProDesc} />
           </div>
         )}
 
