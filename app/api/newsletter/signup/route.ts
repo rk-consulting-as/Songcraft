@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
     const artistId = String(body.artist_id || '')
     const email = String(body.email || '').trim().toLowerCase()
     const name = clip(body.name, 120)
+    const favoriteSong = clip(body.favorite_song, 160)
     const sourcePage = clip(body.source_page, 200)
     const source = normalizeSource(body.source)
 
@@ -47,7 +48,9 @@ export async function POST(req: NextRequest) {
       artist_id: artistId,
       email,
       name,
+      favorite_song: favoriteSong,
       source_page: sourcePage,
+      source,
       confirmed: false,
     })
 
@@ -65,7 +68,10 @@ export async function POST(req: NextRequest) {
       source,
       user_agent: clip(req.headers.get('user-agent'), 500),
       referrer: clip(body.referrer || req.headers.get('referer'), 500),
-      metadata: sourcePage ? { source_page: sourcePage } : {},
+      metadata: {
+        ...(sourcePage ? { source_page: sourcePage } : {}),
+        ...(favoriteSong ? { favorite_song: favoriteSong } : {}),
+      },
     })
 
     return NextResponse.json({ ok: true, already_subscribed: false })

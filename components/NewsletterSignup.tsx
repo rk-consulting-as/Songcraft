@@ -19,6 +19,7 @@ export default function NewsletterSignup({
   const tx = t[lang]
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
+  const [favoriteSong, setFavoriteSong] = useState('')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   const [signedUp, setSignedUp] = useState(false)
@@ -43,6 +44,7 @@ export default function NewsletterSignup({
           artist_id: artistId,
           email: email.trim(),
           name: name.trim() || null,
+          favorite_song: favoriteSong.trim() || null,
           source_page: sourcePage,
           source: detectPublicTrafficSource(),
           referrer: typeof document !== 'undefined' ? document.referrer : null,
@@ -59,6 +61,7 @@ export default function NewsletterSignup({
         setSignedUp(true)
         setEmail('')
         setName('')
+        setFavoriteSong('')
         setMessage({ kind: 'ok', text: tx.newsletterSuccess })
       }
     } catch {
@@ -114,12 +117,19 @@ export default function NewsletterSignup({
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : '1fr 1.3fr auto', gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : '1fr 1.2fr 1fr auto', gap: 8 }}>
         <input
           value={name}
           onChange={e => setName(e.target.value)}
           placeholder={tx.newsletterNamePlaceholder}
           aria-label={tx.newsletterNamePlaceholder}
+          style={inputStyle}
+        />
+        <input
+          value={favoriteSong}
+          onChange={e => setFavoriteSong(e.target.value)}
+          placeholder={tx.newsletterFavoriteSongPlaceholder}
+          aria-label={tx.newsletterFavoriteSongPlaceholder}
           style={inputStyle}
         />
         <input

@@ -10,6 +10,7 @@ import Link from 'next/link'
 import ClickStats from '@/components/ClickStats'
 import QRCodeCard from '@/components/QRCodeCard'
 import UpgradePrompt from '@/components/UpgradePrompt'
+import FanHubPanel from '@/components/FanHubPanel'
 import { getUserPlan } from '@/lib/subscription'
 
 import type { SocialLinksMap } from '@/lib/socialLinks'
@@ -17,6 +18,7 @@ import type { SocialLinksMap } from '@/lib/socialLinks'
 type Song = {
   id: string; title: string; status: string; created_at: string; lyrics_instructions: string
   backstory?: string | null
+  publish_content?: any
   album_id?: string | null
   position?: number | null
   cover_image_url?: string | null
@@ -66,6 +68,8 @@ type Subscriber = {
   email: string
   name?: string | null
   source_page?: string | null
+  source?: string | null
+  favorite_song?: string | null
   confirmed: boolean
   created_at: string
 }
@@ -229,6 +233,14 @@ export default function ArtistPage() {
       ? (artist?.page_settings || {}).epk.selected_song_ids
       : songs.slice(0, 3).map(s => s.id),
   }
+  const newsletterSignupEvents = analyticsEvents.filter(e => e.event_type === 'newsletter_signup')
+  const newsletterSources = Array.from(
+    newsletterSignupEvents.reduce((map, event) => {
+      const source = event.source || 'unknown'
+      map.set(source, (map.get(source) || 0) + 1)
+      return map
+    }, new Map<string, number>())
+  ).sort((a, b) => b[1] - a[1])
 
   const fetchData = async () => {
     const supabase = createClient()
@@ -263,7 +275,7 @@ export default function ArtistPage() {
     if (al) setAlbums(al)
     const { data: subs } = await supabase
       .from('newsletter_subscribers')
-      .select('id, email, name, source_page, confirmed, created_at')
+      .select('id, email, name, source_page, source, favorite_song, confirmed, created_at')
       .eq('user_id', user.id)
       .eq('artist_id', artistId)
       .order('created_at', { ascending: false })
@@ -2080,44 +2092,16 @@ export default function ArtistPage() {
           </div>
         </div>
 
-        {/* Fan growth pack */}
-        <div className="card" style={{ marginTop: 36, borderColor: 'rgba(212,168,67,0.25)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
-            <div>
-              <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: 16, letterSpacing: 1, textTransform: 'uppercase', margin: 0 }}>
-                {tx.subscribersTitle}
-              </h2>
-              <p style={{ color: '#8a7a60', fontSize: 12, margin: '4px 0 0' }}>
-                {tx.subscribersCount}: {subscribers.length}
-              </p>
-            </div>
-            {artist?.page_enabled && artist?.page_slug && (
-              <a href={`/p/${artist.page_slug}`} target="_blank" rel="noopener noreferrer" style={{ color: '#d4a843', fontSize: 12, textDecoration: 'none' }}>
-                /p/{artist.page_slug} ↗
-              </a>
-            )}
-          </div>
-
-          {subscribers.length === 0 ? (
-            <p style={{ color: '#5a4a30', fontSize: 13, margin: 0 }}>{tx.subscribersEmpty}</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 260, overflowY: 'auto' }}>
-              {subscribers.map(sub => (
-                <div key={sub.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(180,140,80,0.12)', borderRadius: 6, padding: '10px 12px', flexWrap: 'wrap' }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ color: '#e8e0d0', fontSize: 13 }}>{sub.name || sub.email}</div>
-                    {sub.name && <div style={{ color: '#8a7a60', fontSize: 12 }}>{sub.email}</div>}
-                  </div>
-                  <div style={{ color: '#5a4a30', fontSize: 11, textAlign: 'right' }}>
-                    <div>{new Date(sub.created_at).toLocaleDateString(lang === 'no' ? 'nb-NO' : 'en-US')}</div>
-                    {sub.source_page && <div>{tx.subscribersSource}: {sub.source_page}</div>}
-                    <div>{tx.subscribersConfirmed}: {sub.confirmed ? tx.yes : tx.no}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {artist && (
+          <FanHubPanel
+            artist={artist}
+            songs={songs}
+            subscribers={subscribers}
+            newsletterSources={newsletterSources}
+            planId={planId}
+            aiProvider={aiProvider}
+          />
+        )}
 
         <div className="card" style={{ marginTop: 18, borderColor: 'rgba(212,168,67,0.25)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
