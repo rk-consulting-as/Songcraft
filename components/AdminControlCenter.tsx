@@ -63,6 +63,7 @@ const labels = {
     noData: 'Ingen data ennå.',
     updated: 'Oppdatert.',
     error: 'Kunne ikke utføre handlingen.',
+    loadError: 'Kunne ikke laste kontrollsenteret.',
     feedbackInbox: 'Feedback inbox',
     feedbackEmpty: 'Ingen feedback ennå.',
     markReviewed: 'Marker lest',
@@ -131,6 +132,7 @@ const labels = {
     noData: 'No data yet.',
     updated: 'Updated.',
     error: 'Could not perform action.',
+    loadError: 'Could not load control center.',
     feedbackInbox: 'Feedback inbox',
     feedbackEmpty: 'No feedback yet.',
     markReviewed: 'Mark reviewed',
@@ -153,6 +155,7 @@ export default function AdminControlCenter() {
   const [section, setSection] = useState<Section>('users')
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
+  const [loadError, setLoadError] = useState('')
   const [busy, setBusy] = useState('')
   const [drafts, setDrafts] = useState<Record<string, any>>({})
 
@@ -169,20 +172,31 @@ export default function AdminControlCenter() {
 
   const load = async () => {
     setLoading(true)
-    const headers = await authHeaders()
-    const res = await fetch('/api/admin/control-center', { headers })
-    const next = await res.json()
-    setData(next)
-    const nextDrafts: Record<string, any> = {}
-    for (const s of next.settings || []) nextDrafts[`setting:${s.key}`] = JSON.stringify(s.value || {}, null, 2)
-    for (const u of next.users || []) {
-      nextDrafts[`notes:${u.id}`] = u.admin_notes || ''
-      nextDrafts[`overrides:${u.id}`] = JSON.stringify(u.feature_overrides || {}, null, 2)
-      nextDrafts[`manual_expiry:${u.id}`] = u.manual_plan_override?.expires_at ? String(u.manual_plan_override.expires_at).slice(0, 10) : ''
-      nextDrafts[`manual_reason:${u.id}`] = u.manual_plan_override?.reason || ''
+    setLoadError('')
+    try {
+      const headers = await authHeaders()
+      const res = await fetch('/api/admin/control-center', { headers })
+      const text = await res.text()
+      const next = text ? JSON.parse(text) : null
+      if (!res.ok) throw new Error(next?.error || `${tx.loadError} (${res.status})`)
+      if (!next?.overview) throw new Error(tx.loadError)
+      setData(next)
+      const nextDrafts: Record<string, any> = {}
+      for (const s of next.settings || []) nextDrafts[`setting:${s.key}`] = JSON.stringify(s.value || {}, null, 2)
+      for (const u of next.users || []) {
+        nextDrafts[`notes:${u.id}`] = u.admin_notes || ''
+        nextDrafts[`overrides:${u.id}`] = JSON.stringify(u.feature_overrides || {}, null, 2)
+        nextDrafts[`manual_expiry:${u.id}`] = u.manual_plan_override?.expires_at ? String(u.manual_plan_override.expires_at).slice(0, 10) : ''
+        nextDrafts[`manual_reason:${u.id}`] = u.manual_plan_override?.reason || ''
+      }
+      setDrafts(nextDrafts)
+    } catch (e: any) {
+      if (process.env.NODE_ENV !== 'production') console.error('[AdminControlCenter] load failed', e)
+      setLoadError(e?.message || tx.loadError)
+      setData(null)
+    } finally {
+      setLoading(false)
     }
-    setDrafts(nextDrafts)
-    setLoading(false)
   }
 
   const postAction = async (body: Record<string, any>) => {
@@ -195,7 +209,9 @@ export default function AdminControlCenter() {
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
-      if (!res.ok) throw new Error('failed')
+      const text = await res.text()
+      const next = text ? JSON.parse(text) : null
+      if (!res.ok) throw new Error(next?.error || 'failed')
       setStatus(tx.updated)
       await load()
     } catch {
@@ -214,7 +230,9 @@ export default function AdminControlCenter() {
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
-      if (!res.ok) throw new Error('failed')
+      const text = await res.text()
+      const next = text ? JSON.parse(text) : null
+      if (!res.ok) throw new Error(next?.error || 'failed')
       setStatus(tx.updated)
       await load()
     } catch {
@@ -232,6 +250,7 @@ export default function AdminControlCenter() {
   }, [data, search])
 
   if (loading) return <div className="card" style={{ color: '#8a7a60' }}>{tx.loading}</div>
+  if (loadError) return <div className="card" style={{ color: '#c05050' }}><p>{loadError}</p><button className="btn-outline" onClick={load}>{tx.refresh}</button></div>
   if (!data?.overview) return <div className="card" style={{ color: '#c05050' }}>{tx.error}</div>
 
   const overview = data.overview
