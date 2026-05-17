@@ -41,6 +41,13 @@ type ReleaseTask = {
   status: 'todo' | 'doing' | 'done'
   notes?: string
 }
+type ReleaseReadinessSong = {
+  id: string
+  title: string
+  artist_name: string
+  score: number
+  missing: string[]
+}
 const DEFAULT_PAGE_SETTINGS = {
   sections: { hero: true, spotify: true, youtube: true, albums: true, songs: true, bio: true, social: true, events: true, newsletter: true },
   accent_color: '#d4a843',
@@ -93,6 +100,47 @@ function releaseTaskState(task: ReleaseTask, lang: Lang) {
   if (diffDays < 0) return { label: lang === 'no' ? 'Forsinket' : 'Overdue', color: '#e07070', bg: 'rgba(224,112,112,0.08)' }
   if (diffDays <= 7) return { label: lang === 'no' ? 'Snart' : 'Upcoming', color: '#d4a843', bg: 'rgba(212,168,67,0.08)' }
   return { label: lang === 'no' ? 'Planlagt' : 'Planned', color: '#8a7a60', bg: 'rgba(255,255,255,0.025)' }
+}
+
+function calculateReadiness(song: any, lang: Lang): ReleaseReadinessSong {
+  const pc = song.publish_content || {}
+  const artist = song.artists || {}
+  const campaignAssets = ['spotify_pitch', 'tiktok_caption', 'instagram_caption', 'youtube_shorts_caption', 'facebook_post', 'press_bio', 'newsletter_announcement']
+  const campaignAssetCount = campaignAssets.filter(key => !!pc[`campaign_${key}`]).length
+  const epk = artist.page_settings?.epk || {}
+  const labels = {
+    lyrics: lang === 'no' ? 'Tekst' : 'Lyrics',
+    suno: lang === 'no' ? 'Suno prompt' : 'Suno prompt',
+    backstory: lang === 'no' ? 'Backstory' : 'Backstory',
+    cover: lang === 'no' ? 'Cover' : 'Cover',
+    canvas: lang === 'no' ? 'Canvas' : 'Canvas',
+    media: lang === 'no' ? 'Spotify/lenke' : 'Spotify/link',
+    public: lang === 'no' ? 'Offentlig side' : 'Public page',
+    share: lang === 'no' ? 'QR/embed' : 'QR/embed',
+    campaign: lang === 'no' ? 'Kampanjemateriell' : 'Campaign assets',
+    timeline: lang === 'no' ? 'Tidslinje' : 'Timeline',
+    epk: lang === 'no' ? 'EPK' : 'EPK',
+  }
+  const checks = [
+    { label: labels.lyrics, points: 12, done: !!song.lyrics_text },
+    { label: labels.suno, points: 8, done: !!song.suno_prompt },
+    { label: labels.backstory, points: 10, done: !!song.backstory },
+    { label: labels.cover, points: 10, done: !!song.cover_image_url || !!song.spotify_cover_url },
+    { label: labels.canvas, points: 8, done: !!song.canvas_prompt || !!song.canvas_video_url },
+    { label: labels.media, points: 10, done: !!song.spotify_url || (Array.isArray(song.media_links) && song.media_links.length > 0) },
+    { label: labels.public, points: 8, done: !!artist.page_enabled && !!artist.page_slug },
+    { label: labels.share, points: 8, done: true },
+    { label: labels.campaign, points: 10, done: campaignAssetCount >= 4 },
+    { label: labels.timeline, points: 8, done: Array.isArray(pc.campaign_timeline) && pc.campaign_timeline.length > 0 },
+    { label: labels.epk, points: 8, done: !!(epk.short_bio || epk.long_bio || epk.release_highlight || epk.public_enabled) },
+  ]
+  return {
+    id: song.id,
+    title: song.title,
+    artist_name: artist.name || '',
+    score: checks.reduce((sum, check) => sum + (check.done ? check.points : 0), 0),
+    missing: checks.filter(check => !check.done).map(check => check.label).slice(0, 4),
+  }
 }
 
 export default function Dashboard() {
@@ -165,6 +213,8 @@ export default function Dashboard() {
   // Top-streamed songs from this user's catalog (for the widget)
   const [topStreamedSongs, setTopStreamedSongs] = useState<any[]>([])
   const [upcomingReleaseTasks, setUpcomingReleaseTasks] = useState<ReleaseTask[]>([])
+  const [almostReadySongs, setAlmostReadySongs] = useState<ReleaseReadinessSong[]>([])
+  const [missingKeySongs, setMissingKeySongs] = useState<ReleaseReadinessSong[]>([])
 
   // Unread messages count for the nav badge
   const [unreadCount, setUnreadCount] = useState(0)
@@ -301,8 +351,21 @@ export default function Dashboard() {
           tasks.sort((a, b) => a.due_date.localeCompare(b.due_date))
           setUpcomingReleaseTasks(tasks.slice(0, 8))
         } catch {}
+
+        try {
+          const { data: reviewSongs } = await supabase
+            .from('songs')
+            .select('id, title, lyrics_text, suno_prompt, backstory, cover_image_url, spotify_cover_url, canvas_prompt, canvas_video_url, spotify_url, media_links, publish_content, artists(name, page_enabled, page_slug, page_settings)')
+            .eq('user_id', user.id)
+            .limit(100)
+          const scored = ((reviewSongs as any[]) || []).map(song => calculateReadiness(song, lang))
+          setAlmostReadySongs(scored.filter(song => song.score >= 75 && song.score < 100).sort((a, b) => b.score - a.score).slice(0, 5))
+          setMissingKeySongs(scored.filter(song => song.score < 55).sort((a, b) => a.score - b.score).slice(0, 5))
+        } catch {}
       } else {
         setUpcomingReleaseTasks([])
+        setAlmostReadySongs([])
+        setMissingKeySongs([])
       }
 
       // Fetch recent activity from people the user follows (top 5)
@@ -751,6 +814,57 @@ export default function Dashboard() {
         {planId === 'free' && (
           <div style={{ marginBottom: 24 }}>
             <UpgradePrompt compact title={tx.dashboardReleaseTasksProTitle} description={tx.dashboardReleaseTasksProDesc} />
+          </div>
+        )}
+
+        {/* Release readiness overview */}
+        {planId === 'pro' && (almostReadySongs.length > 0 || missingKeySongs.length > 0) && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+              <h2 style={{ color: '#d4a843', fontSize: 13, fontWeight: 'normal', letterSpacing: 1, textTransform: 'uppercase', margin: 0 }}>
+                ✅ {tx.dashboardReadinessTitle}
+              </h2>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
+              <div className="card" style={{ borderColor: 'rgba(123,200,123,0.22)' }}>
+                <h3 style={{ color: '#7bc87b', fontWeight: 'normal', fontSize: 13, margin: '0 0 10px' }}>{tx.dashboardAlmostReady}</h3>
+                {almostReadySongs.length === 0 ? (
+                  <p style={{ color: '#6a5a40', fontSize: 12, margin: 0 }}>{tx.dashboardNoAlmostReady}</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {almostReadySongs.map(song => (
+                      <Link key={song.id} href={`/song/${song.id}`} style={{ textDecoration: 'none', display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', padding: '8px 10px', borderRadius: 6, background: 'rgba(123,200,123,0.07)', border: '1px solid rgba(123,200,123,0.18)' }}>
+                        <span style={{ color: '#e8e0d0', fontSize: 13, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{song.title}</span>
+                        <span style={{ color: '#7bc87b', fontSize: 13, fontWeight: 700 }}>{song.score}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="card" style={{ borderColor: 'rgba(224,112,112,0.22)' }}>
+                <h3 style={{ color: '#e07070', fontWeight: 'normal', fontSize: 13, margin: '0 0 10px' }}>{tx.dashboardMissingKeyItems}</h3>
+                {missingKeySongs.length === 0 ? (
+                  <p style={{ color: '#6a5a40', fontSize: 12, margin: 0 }}>{tx.dashboardNoMissingKeyItems}</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {missingKeySongs.map(song => (
+                      <Link key={song.id} href={`/song/${song.id}`} style={{ textDecoration: 'none', padding: '8px 10px', borderRadius: 6, background: 'rgba(224,112,112,0.06)', border: '1px solid rgba(224,112,112,0.16)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                          <span style={{ color: '#e8e0d0', fontSize: 13, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{song.title}</span>
+                          <span style={{ color: '#e07070', fontSize: 13, fontWeight: 700 }}>{song.score}</span>
+                        </div>
+                        <div style={{ color: '#8a7a60', fontSize: 11, marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{song.missing.join(', ')}</div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        {planId === 'free' && (
+          <div style={{ marginBottom: 24 }}>
+            <UpgradePrompt compact title={tx.dashboardReadinessProTitle} description={tx.dashboardReadinessProDesc} />
           </div>
         )}
 

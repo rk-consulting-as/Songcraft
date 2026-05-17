@@ -807,6 +807,26 @@ export default function SongPage() {
   const campaignReleaseDate = String(publishContent.campaign_release_date || song?.spotify_release_date || '').slice(0, 10)
   const publicArtistPath = artist?.page_enabled && artist?.page_slug ? `/p/${artist.page_slug}` : ''
   const campaignTimeline = Array.isArray(publishContent.campaign_timeline) ? publishContent.campaign_timeline : []
+  const campaignAssetCount = campaignAssets.filter(asset => !!publishContent[`campaign_${asset.key}`]).length
+  const artistEpk = (artist?.page_settings || {}).epk || {}
+  const hasArtistEpk = !!(artistEpk.short_bio || artistEpk.long_bio || artistEpk.release_highlight || artistEpk.public_enabled)
+  const releaseReviewChecks = [
+    { key: 'lyrics', label: tx.reviewCheckLyrics, points: 12, done: !!lyrics?.trim(), action: tx.reviewActionLyrics },
+    { key: 'suno', label: tx.reviewCheckSuno, points: 8, done: !!sunoPrompt?.trim(), action: tx.reviewActionSuno },
+    { key: 'backstory', label: tx.reviewCheckBackstory, points: 10, done: !!backstory?.trim(), action: tx.reviewActionBackstory },
+    { key: 'cover', label: tx.reviewCheckCover, points: 10, done: !!coverImageUrl || !!song?.spotify_cover_url, action: tx.reviewActionCover },
+    { key: 'canvas', label: tx.reviewCheckCanvas, points: 8, done: !!canvasPrompt?.trim() || !!canvasUrl, action: tx.reviewActionCanvas },
+    { key: 'media', label: tx.reviewCheckMedia, points: 10, done: !!song?.spotify_url || mediaLinks.length > 0, action: tx.reviewActionMedia },
+    { key: 'public', label: tx.reviewCheckPublicPage, points: 8, done: !!publicArtistPath, action: tx.reviewActionPublicPage },
+    { key: 'share', label: tx.reviewCheckShareTools, points: 8, done: !!songId, action: tx.reviewActionShareTools },
+    { key: 'campaign', label: tx.reviewCheckCampaignAssets, points: 10, done: campaignAssetCount >= 4, action: tx.reviewActionCampaignAssets },
+    { key: 'timeline', label: tx.reviewCheckTimeline, points: 8, done: campaignTimeline.length > 0, action: tx.reviewActionTimeline },
+    { key: 'epk', label: tx.reviewCheckEpk, points: 8, done: hasArtistEpk, action: tx.reviewActionEpk },
+  ]
+  const releaseReadinessScore = releaseReviewChecks.reduce((sum, item) => sum + (item.done ? item.points : 0), 0)
+  const releaseMissingItems = releaseReviewChecks.filter(item => !item.done)
+  const releaseHighImpactFixes = releaseMissingItems.filter(item => item.points >= 10)
+  const releaseRecommendedActions = releaseMissingItems.slice(0, 4)
   const timelineTemplates = [
     { id: 'cover_canvas', offset: -28, title: tx.timelineTaskCoverCanvas, pro: false },
     { id: 'distribute', offset: -21, title: tx.timelineTaskDistribute, pro: true },
@@ -880,6 +900,36 @@ export default function SongPage() {
       .map((task: any) => `${task.due_date} · ${task.status.toUpperCase()} · ${task.title}${task.notes ? `\n${task.notes}` : ''}`)
       .join('\n\n')
     copy(text)
+  }
+
+  const generateReleaseReview = async () => {
+    if (planId !== 'pro') return
+    const reviewText = await callAI(
+      [{ role: 'user', content: [
+        `Readiness score: ${releaseReadinessScore}/100`,
+        `Missing items: ${releaseMissingItems.map(item => `${item.label} (${item.points} pts)`).join(', ') || 'None'}`,
+        campaignContext(),
+        campaignAssets.map(asset => {
+          const value = publishContent[`campaign_${asset.key}`]
+          return value ? `${asset.label}:\n${value}` : ''
+        }).filter(Boolean).join('\n\n'),
+      ].filter(Boolean).join('\n\n') }],
+      [
+        `You are a practical release manager for independent artists. Write in ${aiOutputLang === 'no' ? 'Norwegian' : 'English'}.`,
+        'Review the lyrics, Suno prompt, backstory, campaign text, and missing readiness items.',
+        'Return concise, actionable improvement tips. Use sections: Quick verdict, High impact fixes, Copy/content improvements, Release risk.',
+        'Do not block publishing; this is advisory only.',
+      ].join('\n'),
+      'release_review'
+    )
+    if (!reviewText) return
+    await updatePublishContent({
+      release_review_ai: {
+        text: reviewText,
+        score: releaseReadinessScore,
+        created_at: new Date().toISOString(),
+      },
+    })
   }
 
   const campaignContext = () => {
@@ -1987,6 +2037,82 @@ export default function SongPage() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div className="card" style={{ marginBottom: 20, borderColor: releaseReadinessScore >= 80 ? 'rgba(123,200,123,0.34)' : releaseReadinessScore >= 55 ? 'rgba(212,168,67,0.34)' : 'rgba(224,112,112,0.28)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 16 }}>
+                <div>
+                  <h3 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: 16, margin: '0 0 6px' }}>{tx.reviewTitle}</h3>
+                  <p style={{ color: '#8a7a60', fontSize: 12, lineHeight: 1.5, margin: 0 }}>{tx.reviewDesc}</p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ color: releaseReadinessScore >= 80 ? '#7bc87b' : releaseReadinessScore >= 55 ? '#d4a843' : '#e07070', fontSize: 36, fontWeight: 800, lineHeight: 1 }}>
+                    {releaseReadinessScore}
+                  </div>
+                  <div style={{ color: '#6a5a40', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' }}>{tx.reviewScore}</div>
+                </div>
+              </div>
+
+              <div style={{ height: 8, borderRadius: 999, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: 16 }}>
+                <div style={{ width: `${releaseReadinessScore}%`, height: '100%', background: releaseReadinessScore >= 80 ? '#7bc87b' : releaseReadinessScore >= 55 ? '#d4a843' : '#e07070' }} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8, marginBottom: 16 }}>
+                {releaseReviewChecks.map(item => (
+                  <div key={item.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', padding: '8px 10px', borderRadius: 6, border: item.done ? '1px solid rgba(123,200,123,0.24)' : '1px solid rgba(224,112,112,0.22)', background: item.done ? 'rgba(123,200,123,0.07)' : 'rgba(224,112,112,0.05)' }}>
+                    <span style={{ color: item.done ? '#c8e0c8' : '#c8b0a0', fontSize: 12 }}>{item.done ? '✓' : '•'} {item.label}</span>
+                    <span style={{ color: item.done ? '#7bc87b' : '#8a7a60', fontSize: 11 }}>{item.points}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+                <div>
+                  <h4 style={{ color: '#a8b8e8', fontWeight: 'normal', fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 8px' }}>{tx.reviewMissingItems}</h4>
+                  {releaseMissingItems.length === 0 ? (
+                    <p style={{ color: '#7bc87b', fontSize: 13, margin: 0 }}>{tx.reviewNothingMissing}</p>
+                  ) : (
+                    <ul style={{ margin: 0, paddingLeft: 18, color: '#c8c0b0', fontSize: 13, lineHeight: 1.6 }}>
+                      {releaseMissingItems.map(item => <li key={item.key}>{item.label}</li>)}
+                    </ul>
+                  )}
+                </div>
+                <div>
+                  <h4 style={{ color: '#a8b8e8', fontWeight: 'normal', fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 8px' }}>{tx.reviewNextActions}</h4>
+                  <ul style={{ margin: 0, paddingLeft: 18, color: '#c8c0b0', fontSize: 13, lineHeight: 1.6 }}>
+                    {(releaseRecommendedActions.length ? releaseRecommendedActions : releaseReviewChecks.slice(0, 1)).map(item => <li key={item.key}>{item.done ? tx.reviewReadyAction : item.action}</li>)}
+                  </ul>
+                </div>
+                <div>
+                  <h4 style={{ color: '#a8b8e8', fontWeight: 'normal', fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 8px' }}>{tx.reviewHighImpact}</h4>
+                  {releaseHighImpactFixes.length === 0 ? (
+                    <p style={{ color: '#7bc87b', fontSize: 13, margin: 0 }}>{tx.reviewNoHighImpact}</p>
+                  ) : (
+                    <ul style={{ margin: 0, paddingLeft: 18, color: '#c8c0b0', fontSize: 13, lineHeight: 1.6 }}>
+                      {releaseHighImpactFixes.map(item => <li key={item.key}>{item.action}</li>)}
+                    </ul>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <button className="btn-gold" onClick={generateReleaseReview} disabled={planId !== 'pro' || aiLoading} style={{ padding: '7px 14px', fontSize: 12 }}>
+                  {isLoading('release_review') ? tx.generating : tx.reviewAiButton}
+                </button>
+                {planId === 'free' && <span style={{ color: '#8a7a60', fontSize: 12 }}>{tx.reviewAiProHint}</span>}
+              </div>
+              {planId === 'free' && (
+                <UpgradePrompt compact title={tx.reviewAiProTitle} description={tx.reviewAiProDesc} />
+              )}
+              {publishContent.release_review_ai?.text && (
+                <div style={{ marginTop: 14, padding: 14, borderRadius: 8, border: '1px solid rgba(112,144,208,0.22)', background: 'rgba(112,144,208,0.06)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                    <span style={{ color: '#a8b8e8', fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' }}>{tx.reviewLatestAi}</span>
+                    <button className="btn-outline" onClick={() => copy(publishContent.release_review_ai.text)} style={{ padding: '4px 10px', fontSize: 11 }}>📋 {tx.copy}</button>
+                  </div>
+                  <pre style={{ whiteSpace: 'pre-wrap', color: '#c8c0b0', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.55, margin: 0 }}>{publishContent.release_review_ai.text}</pre>
+                </div>
+              )}
             </div>
 
             <div className="card" style={{ marginBottom: 20, borderColor: 'rgba(123,200,123,0.22)' }}>

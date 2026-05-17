@@ -16,6 +16,7 @@ import type { SocialLinksMap } from '@/lib/socialLinks'
 
 type Song = {
   id: string; title: string; status: string; created_at: string; lyrics_instructions: string
+  backstory?: string | null
   album_id?: string | null
   position?: number | null
   cover_image_url?: string | null
@@ -46,6 +47,18 @@ type Artist = {
   social_links?: SocialLinksMap | null
   page_enabled?: boolean
   page_slug?: string | null
+  page_settings?: any
+}
+
+type EpkContent = {
+  short_bio: string
+  long_bio: string
+  release_highlight: string
+  tagline: string
+  contact_info: string
+  social_links: Record<string, string>
+  selected_song_ids: string[]
+  public_enabled: boolean
 }
 
 type Subscriber = {
@@ -166,6 +179,7 @@ export default function ArtistPage() {
   const [analyticsRange, setAnalyticsRange] = useState<'7d' | '30d' | 'all'>('30d')
   const [analyticsEvents, setAnalyticsEvents] = useState<AnalyticsEvent[]>([])
   const [analyticsLoading, setAnalyticsLoading] = useState(false)
+  const [epkGenerating, setEpkGenerating] = useState(false)
 
   // Spotify import via URL (single track)
   const [urlInput, setUrlInput] = useState('')
@@ -188,6 +202,33 @@ export default function ArtistPage() {
     if (artist?.id) fetchAnalytics()
   }, [artist?.id, analyticsRange])
   const tx = t[lang]
+
+  const defaultEpk: EpkContent = {
+    short_bio: '',
+    long_bio: '',
+    release_highlight: '',
+    tagline: '',
+    contact_info: '',
+    social_links: {},
+    selected_song_ids: [],
+    public_enabled: false,
+  }
+
+  const epk: EpkContent = {
+    ...defaultEpk,
+    ...((artist?.page_settings || {}).epk || {}),
+    social_links: {
+      ...Object.fromEntries(
+        Object.entries(artist?.social_links || {})
+          .map(([key, value]: any) => [key, value?.url || ''])
+          .filter(([, value]) => !!value)
+      ),
+      ...(((artist?.page_settings || {}).epk || {}).social_links || {}),
+    },
+    selected_song_ids: Array.isArray((artist?.page_settings || {}).epk?.selected_song_ids)
+      ? (artist?.page_settings || {}).epk.selected_song_ids
+      : songs.slice(0, 3).map(s => s.id),
+  }
 
   const fetchData = async () => {
     const supabase = createClient()
@@ -659,6 +700,115 @@ export default function ArtistPage() {
     if (artist.description) parts.push(`Description: ${artist.description}`)
     if (artist.song_structure) parts.push(`Song structure/profile: ${artist.song_structure}`)
     return parts.join('\n')
+  }
+
+  const saveEpk = async (updates: Partial<EpkContent>) => {
+    if (!artist) return
+    const nextEpk = { ...epk, ...updates }
+    const nextSettings = { ...(artist.page_settings || {}), epk: nextEpk }
+    setArtist({ ...artist, page_settings: nextSettings })
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase
+      .from('artists')
+      .update({ page_settings: nextSettings })
+      .eq('id', artist.id)
+      .eq('user_id', user.id)
+  }
+
+  const copyEpk = (value: string) => navigator.clipboard.writeText(value)
+
+  const copyFullEpk = () => {
+    const selectedSongs = songs.filter(s => epk.selected_song_ids.includes(s.id))
+    const social = Object.entries(epk.social_links || {})
+      .filter(([, url]) => !!url)
+      .map(([platform, url]) => `${platform}: ${url}`)
+      .join('\n')
+    const text = [
+      `${artist?.name || ''}`,
+      epk.tagline,
+      `${tx.epkShortBio}\n${epk.short_bio}`,
+      `${tx.epkLongBio}\n${epk.long_bio}`,
+      `${tx.epkReleaseHighlight}\n${epk.release_highlight}`,
+      selectedSongs.length ? `${tx.epkSelectedSongs}\n${selectedSongs.map(s => `- ${s.title}`).join('\n')}` : '',
+      epk.contact_info ? `${tx.epkContactInfo}\n${epk.contact_info}` : '',
+      social ? `${tx.epkSocialLinks}\n${social}` : '',
+      artist?.page_slug ? `${tx.publicPage}\n${window.location.origin}/p/${artist.page_slug}` : '',
+    ].filter(Boolean).join('\n\n')
+    copyEpk(text)
+  }
+
+  const updateEpkSocialLink = (platform: string, url: string) => {
+    saveEpk({ social_links: { ...(epk.social_links || {}), [platform]: url } })
+  }
+
+  const toggleEpkSong = (songId: string, checked: boolean) => {
+    const current = new Set(epk.selected_song_ids || [])
+    if (checked) current.add(songId)
+    else current.delete(songId)
+    saveEpk({ selected_song_ids: Array.from(current) })
+  }
+
+  const generateEpk = async () => {
+    if (!artist) return
+    setEpkGenerating(true)
+    const selected = songs.filter(s => epk.selected_song_ids.includes(s.id)).slice(0, 8)
+    const songContext = selected.length ? selected : songs.slice(0, 6)
+    const social = Object.entries(artist.social_links || {})
+      .map(([platform, value]: any) => `${platform}: ${value?.url || ''}`)
+      .filter(line => !line.endsWith(': '))
+      .join('\n')
+    const publicPage = artist.page_enabled && artist.page_slug ? `/p/${artist.page_slug}` : ''
+    const context = [
+      `Artist: ${artist.name}`,
+      artist.genre ? `Genre: ${artist.genre}` : '',
+      artist.description ? `Description:\n${artist.description}` : '',
+      artist.song_structure ? `Artist profile:\n${artist.song_structure}` : '',
+      publicPage ? `Public artist page: ${publicPage}` : '',
+      social ? `Social links:\n${social}` : '',
+      songContext.length ? `Songs:\n${songContext.map(s => [
+        `Title: ${s.title}`,
+        s.lyrics_instructions ? `Concept: ${s.lyrics_instructions}` : '',
+        s.backstory ? `Backstory: ${s.backstory}` : '',
+        s.spotify_url ? `Spotify: ${s.spotify_url}` : '',
+      ].filter(Boolean).join('\n')).join('\n\n')}` : '',
+    ].filter(Boolean).join('\n\n')
+
+    try {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({
+          provider: aiProvider,
+          messages: [{ role: 'user', content: context }],
+          system: [
+            `You write professional Electronic Press Kits for musicians. Write in ${lang === 'no' ? 'Norwegian' : 'English'}.`,
+            'Return ONLY valid JSON with keys: short_bio, long_bio, release_highlight, tagline.',
+            'short_bio: 2-3 sentences. long_bio: 3-5 paragraphs. release_highlight: concise latest-release section. tagline: one quotable press line.',
+            'Do not invent awards, labels, contact addresses, streaming numbers, or facts not present in the source.',
+          ].join('\n'),
+        }),
+      })
+      const data = await res.json()
+      const clean = String(data.text || '').replace(/```json|```/g, '').trim()
+      const parsed = JSON.parse(clean)
+      await saveEpk({
+        short_bio: parsed.short_bio || epk.short_bio,
+        long_bio: parsed.long_bio || epk.long_bio,
+        release_highlight: parsed.release_highlight || epk.release_highlight,
+        tagline: parsed.tagline || epk.tagline,
+        selected_song_ids: epk.selected_song_ids.length ? epk.selected_song_ids : songContext.map(s => s.id),
+      })
+    } catch (e) {
+      console.warn('EPK generation failed', e)
+    }
+    setEpkGenerating(false)
   }
 
   const generateBatch = async () => {
@@ -1814,6 +1964,120 @@ export default function ArtistPage() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* EPK / press kit */}
+        <div className="card" style={{ marginTop: 36, borderColor: 'rgba(112,144,208,0.28)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+            <div>
+              <h2 style={{ color: '#7090d0', fontWeight: 'normal', fontSize: 16, letterSpacing: 1, textTransform: 'uppercase', margin: 0 }}>
+                {tx.epkTitle}
+              </h2>
+              <p style={{ color: '#8a7a60', fontSize: 12, margin: '4px 0 0', lineHeight: 1.5 }}>{tx.epkDesc}</p>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button className="btn-gold" onClick={generateEpk} disabled={epkGenerating} style={{ padding: '7px 14px', fontSize: 12 }}>
+                {epkGenerating ? tx.generating : tx.epkGenerate}
+              </button>
+              <button className="btn-outline" onClick={copyFullEpk} style={{ padding: '7px 14px', fontSize: 12 }}>
+                📋 {tx.epkCopyAll}
+              </button>
+              {artist?.page_slug && (
+                <a href={`/epk/${artist.page_slug}`} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ padding: '7px 14px', fontSize: 12, textDecoration: 'none' }}>
+                  {tx.epkPreview}
+                </a>
+              )}
+            </div>
+          </div>
+
+          {planId === 'free' && (
+            <UpgradePrompt compact title={tx.epkProTitle} description={tx.epkProDesc} />
+          )}
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, marginBottom: 16 }}>
+            {[
+              ['tagline', tx.epkTagline, 2],
+              ['short_bio', tx.epkShortBio, 4],
+              ['long_bio', tx.epkLongBio, 9],
+              ['release_highlight', tx.epkReleaseHighlight, 5],
+              ['contact_info', tx.epkContactInfo, 3],
+            ].map(([key, label, rows]) => (
+              <div key={String(key)}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <label style={{ color: '#a8b8e8', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' }}>{label}</label>
+                  {!!(epk as any)[key as string] && (
+                    <button className="btn-outline" onClick={() => copyEpk((epk as any)[key as string])} style={{ padding: '3px 9px', fontSize: 11 }}>
+                      📋
+                    </button>
+                  )}
+                </div>
+                <textarea
+                  value={(epk as any)[key as string] || ''}
+                  onChange={e => saveEpk({ [key as string]: e.target.value } as Partial<EpkContent>)}
+                  rows={Number(rows)}
+                  placeholder={tx.epkFieldPlaceholder}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 14, marginBottom: 16 }}>
+            <div className="card" style={{ borderColor: 'rgba(112,144,208,0.18)' }}>
+              <h3 style={{ color: '#7090d0', fontWeight: 'normal', fontSize: 14, margin: '0 0 10px' }}>{tx.epkSelectedSongs}</h3>
+              {songs.length === 0 ? (
+                <p style={{ color: '#6a5a40', fontSize: 13, margin: 0 }}>{tx.noSongs}</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7, maxHeight: 260, overflowY: 'auto' }}>
+                  {songs.map(song => (
+                    <label key={song.id} style={{ display: 'flex', alignItems: 'center', gap: 9, color: '#c8c0b0', fontSize: 13, background: epk.selected_song_ids.includes(song.id) ? 'rgba(112,144,208,0.08)' : 'rgba(255,255,255,0.02)', border: '1px solid rgba(112,144,208,0.14)', borderRadius: 6, padding: '8px 10px', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={epk.selected_song_ids.includes(song.id)} onChange={e => toggleEpkSong(song.id, e.target.checked)} style={{ accentColor: '#7090d0' }} />
+                      <span style={{ flex: 1 }}>{song.title}</span>
+                      <span style={{ color: '#6a5a40', fontSize: 11 }}>{song.status}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="card" style={{ borderColor: 'rgba(112,144,208,0.18)' }}>
+              <h3 style={{ color: '#7090d0', fontWeight: 'normal', fontSize: 14, margin: '0 0 10px' }}>{tx.epkSocialLinks}</h3>
+              {['spotify', 'youtube', 'instagram', 'tiktok', 'website'].map(platform => (
+                <div key={platform} style={{ marginBottom: 8 }}>
+                  <label style={{ display: 'block', color: '#8a7a60', fontSize: 11, textTransform: 'uppercase', marginBottom: 4 }}>{platform}</label>
+                  <input value={epk.social_links?.[platform] || ''} onChange={e => updateEpkSocialLink(platform, e.target.value)} placeholder="https://..." />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(112,144,208,0.14)', borderRadius: 8, padding: 16, marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+              <h3 style={{ color: '#a8b8e8', fontWeight: 'normal', fontSize: 14, margin: 0 }}>{tx.epkPreviewTitle}</h3>
+              {artist?.page_slug && <span style={{ color: '#6a5a40', fontSize: 12 }}>/epk/{artist.page_slug}</span>}
+            </div>
+            <h1 style={{ color: '#e8e0d0', margin: '0 0 6px', fontSize: 26 }}>{artist?.name}</h1>
+            {epk.tagline && <p style={{ color: '#d4a843', fontSize: 16, margin: '0 0 12px' }}>"{epk.tagline}"</p>}
+            {epk.short_bio && <p style={{ color: '#c8c0b0', fontSize: 14, lineHeight: 1.6 }}>{epk.short_bio}</p>}
+            {epk.release_highlight && <p style={{ color: '#8a7a60', fontSize: 13, lineHeight: 1.6 }}>{epk.release_highlight}</p>}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: planId === 'pro' ? '#c8c0b0' : '#6a5a40', fontSize: 13, cursor: planId === 'pro' ? 'pointer' : 'not-allowed' }}>
+              <input
+                type="checkbox"
+                checked={!!epk.public_enabled}
+                disabled={planId !== 'pro'}
+                onChange={e => saveEpk({ public_enabled: e.target.checked })}
+                style={{ accentColor: '#7090d0' }}
+              />
+              {tx.epkPublishPublic}
+            </label>
+            {artist?.page_slug && planId === 'pro' && epk.public_enabled && (
+              <a href={`/epk/${artist.page_slug}`} target="_blank" rel="noopener noreferrer" style={{ color: '#d4a843', fontSize: 13 }}>
+                {typeof window !== 'undefined' ? window.location.origin : ''}/epk/{artist.page_slug}
+              </a>
+            )}
+          </div>
         </div>
 
         {/* Fan growth pack */}
