@@ -806,6 +806,17 @@ export default function SongPage() {
   const campaignChecklistState = (publishContent.campaign_checklist || {}) as Record<string, boolean>
   const campaignReleaseDate = String(publishContent.campaign_release_date || song?.spotify_release_date || '').slice(0, 10)
   const publicArtistPath = artist?.page_enabled && artist?.page_slug ? `/p/${artist.page_slug}` : ''
+  const campaignTimeline = Array.isArray(publishContent.campaign_timeline) ? publishContent.campaign_timeline : []
+  const timelineTemplates = [
+    { id: 'cover_canvas', offset: -28, title: tx.timelineTaskCoverCanvas, pro: false },
+    { id: 'distribute', offset: -21, title: tx.timelineTaskDistribute, pro: true },
+    { id: 'spotify_pitch', offset: -14, title: tx.timelineTaskSpotifyPitch, pro: false },
+    { id: 'teaser_posts', offset: -10, title: tx.timelineTaskTeaserCreate, pro: true },
+    { id: 'post_teaser', offset: -7, title: tx.timelineTaskTeaserPost, pro: false },
+    { id: 'newsletter_ready', offset: -3, title: tx.timelineTaskNewsletter, pro: true },
+    { id: 'release_day', offset: 0, title: tx.timelineTaskReleaseDay, pro: false },
+    { id: 'follow_up', offset: 3, title: tx.timelineTaskFollowUp, pro: true },
+  ]
 
   const updatePublishContent = async (updates: Record<string, any>) => {
     const updated = { ...publishContent, ...updates }
@@ -819,6 +830,56 @@ export default function SongPage() {
 
   const updateCampaignChecklist = async (key: string, checked: boolean) => {
     await updatePublishContent({ campaign_checklist: { ...campaignChecklistState, [key]: checked } })
+  }
+
+  const addDays = (date: string, days: number) => {
+    const d = new Date(`${date}T12:00:00`)
+    d.setDate(d.getDate() + days)
+    return d.toISOString().slice(0, 10)
+  }
+
+  const timelineBadge = (task: any) => {
+    if (task.status === 'done') return { label: tx.timelineDone, color: '#7bc87b', bg: 'rgba(123,200,123,0.08)' }
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const due = new Date(`${task.due_date}T00:00:00`)
+    const diffDays = Math.ceil((due.getTime() - today.getTime()) / 86400000)
+    if (diffDays < 0) return { label: tx.timelineOverdue, color: '#e07070', bg: 'rgba(224,112,112,0.08)' }
+    if (diffDays <= 7) return { label: tx.timelineUpcoming, color: '#d4a843', bg: 'rgba(212,168,67,0.08)' }
+    return { label: tx.timelinePlanned, color: '#8a7a60', bg: 'rgba(255,255,255,0.025)' }
+  }
+
+  const generateTimeline = async (reset = false) => {
+    if (!campaignReleaseDate) return
+    const existingById = new Map(campaignTimeline.map((task: any) => [task.id, task]))
+    const templates = timelineTemplates.filter(template => planId === 'pro' || !template.pro)
+    const tasks = templates.map(template => {
+      const existing = reset ? null : existingById.get(template.id) as any
+      return {
+        id: template.id,
+        title: template.title,
+        due_date: addDays(campaignReleaseDate, template.offset),
+        status: existing?.status || 'todo',
+        notes: existing?.notes || '',
+      }
+    }).sort((a, b) => a.due_date.localeCompare(b.due_date))
+    await updatePublishContent({ campaign_timeline: tasks })
+  }
+
+  const resetTimeline = async () => {
+    await updatePublishContent({ campaign_timeline: [] })
+  }
+
+  const updateTimelineTask = async (taskId: string, updates: Record<string, any>) => {
+    const tasks = campaignTimeline.map((task: any) => task.id === taskId ? { ...task, ...updates } : task)
+    await updatePublishContent({ campaign_timeline: tasks })
+  }
+
+  const copyTimeline = () => {
+    const text = campaignTimeline
+      .map((task: any) => `${task.due_date} · ${task.status.toUpperCase()} · ${task.title}${task.notes ? `\n${task.notes}` : ''}`)
+      .join('\n\n')
+    copy(text)
   }
 
   const campaignContext = () => {
@@ -1950,6 +2011,86 @@ export default function SongPage() {
                   )
                 })}
               </div>
+            </div>
+
+            <div className="card" style={{ marginBottom: 20, borderColor: 'rgba(212,168,67,0.28)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 14 }}>
+                <div>
+                  <h3 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: 15, margin: '0 0 6px' }}>{tx.timelineTitle}</h3>
+                  <p style={{ color: '#8a7a60', fontSize: 12, lineHeight: 1.5, margin: 0 }}>
+                    {planId === 'pro' ? tx.timelineDescPro : tx.timelineDescFree}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button className="btn-gold" onClick={() => generateTimeline(false)} disabled={!campaignReleaseDate} style={{ padding: '6px 12px', fontSize: 12 }}>
+                    {tx.timelineGenerate}
+                  </button>
+                  <button className="btn-outline" onClick={() => generateTimeline(true)} disabled={!campaignReleaseDate} style={{ padding: '6px 12px', fontSize: 12 }}>
+                    {tx.timelineRegenerate}
+                  </button>
+                  {campaignTimeline.length > 0 && (
+                    <button className="btn-outline" onClick={copyTimeline} style={{ padding: '6px 12px', fontSize: 12 }}>
+                      📋 {tx.timelineCopy}
+                    </button>
+                  )}
+                  {campaignTimeline.length > 0 && (
+                    <button className="btn-outline" onClick={resetTimeline} style={{ padding: '6px 12px', fontSize: 12, color: '#c07070' }}>
+                      {tx.timelineReset}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {!campaignReleaseDate && (
+                <p style={{ color: '#c07070', fontSize: 12, margin: '0 0 12px' }}>{tx.timelineNeedsReleaseDate}</p>
+              )}
+              {planId === 'free' && (
+                <UpgradePrompt compact title={tx.timelineProTitle} description={tx.timelineProDesc} />
+              )}
+
+              {campaignTimeline.length === 0 ? (
+                <p style={{ color: '#6a5a40', fontSize: 13, margin: 0 }}>{tx.timelineEmpty}</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {campaignTimeline.map((task: any) => {
+                    const badge = timelineBadge(task)
+                    return (
+                      <div key={task.id} style={{ border: `1px solid ${badge.color}33`, background: badge.bg, borderRadius: 8, padding: 12 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 130px 110px', gap: 8, alignItems: 'center' }}>
+                          <input
+                            value={task.title}
+                            onChange={e => updateTimelineTask(task.id, { title: e.target.value })}
+                            aria-label={tx.timelineTaskTitle}
+                            style={{ color: '#e8e0d0', fontWeight: 600 }}
+                          />
+                          <input
+                            type="date"
+                            value={task.due_date || ''}
+                            onChange={e => updateTimelineTask(task.id, { due_date: e.target.value })}
+                            aria-label={tx.timelineDueDate}
+                          />
+                          <select value={task.status || 'todo'} onChange={e => updateTimelineTask(task.id, { status: e.target.value })} aria-label={tx.timelineStatus}>
+                            <option value="todo">{tx.timelineTodo}</option>
+                            <option value="doing">{tx.timelineDoing}</option>
+                            <option value="done">{tx.timelineDone}</option>
+                          </select>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', marginTop: 8 }}>
+                          <span style={{ color: badge.color, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' }}>{badge.label}</span>
+                          <span style={{ color: '#6a5a40', fontSize: 11 }}>{task.due_date}</span>
+                        </div>
+                        <textarea
+                          value={task.notes || ''}
+                          onChange={e => updateTimelineTask(task.id, { notes: e.target.value })}
+                          rows={2}
+                          placeholder={tx.timelineNotes}
+                          style={{ marginTop: 8, fontSize: 12 }}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14, marginBottom: 22 }}>

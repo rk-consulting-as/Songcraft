@@ -31,6 +31,16 @@ type SpotifyArtist = {
   popularity: number; image: string | null; smallImage: string | null
   spotifyUrl: string | null
 }
+type ReleaseTask = {
+  id: string
+  song_id: string
+  song_title: string
+  artist_name: string
+  title: string
+  due_date: string
+  status: 'todo' | 'doing' | 'done'
+  notes?: string
+}
 const DEFAULT_PAGE_SETTINGS = {
   sections: { hero: true, spotify: true, youtube: true, albums: true, songs: true, bio: true, social: true, events: true, newsletter: true },
   accent_color: '#d4a843',
@@ -73,6 +83,17 @@ function slugify(s: string): string {
 // Title-case a Spotify genre string (e.g. "swamp country rock" -> "Swamp Country Rock")
 const titleCase = (s: string) =>
   s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+
+function releaseTaskState(task: ReleaseTask, lang: Lang) {
+  if (task.status === 'done') return { label: lang === 'no' ? 'Ferdig' : 'Done', color: '#7bc87b', bg: 'rgba(123,200,123,0.08)' }
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const due = new Date(`${task.due_date}T00:00:00`)
+  const diffDays = Math.ceil((due.getTime() - today.getTime()) / 86400000)
+  if (diffDays < 0) return { label: lang === 'no' ? 'Forsinket' : 'Overdue', color: '#e07070', bg: 'rgba(224,112,112,0.08)' }
+  if (diffDays <= 7) return { label: lang === 'no' ? 'Snart' : 'Upcoming', color: '#d4a843', bg: 'rgba(212,168,67,0.08)' }
+  return { label: lang === 'no' ? 'Planlagt' : 'Planned', color: '#8a7a60', bg: 'rgba(255,255,255,0.025)' }
+}
 
 export default function Dashboard() {
   const router = useRouter()
@@ -143,6 +164,7 @@ export default function Dashboard() {
 
   // Top-streamed songs from this user's catalog (for the widget)
   const [topStreamedSongs, setTopStreamedSongs] = useState<any[]>([])
+  const [upcomingReleaseTasks, setUpcomingReleaseTasks] = useState<ReleaseTask[]>([])
 
   // Unread messages count for the nav badge
   const [unreadCount, setUnreadCount] = useState(0)
@@ -250,6 +272,38 @@ export default function Dashboard() {
           setTopStreamedSongs((streamed as any[]).filter(s => (s.internal_play_count || 0) > 0 || (s.embed_click_count || 0) > 0))
         }
       } catch {}
+
+      // Pro dashboard overview: upcoming release campaign tasks across own songs.
+      if (currentPlan.id === 'pro') {
+        try {
+          const { data: campaignSongs } = await supabase
+            .from('songs')
+            .select('id, title, publish_content, artists(name)')
+            .eq('user_id', user.id)
+            .not('publish_content', 'is', null)
+          const tasks: ReleaseTask[] = []
+          for (const song of (campaignSongs as any[]) || []) {
+            const timeline = Array.isArray(song.publish_content?.campaign_timeline) ? song.publish_content.campaign_timeline : []
+            for (const task of timeline) {
+              if (!task?.due_date || task.status === 'done') continue
+              tasks.push({
+                id: String(task.id || `${song.id}-${task.due_date}`),
+                song_id: song.id,
+                song_title: song.title,
+                artist_name: song.artists?.name || '',
+                title: String(task.title || ''),
+                due_date: String(task.due_date),
+                status: task.status === 'doing' ? 'doing' : 'todo',
+                notes: task.notes || '',
+              })
+            }
+          }
+          tasks.sort((a, b) => a.due_date.localeCompare(b.due_date))
+          setUpcomingReleaseTasks(tasks.slice(0, 8))
+        } catch {}
+      } else {
+        setUpcomingReleaseTasks([])
+      }
 
       // Fetch recent activity from people the user follows (top 5)
       const { data: follows } = await supabase
@@ -661,6 +715,42 @@ export default function Dashboard() {
                 </Link>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Release campaign timeline overview */}
+        {planId === 'pro' && upcomingReleaseTasks.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+              <h2 style={{ color: '#d4a843', fontSize: 13, fontWeight: 'normal', letterSpacing: 1, textTransform: 'uppercase', margin: 0 }}>
+                📣 {tx.dashboardReleaseTasks}
+              </h2>
+            </div>
+            <div className="card" style={{ padding: 0, overflow: 'hidden', borderColor: 'rgba(212,168,67,0.22)' }}>
+              {upcomingReleaseTasks.map((task, i) => {
+                const state = releaseTaskState(task, lang)
+                return (
+                  <Link key={`${task.song_id}-${task.id}`} href={`/song/${task.song_id}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderBottom: i < upcomingReleaseTasks.length - 1 ? '1px solid rgba(180,140,80,0.08)' : 'none', textDecoration: 'none', background: state.bg }}>
+                    <div style={{ width: 86, flexShrink: 0 }}>
+                      <div style={{ color: state.color, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' }}>{state.label}</div>
+                      <div style={{ color: '#8a7a60', fontSize: 11, marginTop: 2 }}>{new Date(`${task.due_date}T00:00:00`).toLocaleDateString(lang === 'no' ? 'nb-NO' : 'en-US', { day: '2-digit', month: 'short' })}</div>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ color: '#e8e0d0', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</div>
+                      <div style={{ color: '#8a7a60', fontSize: 11, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.song_title}{task.artist_name ? ` · ${task.artist_name}` : ''}</div>
+                    </div>
+                    <span style={{ color: task.status === 'doing' ? '#d4a843' : '#6a5a40', fontSize: 11, textTransform: 'uppercase', flexShrink: 0 }}>
+                      {task.status === 'doing' ? tx.timelineDoing : tx.timelineTodo}
+                    </span>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        )}
+        {planId === 'free' && (
+          <div style={{ marginBottom: 24 }}>
+            <UpgradePrompt compact title={tx.dashboardReleaseTasksProTitle} description={tx.dashboardReleaseTasksProDesc} />
           </div>
         )}
 
