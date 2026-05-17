@@ -9,6 +9,8 @@ import Link from 'next/link'
 import Avatar from '@/components/Avatar'
 import ActivityList, { type ActivityEntry } from '@/components/ActivityList'
 import ProfileMenu from '@/components/ProfileMenu'
+import UpgradePrompt from '@/components/UpgradePrompt'
+import { getUserPlan } from '@/lib/subscription'
 
 type Artist = {
   id: string; name: string; genre: string; description: string
@@ -132,6 +134,7 @@ export default function Dashboard() {
   // Profile snapshot — used for showing referral / admin links in header.
   const [userRole, setUserRole] = useState<string | null>(null)
   const [userProfile, setUserProfile] = useState<{ id: string; display_name: string | null; avatar_url: string | null } | null>(null)
+  const [planId, setPlanId] = useState<'free' | 'pro'>('free')
 
   // Activity feed snapshot for the dashboard widget
   const [feedEntries, setFeedEntries] = useState<ActivityEntry[]>([])
@@ -188,6 +191,8 @@ export default function Dashboard() {
       }
       if (prof?.role) setUserRole(prof.role as string)
       if (prof) setUserProfile({ id: prof.id, display_name: prof.display_name ?? null, avatar_url: prof.avatar_url ?? null })
+      const currentPlan = await getUserPlan(supabase, user.id)
+      setPlanId(currentPlan.id)
 
       // Fetch unread message count for nav badge
       try {
@@ -807,6 +812,9 @@ export default function Dashboard() {
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.artistName.toUpperCase()} *</label>
                 <input value={form.name} onChange={e => onNameChange(e.target.value)} placeholder={tx.artistNamePlaceholder} />
+                {!editingArtist && planId === 'free' && artists.length >= 1 && (
+                  <UpgradePrompt compact title={tx.upgradeArtistLimitTitle} description={tx.upgradeArtistLimitDesc} />
+                )}
 
                 {/* Spotify loading */}
                 {spotifyLoading && (
@@ -1047,6 +1055,9 @@ export default function Dashboard() {
                           )
                         })}
                       </div>
+                      {planId === 'free' && (
+                        <UpgradePrompt compact title={tx.upgradeSoftTitle} description={tx.billingFeatureAdvancedTemplates} />
+                      )}
                     </div>
 
                     <div style={{ marginBottom: 12 }}>

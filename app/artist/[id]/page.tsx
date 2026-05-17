@@ -9,6 +9,8 @@ import ZoomableImage from '@/components/ZoomableImage'
 import Link from 'next/link'
 import ClickStats from '@/components/ClickStats'
 import QRCodeCard from '@/components/QRCodeCard'
+import UpgradePrompt from '@/components/UpgradePrompt'
+import { getUserPlan } from '@/lib/subscription'
 
 import type { SocialLinksMap } from '@/lib/socialLinks'
 
@@ -105,6 +107,7 @@ export default function ArtistPage() {
   const artistId = params.id as string
   const [lang, setLangState] = useState<Lang>('no')
   const [artist, setArtist] = useState<Artist | null>(null)
+  const [planId, setPlanId] = useState<'free' | 'pro'>('free')
   const [songs, setSongs] = useState<Song[]>([])
   const [loading, setLoading] = useState(true)
   const [showGenerator, setShowGenerator] = useState(false)
@@ -192,6 +195,8 @@ export default function ArtistPage() {
     // Admins viewing another user's artist via direct URL should be blocked here.
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setLoading(false); return }
+    const currentPlan = await getUserPlan(supabase, user.id)
+    setPlanId(currentPlan.id)
     const { data: a } = await supabase
       .from('artists')
       .select('*')
@@ -292,9 +297,14 @@ export default function ArtistPage() {
         songTitles ? `Songs in this album:\n${songTitles}` : '',
       ].filter(Boolean).join('\n\n')
 
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
       const res = await fetch('/api/ai', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           provider: aiProvider,
           system: 'You are an expert in AI image generation (Midjourney, DALL-E, Stable Diffusion). Create a detailed ALBUM cover image prompt for the given album. Include subject, style, colors, mood, lighting, composition. Format: Subject → Style → Colors → Mood → Technical. Album covers are 1:1 square. Write in English, max 150 words.',
@@ -638,9 +648,14 @@ export default function ArtistPage() {
     setGenerating(true)
     setGeneratedSongs([])
     const artistContext = buildArtistContext()
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
     const res = await fetch('/api/ai', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+      },
       body: JSON.stringify({
         provider: aiProvider,
         messages: [{ role: 'user', content: `${artistContext ? artistContext + '\n\n' : ''}User request: ${prompt}\n\nNumber of songs: ${count}` }],
@@ -905,6 +920,9 @@ export default function ArtistPage() {
               <h2 style={{ margin: 0, color: '#d4a843', fontWeight: 'normal', fontSize: '18px' }}>{tx.aiGenerator}</h2>
               <button className="btn-outline" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => { setShowGenerator(false); setGeneratedSongs([]) }}>{tx.close}</button>
             </div>
+            {planId === 'free' && (
+              <UpgradePrompt compact title={tx.upgradeAiTitle} description={tx.upgradeAiDesc} />
+            )}
 
             {/* Artist profile toggle */}
             {(artist?.genre || artist?.description || artist?.song_structure) && (
@@ -1654,6 +1672,9 @@ export default function ArtistPage() {
                 {tx.fanAnalyticsTitle}
               </h2>
               <p style={{ color: '#8a7a60', fontSize: 12, margin: '4px 0 0' }}>{tx.fanAnalyticsDesc}</p>
+              {planId === 'free' && (
+                <UpgradePrompt compact title={tx.upgradeAnalyticsTitle} description={tx.upgradeAnalyticsDesc} />
+              )}
             </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {([
@@ -1877,6 +1898,9 @@ export default function ArtistPage() {
         {artist?.page_enabled && artist?.page_slug && (
           <div style={{ marginTop: 18 }}>
             <QRCodeCard path={`/p/${artist.page_slug}`} title={tx.qrArtistHint} />
+            {planId === 'free' && (
+              <UpgradePrompt compact title={tx.upgradeQrTitle} description={tx.upgradeQrDesc} />
+            )}
           </div>
         )}
 

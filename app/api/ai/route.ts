@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import { trackAiUsage } from '@/lib/subscription'
 
 // Unified AI text-generation endpoint. Dispatches to Anthropic or OpenAI based on `provider`.
 //
@@ -68,14 +70,43 @@ export async function POST(req: NextRequest) {
   }
 
   const chosen: Provider = provider === 'openai' ? 'openai' : 'anthropic'
+  let userId: string | null = null
+  let sbAuth: any = null
+  const auth = req.headers.get('authorization')
+  if (auth?.startsWith('Bearer ')) {
+    const token = auth.slice(7)
+    sbAuth = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false } }
+    )
+    const { data: { user } } = await sbAuth.auth.getUser()
+    userId = user?.id || null
+  }
 
   try {
     const text = chosen === 'openai'
       ? await callOpenAI(messages, system)
       : await callAnthropic(messages, system)
+    if (userId && sbAuth) {
+      await trackAiUsage(sbAuth, {
+        userId,
+        provider: chosen,
+        model: chosen === 'openai' ? OPENAI_MODEL : ANTHROPIC_MODEL,
+        status: 'success',
+      }).catch(() => {})
+    }
     return NextResponse.json({ text, provider: chosen })
   } catch (e: any) {
     console.error(`${chosen} API error:`, e)
+    if (userId && sbAuth) {
+      await trackAiUsage(sbAuth, {
+        userId,
+        provider: chosen,
+        model: chosen === 'openai' ? OPENAI_MODEL : ANTHROPIC_MODEL,
+        status: 'error',
+      }).catch(() => {})
+    }
     return NextResponse.json(
       { text: '', error: e?.message || 'AI request failed', provider: chosen },
       { status: 500 }

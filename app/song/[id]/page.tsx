@@ -11,6 +11,8 @@ import Link from 'next/link'
 import DistributionModal from '@/components/DistributionModal'
 import ClickStats from '@/components/ClickStats'
 import QRCodeCard from '@/components/QRCodeCard'
+import UpgradePrompt from '@/components/UpgradePrompt'
+import { getUserPlan } from '@/lib/subscription'
 
 const PLATFORMS = ['TikTok', 'Instagram', 'Facebook', 'YouTube', 'X/Twitter']
 const MEDIA_PLATFORMS = ['Spotify', 'YouTube', 'TikTok', 'Instagram', 'Facebook', 'Apple Music', 'SoundCloud', 'Other']
@@ -23,6 +25,7 @@ export default function SongPage() {
   const [tab, setTab] = useState('lyrics')
   const [song, setSong] = useState<any>(null)
   const [artist, setArtist] = useState<any>(null)
+  const [planId, setPlanId] = useState<'free' | 'pro'>('free')
   const [loading, setLoading] = useState(true)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiTarget, setAiTarget] = useState('')
@@ -146,6 +149,8 @@ export default function SongPage() {
     // through direct URL navigation. Use eq('user_id', ...) so RLS isn't the only gate.
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+    const currentPlan = await getUserPlan(supabase, user.id)
+    setPlanId(currentPlan.id)
     const { data } = await supabase
       .from('songs')
       .select('*, artists(*)')
@@ -186,9 +191,14 @@ export default function SongPage() {
 
   const callAI = async (messages: any[], system: string, targetKey: string) => {
     setAiLoading(true); setAiTarget(targetKey)
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
     const res = await fetch('/api/ai', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+      },
       body: JSON.stringify({ messages, system, provider: aiProvider }),
     })
     const data = await res.json()
@@ -847,6 +857,9 @@ export default function SongPage() {
         {tab === 'lyrics' && (
           <div>
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>{tx.lyrics}</h2>
+            {planId === 'free' && (
+              <UpgradePrompt compact title={tx.upgradeAiTitle} description={tx.upgradeAiDesc} />
+            )}
 
             {lyricsInstructions && !lyrics && (
               <div style={{ background: 'rgba(212,168,67,0.08)', border: '1px solid rgba(212,168,67,0.3)', borderRadius: '8px', padding: '16px 20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1769,6 +1782,9 @@ export default function SongPage() {
 
             <div style={{ marginBottom: 24 }}>
               <QRCodeCard path={`/s/${songId}`} title={tx.qrSongHint} />
+              {planId === 'free' && (
+                <UpgradePrompt compact title={tx.upgradeQrTitle} description={tx.upgradeQrDesc} />
+              )}
             </div>
 
             {/* Distribute to streaming platforms */}
