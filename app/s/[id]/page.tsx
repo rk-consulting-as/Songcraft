@@ -9,6 +9,7 @@ import MediaLinksGrid from '@/components/MediaLinksGrid'
 import BackstoryDisplay from '@/components/BackstoryDisplay'
 import ShareButtons from '@/components/ShareButtons'
 import NewsletterSignup from '@/components/NewsletterSignup'
+import PublicAnalyticsTracker from '@/components/PublicAnalyticsTracker'
 
 // Public song detail page. Server-rendered with anon client; RLS gates by artist.page_enabled.
 export const dynamic = 'force-dynamic'
@@ -68,6 +69,7 @@ export default async function PublicSongPage({ params }: { params: { id: string 
       color: '#e8e0d0',
       fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
     }}>
+      <PublicAnalyticsTracker artistId={artist.id} songId={song.id} eventType="song_page_view" />
       {/* Slim header */}
       <div style={{
         borderBottom: '1px solid rgba(180,140,80,0.2)',

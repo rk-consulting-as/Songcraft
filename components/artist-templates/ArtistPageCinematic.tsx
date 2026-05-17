@@ -2,6 +2,7 @@ import Link from 'next/link'
 import ClientEmbedPlayer from '@/components/ClientEmbedPlayer'
 import NewsletterSignup from '@/components/NewsletterSignup'
 import PublicEventsList from '@/components/PublicEventsList'
+import PublicAnalyticsTracker from '@/components/PublicAnalyticsTracker'
 
 /**
  * Cinematic artist template — full-bleed dramatic. Avatar fills viewport as blurred
@@ -31,6 +32,7 @@ export default function ArtistPageCinematic({
       color: '#e8e0d0',
       fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
     }}>
+      <PublicAnalyticsTracker artistId={artist.id} eventType="artist_page_view" />
       {/* Full-bleed hero with blurred image background */}
       <section style={{
         position: 'relative',

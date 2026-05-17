@@ -68,6 +68,18 @@ type ArtistEvent = {
   status: 'scheduled' | 'sold_out' | 'cancelled' | 'past' | 'hidden'
 }
 
+type AnalyticsEvent = {
+  id: string
+  artist_id?: string | null
+  song_id?: string | null
+  event_type: 'artist_page_view' | 'song_page_view' | 'newsletter_signup'
+  source?: string | null
+  referrer?: string | null
+  created_at: string
+  metadata?: any
+  songs?: { title?: string | null } | null
+}
+
 type SpotifyTrack = {
   id: string
   title: string
@@ -148,6 +160,9 @@ export default function ArtistPage() {
     ticket_url: '',
     status: 'scheduled' as ArtistEvent['status'],
   })
+  const [analyticsRange, setAnalyticsRange] = useState<'7d' | '30d' | 'all'>('30d')
+  const [analyticsEvents, setAnalyticsEvents] = useState<AnalyticsEvent[]>([])
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
 
   // Spotify import via URL (single track)
   const [urlInput, setUrlInput] = useState('')
@@ -166,6 +181,9 @@ export default function ArtistPage() {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   useEffect(() => { setLangState(useLang()); setAiProvider(getStoredProvider()); fetchData() }, [artistId])
+  useEffect(() => {
+    if (artist?.id) fetchAnalytics()
+  }, [artist?.id, analyticsRange])
   const tx = t[lang]
 
   const fetchData = async () => {
@@ -212,6 +230,29 @@ export default function ArtistPage() {
       .order('date', { ascending: true })
     if (ev) setEvents(ev as ArtistEvent[])
     setLoading(false)
+  }
+
+  const fetchAnalytics = async () => {
+    setAnalyticsLoading(true)
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setAnalyticsLoading(false); return }
+
+    let query = supabase
+      .from('analytics_events')
+      .select('id, artist_id, song_id, event_type, source, referrer, created_at, metadata, songs(title)')
+      .eq('artist_id', artistId)
+      .order('created_at', { ascending: false })
+      .limit(1000)
+
+    if (analyticsRange !== 'all') {
+      const days = analyticsRange === '7d' ? 7 : 30
+      query = query.gte('created_at', new Date(Date.now() - days * 86400000).toISOString())
+    }
+
+    const { data, error } = await query
+    if (!error && data) setAnalyticsEvents(data as AnalyticsEvent[])
+    setAnalyticsLoading(false)
   }
 
   // Albums CRUD
@@ -508,6 +549,35 @@ export default function ArtistPage() {
     }
     return true
   })
+
+  const publicPageViews = analyticsEvents.filter(e => e.event_type === 'artist_page_view' || e.event_type === 'song_page_view')
+  const artistPageViews = analyticsEvents.filter(e => e.event_type === 'artist_page_view').length
+  const songPageViews = analyticsEvents.filter(e => e.event_type === 'song_page_view').length
+  const newsletterConversions = analyticsEvents.filter(e => e.event_type === 'newsletter_signup').length
+  const conversionRate = publicPageViews.length > 0
+    ? Math.round((newsletterConversions / publicPageViews.length) * 1000) / 10
+    : 0
+  const qrTrafficCount = analyticsEvents.filter(e => e.source === 'qr').length
+  const songTitleById = new Map(songs.map(s => [s.id, s.title]))
+  const topSongVisits = Array.from(
+    analyticsEvents
+      .filter(e => e.event_type === 'song_page_view' && e.song_id)
+      .reduce((map, event) => {
+        const songId = event.song_id!
+        const current = map.get(songId) || {
+          songId,
+          title: songTitleById.get(songId) || (event.songs as any)?.title || tx.song,
+          visits: 0,
+        }
+        current.visits += 1
+        map.set(songId, current)
+        return map
+      }, new Map<string, { songId: string; title: string; visits: number }>())
+      .values()
+  ).sort((a, b) => b.visits - a.visits).slice(0, 5)
+  const recentTraffic = analyticsEvents
+    .filter(e => e.event_type === 'artist_page_view' || e.event_type === 'song_page_view')
+    .slice(0, 8)
 
   // Reorder: persist new positions to Supabase, optimistically update local state.
   const persistOrder = async (ordered: Song[]) => {
@@ -1575,6 +1645,113 @@ export default function ArtistPage() {
             })}
           </div>
         )}
+
+        {/* Public growth analytics */}
+        <div className="card" style={{ marginTop: 36, borderColor: 'rgba(112,144,208,0.25)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
+            <div>
+              <h2 style={{ color: '#7090d0', fontWeight: 'normal', fontSize: 16, letterSpacing: 1, textTransform: 'uppercase', margin: 0 }}>
+                {tx.fanAnalyticsTitle}
+              </h2>
+              <p style={{ color: '#8a7a60', fontSize: 12, margin: '4px 0 0' }}>{tx.fanAnalyticsDesc}</p>
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {([
+                ['7d', tx.analyticsRange7d],
+                ['30d', tx.analyticsRange30d],
+                ['all', tx.analyticsRangeAll],
+              ] as const).map(([range, label]) => {
+                const active = analyticsRange === range
+                return (
+                  <button
+                    key={range}
+                    type="button"
+                    onClick={() => setAnalyticsRange(range)}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: 14,
+                      border: active ? '1px solid #7090d0' : '1px solid rgba(180,140,80,0.2)',
+                      background: active ? 'rgba(112,144,208,0.14)' : 'transparent',
+                      color: active ? '#a8b8e8' : '#6a5a40',
+                      cursor: 'pointer',
+                      fontSize: 11,
+                    }}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 18 }}>
+            {[
+              [tx.fanAnalyticsTotalViews, publicPageViews.length],
+              [tx.fanAnalyticsArtistViews, artistPageViews],
+              [tx.fanAnalyticsSongViews, songPageViews],
+              [tx.fanAnalyticsSignups, newsletterConversions],
+              [tx.fanAnalyticsConversion, `${conversionRate}%`],
+              [tx.fanAnalyticsQrVisits, qrTrafficCount],
+            ].map(([label, value]) => (
+              <div key={String(label)} style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(112,144,208,0.16)', borderRadius: 6, padding: 12 }}>
+                <div style={{ color: '#8a7a60', fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>{label}</div>
+                <div style={{ color: '#e8e0d0', fontSize: 22, fontWeight: 600 }}>{value}</div>
+              </div>
+            ))}
+          </div>
+
+          {analyticsLoading ? (
+            <p style={{ color: '#6a5a40', fontSize: 13 }}>{tx.loading}</p>
+          ) : analyticsEvents.length === 0 ? (
+            <p style={{ color: '#5a4a30', fontSize: 13, margin: 0 }}>{tx.fanAnalyticsEmpty}</p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 14 }}>
+              <div>
+                <h3 style={{ color: '#a8b8e8', fontWeight: 'normal', fontSize: 13, letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 10px' }}>
+                  {tx.fanAnalyticsTopSongs}
+                </h3>
+                {topSongVisits.length === 0 ? (
+                  <p style={{ color: '#5a4a30', fontSize: 12, margin: 0 }}>{tx.fanAnalyticsNoSongVisits}</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                    {topSongVisits.map(song => (
+                      <Link key={song.songId} href={`/song/${song.songId}`} style={{ textDecoration: 'none', display: 'flex', justifyContent: 'space-between', gap: 10, padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(180,140,80,0.1)' }}>
+                        <span style={{ color: '#e8e0d0', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{song.title}</span>
+                        <span style={{ color: '#7090d0', fontSize: 12 }}>{song.visits}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h3 style={{ color: '#a8b8e8', fontWeight: 'normal', fontSize: 13, letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 10px' }}>
+                  {tx.fanAnalyticsRecentTraffic}
+                </h3>
+                {recentTraffic.length === 0 ? (
+                  <p style={{ color: '#5a4a30', fontSize: 12, margin: 0 }}>{tx.fanAnalyticsNoTraffic}</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                    {recentTraffic.map(event => (
+                      <div key={event.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '8px 10px', borderRadius: 6, background: event.source === 'qr' ? 'rgba(112,144,208,0.08)' : 'rgba(255,255,255,0.025)', border: '1px solid rgba(180,140,80,0.1)' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ color: '#e8e0d0', fontSize: 12 }}>
+                            {event.event_type === 'artist_page_view' ? tx.fanAnalyticsArtistPage : tx.fanAnalyticsSongPage}
+                            {event.source === 'qr' ? ' · QR' : ''}
+                          </div>
+                          {event.song_id && <div style={{ color: '#6a5a40', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{songTitleById.get(event.song_id) || (event.songs as any)?.title}</div>}
+                        </div>
+                        <div style={{ color: '#5a4a30', fontSize: 11, textAlign: 'right', flexShrink: 0 }}>
+                          {new Date(event.created_at).toLocaleDateString(lang === 'no' ? 'nb-NO' : 'en-US')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Fan growth pack */}
         <div className="card" style={{ marginTop: 36, borderColor: 'rgba(212,168,67,0.25)' }}>

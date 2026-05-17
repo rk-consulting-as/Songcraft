@@ -2,6 +2,7 @@ import Link from 'next/link'
 import ClientEmbedPlayer from '@/components/ClientEmbedPlayer'
 import NewsletterSignup from '@/components/NewsletterSignup'
 import PublicEventsList from '@/components/PublicEventsList'
+import PublicAnalyticsTracker from '@/components/PublicAnalyticsTracker'
 
 /**
  * Minimal artist template — typography-first. Centered text hero (no big avatar),
@@ -30,6 +31,7 @@ export default function ArtistPageMinimal({
       color: '#e8e0d0',
       fontFamily: 'system-ui, -apple-system, "Segoe UI", Georgia, serif',
     }}>
+      <PublicAnalyticsTracker artistId={artist.id} eventType="artist_page_view" />
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '80px 24px' }}>
         {/* Centered hero — name only */}
         <header style={{ textAlign: 'center', marginBottom: 80 }}>

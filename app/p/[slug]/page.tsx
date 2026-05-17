@@ -8,6 +8,7 @@ import ArtistPageCinematic from '@/components/artist-templates/ArtistPageCinemat
 import ShareButtons from '@/components/ShareButtons'
 import NewsletterSignup from '@/components/NewsletterSignup'
 import PublicEventsList from '@/components/PublicEventsList'
+import PublicAnalyticsTracker from '@/components/PublicAnalyticsTracker'
 
 // Public artist landing page. Server-rendered, anonymous Supabase client (RLS gates by page_enabled).
 // URL: /p/{slug}
@@ -134,6 +135,7 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#e8e0d0', fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif' }}>
+      <PublicAnalyticsTracker artistId={artist.id} eventType="artist_page_view" />
       {/* Hero */}
       <section style={{
         position: 'relative',

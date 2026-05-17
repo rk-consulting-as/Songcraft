@@ -19,8 +19,17 @@ export default function QRCodeCard({
   const [copied, setCopied] = useState(false)
 
   const fullUrl = useMemo(() => {
-    if (typeof window === 'undefined') return path
-    return path.startsWith('http') ? path : `${window.location.origin}${path}`
+    const base = typeof window === 'undefined'
+      ? path
+      : path.startsWith('http') ? path : `${window.location.origin}${path}`
+    try {
+      const url = new URL(base, typeof window === 'undefined' ? 'https://songcraft.local' : window.location.origin)
+      url.searchParams.set('src', 'qr')
+      if (typeof window === 'undefined' && !path.startsWith('http')) return `${url.pathname}${url.search}`
+      return url.toString()
+    } catch {
+      return base.includes('?') ? `${base}&src=qr` : `${base}?src=qr`
+    }
   }, [path])
 
   useEffect(() => {
