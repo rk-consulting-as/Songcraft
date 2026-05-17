@@ -10,7 +10,7 @@ const sb = createClient(
   { auth: { persistSession: false } }
 )
 
-const EVENT_TYPES = new Set(['artist_page_view', 'song_page_view', 'newsletter_signup'])
+const EVENT_TYPES = new Set(['artist_page_view', 'song_page_view', 'newsletter_signup', 'embed_view', 'embed_click'])
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 function clip(value: unknown, max: number): string | null {
@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
     if (!artistId && !songId) return NextResponse.json({ error: 'missing_target' }, { status: 400 })
     if (eventType === 'artist_page_view' && !artistId) return NextResponse.json({ error: 'missing_artist' }, { status: 400 })
     if (eventType === 'song_page_view' && !songId) return NextResponse.json({ error: 'missing_song' }, { status: 400 })
+    if ((eventType === 'embed_view' || eventType === 'embed_click') && !songId) return NextResponse.json({ error: 'missing_song' }, { status: 400 })
 
     const userAgent = clip(req.headers.get('user-agent'), 500)
     const referrer = clip(body.referrer || req.headers.get('referer'), 500)

@@ -1,5 +1,6 @@
 'use client'
 import { createClient } from '@/lib/supabase'
+import { trackPublicEvent } from '@/lib/publicAnalytics'
 
 /**
  * Anchor that fires a /api/link/click log before opening the external URL.
@@ -52,6 +53,15 @@ export default function TrackableLink({
           body: payload,
           keepalive: true,
         }).catch(() => {})
+      }
+      if ((sourcePage || '').startsWith('/embed') && songId) {
+        trackPublicEvent({
+          artist_id: artistId || null,
+          song_id: songId,
+          event_type: 'embed_click',
+          source: 'embed',
+          metadata: { target_url: href, target_type: targetType || 'other' },
+        })
       }
     } catch {}
   }

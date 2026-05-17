@@ -12,6 +12,7 @@ import DistributionModal from '@/components/DistributionModal'
 import ClickStats from '@/components/ClickStats'
 import QRCodeCard from '@/components/QRCodeCard'
 import UpgradePrompt from '@/components/UpgradePrompt'
+import EmbedCodeGenerator from '@/components/EmbedCodeGenerator'
 import { getUserPlan } from '@/lib/subscription'
 
 const PLATFORMS = ['TikTok', 'Instagram', 'Facebook', 'YouTube', 'X/Twitter']
@@ -1784,6 +1785,13 @@ export default function SongPage() {
               <QRCodeCard path={`/s/${songId}`} title={tx.qrSongHint} />
               {planId === 'free' && (
                 <UpgradePrompt compact title={tx.upgradeQrTitle} description={tx.upgradeQrDesc} />
+              )}
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <EmbedCodeGenerator songId={songId} title={title || song?.title || 'Songcraft'} canRemoveBranding={planId === 'pro'} />
+              {planId === 'free' && (
+                <UpgradePrompt compact title={tx.upgradeEmbedTitle} description={tx.upgradeEmbedDesc} />
               )}
             </div>
 

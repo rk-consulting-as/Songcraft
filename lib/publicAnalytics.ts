@@ -1,4 +1,4 @@
-export type PublicAnalyticsEventType = 'artist_page_view' | 'song_page_view' | 'newsletter_signup'
+export type PublicAnalyticsEventType = 'artist_page_view' | 'song_page_view' | 'newsletter_signup' | 'embed_view' | 'embed_click'
 
 export type PublicAnalyticsPayload = {
   artist_id?: string | null

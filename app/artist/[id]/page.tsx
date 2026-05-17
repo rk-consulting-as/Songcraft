@@ -74,7 +74,7 @@ type AnalyticsEvent = {
   id: string
   artist_id?: string | null
   song_id?: string | null
-  event_type: 'artist_page_view' | 'song_page_view' | 'newsletter_signup'
+  event_type: 'artist_page_view' | 'song_page_view' | 'newsletter_signup' | 'embed_view' | 'embed_click'
   source?: string | null
   referrer?: string | null
   created_at: string
@@ -564,6 +564,8 @@ export default function ArtistPage() {
   const artistPageViews = analyticsEvents.filter(e => e.event_type === 'artist_page_view').length
   const songPageViews = analyticsEvents.filter(e => e.event_type === 'song_page_view').length
   const newsletterConversions = analyticsEvents.filter(e => e.event_type === 'newsletter_signup').length
+  const embedViews = analyticsEvents.filter(e => e.event_type === 'embed_view').length
+  const embedClicks = analyticsEvents.filter(e => e.event_type === 'embed_click').length
   const conversionRate = publicPageViews.length > 0
     ? Math.round((newsletterConversions / publicPageViews.length) * 1000) / 10
     : 0
@@ -586,8 +588,24 @@ export default function ArtistPage() {
       .values()
   ).sort((a, b) => b.visits - a.visits).slice(0, 5)
   const recentTraffic = analyticsEvents
-    .filter(e => e.event_type === 'artist_page_view' || e.event_type === 'song_page_view')
+    .filter(e => e.event_type === 'artist_page_view' || e.event_type === 'song_page_view' || e.event_type === 'embed_view' || e.event_type === 'embed_click')
     .slice(0, 8)
+  const topEmbeddedSongs = Array.from(
+    analyticsEvents
+      .filter(e => e.event_type === 'embed_view' && e.song_id)
+      .reduce((map, event) => {
+        const songId = event.song_id!
+        const current = map.get(songId) || {
+          songId,
+          title: songTitleById.get(songId) || (event.songs as any)?.title || tx.song,
+          views: 0,
+        }
+        current.views += 1
+        map.set(songId, current)
+        return map
+      }, new Map<string, { songId: string; title: string; views: number }>())
+      .values()
+  ).sort((a, b) => b.views - a.views).slice(0, 5)
 
   // Reorder: persist new positions to Supabase, optimistically update local state.
   const persistOrder = async (ordered: Song[]) => {
@@ -1713,6 +1731,8 @@ export default function ArtistPage() {
               [tx.fanAnalyticsSignups, newsletterConversions],
               [tx.fanAnalyticsConversion, `${conversionRate}%`],
               [tx.fanAnalyticsQrVisits, qrTrafficCount],
+              [tx.embedViews, embedViews],
+              [tx.embedClicks, embedClicks],
             ].map(([label, value]) => (
               <div key={String(label)} style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(112,144,208,0.16)', borderRadius: 6, padding: 12 }}>
                 <div style={{ color: '#8a7a60', fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>{label}</div>
@@ -1757,7 +1777,13 @@ export default function ArtistPage() {
                       <div key={event.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '8px 10px', borderRadius: 6, background: event.source === 'qr' ? 'rgba(112,144,208,0.08)' : 'rgba(255,255,255,0.025)', border: '1px solid rgba(180,140,80,0.1)' }}>
                         <div style={{ minWidth: 0 }}>
                           <div style={{ color: '#e8e0d0', fontSize: 12 }}>
-                            {event.event_type === 'artist_page_view' ? tx.fanAnalyticsArtistPage : tx.fanAnalyticsSongPage}
+                            {event.event_type === 'artist_page_view'
+                              ? tx.fanAnalyticsArtistPage
+                              : event.event_type === 'embed_view'
+                                ? tx.embedView
+                                : event.event_type === 'embed_click'
+                                  ? tx.embedClick
+                                  : tx.fanAnalyticsSongPage}
                             {event.source === 'qr' ? ' · QR' : ''}
                           </div>
                           {event.song_id && <div style={{ color: '#6a5a40', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{songTitleById.get(event.song_id) || (event.songs as any)?.title}</div>}
@@ -1769,6 +1795,22 @@ export default function ArtistPage() {
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {topEmbeddedSongs.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <h3 style={{ color: '#a8b8e8', fontWeight: 'normal', fontSize: 13, letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 10px' }}>
+                {tx.embedTopSongs}
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                {topEmbeddedSongs.map(song => (
+                  <Link key={song.songId} href={`/song/${song.songId}`} style={{ textDecoration: 'none', display: 'flex', justifyContent: 'space-between', gap: 10, padding: '8px 10px', borderRadius: 6, background: 'rgba(112,144,208,0.06)', border: '1px solid rgba(112,144,208,0.16)' }}>
+                    <span style={{ color: '#e8e0d0', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{song.title}</span>
+                    <span style={{ color: '#7090d0', fontSize: 12 }}>{song.views}</span>
+                  </Link>
+                ))}
               </div>
             </div>
           )}

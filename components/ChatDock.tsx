@@ -277,6 +277,7 @@ export default function ChatDock() {
   if (pathname?.startsWith('/login')) return null
   if (pathname?.startsWith('/messages')) return null
   if (pathname?.startsWith('/support')) return null
+  if (pathname?.startsWith('/embed')) return null
 
   const accent = '#d4a843'
   const widthPx = 380
