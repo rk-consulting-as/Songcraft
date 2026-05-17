@@ -13,6 +13,7 @@ import ClickStats from '@/components/ClickStats'
 import QRCodeCard from '@/components/QRCodeCard'
 import UpgradePrompt from '@/components/UpgradePrompt'
 import EmbedCodeGenerator from '@/components/EmbedCodeGenerator'
+import MobileQuickActions from '@/components/MobileQuickActions'
 import { canUseFeature, getMonthlyAiUsage, getUserPlan } from '@/lib/subscription'
 
 const PLATFORMS = ['TikTok', 'Instagram', 'Facebook', 'YouTube', 'X/Twitter']
@@ -128,6 +129,10 @@ export default function SongPage() {
     setAiProvider(getStoredProvider())
     fetchSong()
   }, [songId])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash === '#campaign') setTab('campaign')
+  }, [])
 
   const pickProvider = (p: AIProvider) => { setAiProvider(p); setStoredProvider(p) }
 
@@ -1069,6 +1074,15 @@ export default function SongPage() {
       </div>
 
       <div className="page-pad" style={{ padding: '32px', maxWidth: '800px', margin: '0 auto' }}>
+        <MobileQuickActions
+          title={tx.mobileQuickActions}
+          actions={[
+            { label: tx.mobileGenerateCaption, icon: '✦', onClick: () => { setTab('captions'); generateCaption('TikTok') }, disabled: aiLoading || !lyrics },
+            { label: tx.mobileCopyCampaign, icon: '⧉', onClick: copyAllCampaign },
+            { label: tx.mobileOpenPublicPage, icon: '↗', href: publicArtistPath || undefined, disabled: !publicArtistPath },
+            { label: tx.mobileCopyShareLink, icon: '⌁', onClick: () => copy(`${window.location.origin}/s/${songId}`) },
+          ]}
+        />
 
         {/* LYRICS TAB */}
         {tab === 'lyrics' && (

@@ -10,6 +10,7 @@ import Avatar from '@/components/Avatar'
 import ActivityList, { type ActivityEntry } from '@/components/ActivityList'
 import ProfileMenu from '@/components/ProfileMenu'
 import UpgradePrompt from '@/components/UpgradePrompt'
+import MobileQuickActions from '@/components/MobileQuickActions'
 import { getUserPlan } from '@/lib/subscription'
 
 type Artist = {
@@ -721,6 +722,18 @@ export default function Dashboard() {
       </div>
 
       <div className="page-pad" style={{ padding: '32px', maxWidth: '1100px', margin: '0 auto' }}>
+        <MobileQuickActions
+          title={tx.mobileQuickActions}
+          actions={[
+            { label: tx.mobileCreateArtist, icon: '+', onClick: openCreate },
+            { label: tx.mobileCreateSong, icon: '♪', href: artists[0] ? `/artist/${artists[0].id}` : undefined, disabled: artists.length === 0 },
+            { label: tx.mobileOpenPublicPage, icon: '↗', href: artists.find(a => a.page_enabled && a.page_slug)?.page_slug ? `/p/${artists.find(a => a.page_enabled && a.page_slug)?.page_slug}` : undefined, disabled: !artists.some(a => a.page_enabled && a.page_slug) },
+            { label: tx.mobileCopyShareLink, icon: '⧉', onClick: () => {
+              const publicArtist = artists.find(a => a.page_enabled && a.page_slug)
+              if (publicArtist?.page_slug) navigator.clipboard.writeText(`${window.location.origin}/p/${publicArtist.page_slug}`)
+            }, disabled: !artists.some(a => a.page_enabled && a.page_slug) },
+          ]}
+        />
         {/* Stats */}
         <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '32px' }}>
           {[

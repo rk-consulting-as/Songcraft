@@ -4,6 +4,7 @@
 
 :root {
   --gold: #d4a843;
+  --mobile-nav-height: 76px;
 }
 
 body {
@@ -79,6 +80,11 @@ select option:checked {
    and high-specificity attribute selectors here.
    ============================================================ */
 @media (max-width: 700px) {
+  body {
+    padding-bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom));
+    -webkit-tap-highlight-color: transparent;
+  }
+
   /* Stack page header bars vertically and reduce padding */
   body .app-header,
   body [data-header="page"] {
@@ -96,6 +102,40 @@ select option:checked {
   /* Cards: tighter padding on mobile */
   .card {
     padding: 14px;
+  }
+
+  body main,
+  body .page-pad,
+  body [style*="max-width: 800px"],
+  body [style*="max-width: 980px"],
+  body [style*="max-width: 1100px"],
+  body [style*="max-width: 1200px"] {
+    max-width: 100% !important;
+  }
+
+  body [style*="grid-template-columns: minmax(0, 1fr) minmax(180px, 240px)"],
+  body [style*="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)"],
+  body [style*="grid-template-columns: 1fr 1fr"],
+  body [style*="grid-template-columns: 1.2fr 160px"],
+  body [style*="grid-template-columns: 1fr 1fr 1fr"],
+  body [style*="grid-template-columns: minmax(0, 1fr) 130px 110px"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  body [style*="padding: 16px 32px"] {
+    padding: 12px 16px !important;
+  }
+
+  body [style*="display: flex"][style*="justify-content: space-between"] {
+    row-gap: 10px;
+  }
+
+  body table {
+    min-width: 720px;
+  }
+
+  body textarea {
+    min-height: 110px;
   }
 
   /* Song row: stack the right cluster below the left, full width, wrapped */
@@ -127,6 +167,107 @@ select option:checked {
   /* Modal padding tighter */
   .modal-overlay {
     padding: 10px !important;
+  }
+}
+
+.mobile-bottom-nav {
+  display: none;
+}
+
+.mobile-quick-actions {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .mobile-bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 80;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 2px;
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+    min-height: var(--mobile-nav-height);
+    background: rgba(10, 10, 15, 0.94);
+    border-top: 1px solid rgba(180,140,80,0.25);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 -12px 34px rgba(0,0,0,0.45);
+  }
+
+  .mobile-bottom-nav a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-width: 0;
+    min-height: 54px;
+    color: #8a7a60;
+    text-decoration: none;
+    border-radius: 12px;
+    font-size: 18px;
+  }
+
+  .mobile-bottom-nav a small {
+    font-size: 10px;
+    line-height: 1;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-bottom-nav a.active {
+    color: #d4a843;
+    background: rgba(212,168,67,0.10);
+  }
+
+  .mobile-quick-actions {
+    display: block;
+    margin: 0 0 16px;
+  }
+
+  .mobile-quick-actions-title {
+    color: #8a7a60;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .mobile-quick-actions-scroll {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+
+  .mobile-quick-actions-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobile-quick-actions a,
+  .mobile-quick-actions button {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid rgba(212,168,67,0.26);
+    background: rgba(212,168,67,0.08);
+    color: #d4a843;
+    border-radius: 999px;
+    padding: 9px 13px;
+    font-size: 12px;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .mobile-quick-actions button:disabled,
+  .mobile-quick-actions a[aria-disabled="true"] {
+    opacity: 0.45;
   }
 }
 

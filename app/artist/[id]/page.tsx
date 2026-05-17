@@ -11,6 +11,7 @@ import ClickStats from '@/components/ClickStats'
 import QRCodeCard from '@/components/QRCodeCard'
 import UpgradePrompt from '@/components/UpgradePrompt'
 import FanHubPanel from '@/components/FanHubPanel'
+import MobileQuickActions from '@/components/MobileQuickActions'
 import { getUserPlan } from '@/lib/subscription'
 
 import type { SocialLinksMap } from '@/lib/socialLinks'
@@ -1094,6 +1095,16 @@ export default function ArtistPage() {
       </div>
 
       <div className="page-pad" style={{ padding: '32px', maxWidth: '900px', margin: '0 auto' }}>
+        <MobileQuickActions
+          title={tx.mobileQuickActions}
+          actions={[
+            { label: tx.mobileCreateSong, icon: '+', onClick: () => { setShowGenerator(true); setGeneratedSongs([]) } },
+            { label: tx.mobileOpenPublicPage, icon: '↗', href: artist?.page_enabled && artist?.page_slug ? `/p/${artist.page_slug}` : undefined, disabled: !artist?.page_enabled || !artist?.page_slug },
+            { label: tx.mobileCopyShareLink, icon: '⧉', onClick: () => {
+              if (artist?.page_slug) navigator.clipboard.writeText(`${window.location.origin}/p/${artist.page_slug}`)
+            }, disabled: !artist?.page_slug },
+          ]}
+        />
         {showGenerator && (
           <div className="card" style={{ marginBottom: '32px', borderColor: 'rgba(212,168,67,0.4)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
