@@ -135,6 +135,7 @@ export default function Dashboard() {
   const [userRole, setUserRole] = useState<string | null>(null)
   const [userProfile, setUserProfile] = useState<{ id: string; display_name: string | null; avatar_url: string | null } | null>(null)
   const [planId, setPlanId] = useState<'free' | 'pro'>('free')
+  const [onboardingStatus, setOnboardingStatus] = useState<{ show: boolean; skipped: boolean } | null>(null)
 
   // Activity feed snapshot for the dashboard widget
   const [feedEntries, setFeedEntries] = useState<ActivityEntry[]>([])
@@ -193,6 +194,24 @@ export default function Dashboard() {
       if (prof) setUserProfile({ id: prof.id, display_name: prof.display_name ?? null, avatar_url: prof.avatar_url ?? null })
       const currentPlan = await getUserPlan(supabase, user.id)
       setPlanId(currentPlan.id)
+
+      try {
+        const artistRows = (data || []) as any[]
+        const setupComplete = artistRows.some(a => !!a.page_enabled && !!a.page_slug && ((a.songs?.[0]?.count ?? 0) > 0))
+        const { data: progress } = await supabase
+          .from('onboarding_progress')
+          .select('skipped, completed')
+          .eq('user_id', user.id)
+          .maybeSingle()
+        setOnboardingStatus({
+          show: !setupComplete && !progress?.completed,
+          skipped: !!progress?.skipped,
+        })
+      } catch {
+        const artistRows = (data || []) as any[]
+        const setupComplete = artistRows.some(a => !!a.page_enabled && !!a.page_slug && ((a.songs?.[0]?.count ?? 0) > 0))
+        setOnboardingStatus({ show: !setupComplete, skipped: false })
+      }
 
       // Fetch unread message count for nav badge
       try {
@@ -674,6 +693,25 @@ export default function Dashboard() {
                 borderRadius: 4,
                 fontSize: 13,
               }}>🌍 {tx.dashboardDiscoverCreators}</Link>
+            </div>
+          </div>
+        )}
+
+        {onboardingStatus?.show && (
+          <div className="card" style={{ marginBottom: 24, borderColor: 'rgba(212,168,67,0.35)', background: 'rgba(212,168,67,0.05)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div>
+                <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: 16, margin: '0 0 6px' }}>
+                  {tx.onboardingDashboardTitle}
+                </h2>
+                <p style={{ color: '#a09080', fontSize: 13, margin: 0, lineHeight: 1.5 }}>
+                  {onboardingStatus.skipped ? tx.onboardingDashboardSkippedDesc : tx.onboardingDashboardDesc}
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <Link href="/onboarding" className="btn-gold" style={{ textDecoration: 'none' }}>{tx.onboardingFinishSetup}</Link>
+                <Link href="/onboarding?restart=1" className="btn-outline" style={{ textDecoration: 'none' }}>{tx.onboardingRestart}</Link>
+              </div>
             </div>
           </div>
         )}

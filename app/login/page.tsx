@@ -62,7 +62,7 @@ export default function LoginPage() {
       if (error) setError(error.message)
       else {
         try { localStorage.removeItem(REF_STORAGE_KEY) } catch {}
-        if (data?.session) router.push('/dashboard')
+        if (data?.session) router.push('/onboarding')
         else setMessage(tx.confirmEmail)
       }
     } else {
@@ -70,7 +70,7 @@ export default function LoginPage() {
       if (error) setError(error.message)
       else {
         await attributeReferralIfNeeded()
-        router.push('/dashboard')
+        router.push('/onboarding')
       }
     }
     setLoading(false)
