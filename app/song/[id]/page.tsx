@@ -13,7 +13,7 @@ import ClickStats from '@/components/ClickStats'
 import QRCodeCard from '@/components/QRCodeCard'
 import UpgradePrompt from '@/components/UpgradePrompt'
 import EmbedCodeGenerator from '@/components/EmbedCodeGenerator'
-import { getUserPlan } from '@/lib/subscription'
+import { canUseFeature, getMonthlyAiUsage, getUserPlan } from '@/lib/subscription'
 
 const PLATFORMS = ['TikTok', 'Instagram', 'Facebook', 'YouTube', 'X/Twitter']
 const MEDIA_PLATFORMS = ['Spotify', 'YouTube', 'TikTok', 'Instagram', 'Facebook', 'Apple Music', 'SoundCloud', 'Other']
@@ -61,7 +61,7 @@ export default function SongPage() {
   const [newUrl, setNewUrl] = useState('')
   const [newLabel, setNewLabel] = useState('')
 
-  const [publishContent, setPublishContent] = useState<Record<string,string>>({})
+  const [publishContent, setPublishContent] = useState<Record<string, any>>({})
   const [showDistribution, setShowDistribution] = useState(false)
   const [title, setTitle] = useState('')
 
@@ -141,6 +141,7 @@ export default function SongPage() {
     cover: `🖼️ ${tx.cover}`,
     canvas: `🎬 ${tx.canvas}`,
     media: `🔗 ${tx.media}`,
+    campaign: `📣 ${tx.campaign}`,
     publish: `📢 ${tx.publish}`,
   }
 
@@ -187,13 +188,24 @@ export default function SongPage() {
 
   const save = async (updates: any) => {
     const supabase = createClient()
-    await supabase.from('songs').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', songId)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase.from('songs').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', songId).eq('user_id', user.id)
   }
 
   const callAI = async (messages: any[], system: string, targetKey: string) => {
-    setAiLoading(true); setAiTarget(targetKey)
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
+    const userId = session?.user?.id
+    if (userId) {
+      const usage = await getMonthlyAiUsage(supabase, userId)
+      const access = await canUseFeature(supabase, userId, 'ai_generations_monthly', usage)
+      if (!access.allowed) {
+        alert(tx.upgradeAiDesc)
+        return ''
+      }
+    }
+    setAiLoading(true); setAiTarget(targetKey)
     const res = await fetch('/api/ai', {
       method: 'POST',
       headers: {
@@ -769,6 +781,99 @@ export default function SongPage() {
     const updated = { ...publishContent, [type]: result }
     setPublishContent(updated)
     await save({ publish_content: updated })
+  }
+
+  const campaignAssets = [
+    { key: 'spotify_pitch', label: tx.campaignSpotifyPitch, rows: 8 },
+    { key: 'tiktok_caption', label: tx.campaignTikTokCaption, rows: 5 },
+    { key: 'instagram_caption', label: tx.campaignInstagramCaption, rows: 5 },
+    { key: 'youtube_shorts_caption', label: tx.campaignYouTubeShortsCaption, rows: 5 },
+    { key: 'facebook_post', label: tx.campaignFacebookPost, rows: 6 },
+    { key: 'press_bio', label: tx.campaignPressBio, rows: 6 },
+    { key: 'newsletter_announcement', label: tx.campaignNewsletterAnnouncement, rows: 8 },
+  ]
+
+  const campaignChecklist = [
+    { key: 'cover_ready', label: tx.campaignChecklistCover },
+    { key: 'canvas_ready', label: tx.campaignChecklistCanvas },
+    { key: 'spotify_link_added', label: tx.campaignChecklistSpotify },
+    { key: 'public_page_enabled', label: tx.campaignChecklistPublicPage },
+    { key: 'qr_generated', label: tx.campaignChecklistQr },
+    { key: 'newsletter_drafted', label: tx.campaignChecklistNewsletter },
+    { key: 'social_captions_ready', label: tx.campaignChecklistSocial },
+  ]
+
+  const campaignChecklistState = (publishContent.campaign_checklist || {}) as Record<string, boolean>
+  const campaignReleaseDate = String(publishContent.campaign_release_date || song?.spotify_release_date || '').slice(0, 10)
+  const publicArtistPath = artist?.page_enabled && artist?.page_slug ? `/p/${artist.page_slug}` : ''
+
+  const updatePublishContent = async (updates: Record<string, any>) => {
+    const updated = { ...publishContent, ...updates }
+    setPublishContent(updated)
+    await save({ publish_content: updated })
+  }
+
+  const updateCampaignAsset = async (key: string, value: string) => {
+    await updatePublishContent({ [`campaign_${key}`]: value })
+  }
+
+  const updateCampaignChecklist = async (key: string, checked: boolean) => {
+    await updatePublishContent({ campaign_checklist: { ...campaignChecklistState, [key]: checked } })
+  }
+
+  const campaignContext = () => {
+    const cleanedLyrics = lyrics ? cleanLyricsText(lyrics) : ''
+    return [
+      `Song title: ${title}`,
+      `Artist: ${artist?.name || ''}`,
+      `Genre/style: ${artist?.genre || ''}`,
+      campaignReleaseDate ? `Release date: ${campaignReleaseDate}` : '',
+      lyricsInstructions ? `Song concept / instructions:\n${lyricsInstructions}` : '',
+      sunoPrompt ? `Suno prompt:\n${sunoPrompt}` : '',
+      backstory ? `Backstory:\n${backstory}` : '',
+      cleanedLyrics ? `Lyrics:\n${cleanedLyrics.slice(0, 1800)}` : '',
+      mediaLinks.length ? `Links:\n${mediaLinks.map(l => `${l.platform}: ${l.url}`).join('\n')}` : '',
+      publicArtistPath ? `Public artist page: ${publicArtistPath}` : '',
+    ].filter(Boolean).join('\n\n')
+  }
+
+  const generateCampaignAsset = async (key: string) => {
+    const outLang = aiOutputLang === 'no' ? 'Norwegian' : 'English'
+    const systemMap: Record<string, string> = {
+      spotify_pitch: `Write a concise Spotify for Artists playlist pitch in ${outLang}. Max 500 characters. Include mood, genre, instrumentation, audience, and release angle. No markdown.`,
+      tiktok_caption: `Write a TikTok release caption in ${outLang}. Short hook, personality, 3-5 hashtags, no more than 500 characters.`,
+      instagram_caption: `Write an Instagram release caption in ${outLang}. Visual, personal, includes a call to listen and 5-8 relevant hashtags.`,
+      youtube_shorts_caption: `Write a YouTube Shorts caption in ${outLang}. Strong first line, brief context, call to action, 3-5 hashtags.`,
+      facebook_post: `Write a Facebook release post in ${outLang}. Warm and personal, 100-160 words, includes listen/share call to action.`,
+      press_bio: `Write a short press release artist/song bio in ${outLang}. Professional tone, 120-180 words, suitable for media outreach.`,
+      newsletter_announcement: `Write an email/newsletter announcement in ${outLang}. Include subject line, preview text, short body, and call to listen/share.`,
+    }
+    const result = await callAI([{ role: 'user', content: campaignContext() }], systemMap[key], `campaign_${key}`)
+    if (!result) return
+    const updatedChecklist = { ...campaignChecklistState }
+    if (key === 'newsletter_announcement') updatedChecklist.newsletter_drafted = true
+    if (['tiktok_caption', 'instagram_caption', 'youtube_shorts_caption', 'facebook_post'].includes(key)) updatedChecklist.social_captions_ready = true
+    await updatePublishContent({ [`campaign_${key}`]: result, campaign_checklist: updatedChecklist })
+  }
+
+  const copyAllCampaign = () => {
+    const parts = campaignAssets
+      .map(asset => {
+        const value = publishContent[`campaign_${asset.key}`]
+        return value ? `${asset.label}\n${value}` : ''
+      })
+      .filter(Boolean)
+    if (publicArtistPath) parts.push(`${tx.publicPage}\n${typeof window !== 'undefined' ? window.location.origin : ''}${publicArtistPath}`)
+    parts.push(`${tx.embedGeneratorTitle}\n${typeof window !== 'undefined' ? window.location.origin : ''}/embed/song/${songId}?source=embed&theme=dark`)
+    copy(parts.join('\n\n---\n\n'))
+  }
+
+  const generateAllCampaignAssets = async () => {
+    for (const asset of campaignAssets) {
+      if (!publishContent[`campaign_${asset.key}`]) {
+        await generateCampaignAsset(asset.key)
+      }
+    }
   }
 
   const updateTitle = async (val: string) => {
@@ -1773,6 +1878,129 @@ export default function SongPage() {
               </p>
               <ClickStats songId={songId} />
             </div>
+          </div>
+        )}
+
+        {/* CAMPAIGN TAB */}
+        {tab === 'campaign' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 18 }}>
+              <div>
+                <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: 18, margin: 0 }}>{tx.campaignTitle}</h2>
+                <p style={{ color: '#8a7a60', fontSize: 13, margin: '6px 0 0', lineHeight: 1.5 }}>{tx.campaignDesc}</p>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button className="btn-outline" onClick={copyAllCampaign} style={{ padding: '7px 14px', fontSize: 12 }}>
+                  📋 {tx.campaignCopyAll}
+                </button>
+                <button className="btn-gold" onClick={generateAllCampaignAssets} disabled={aiLoading || (!lyrics && !lyricsInstructions && !backstory && !sunoPrompt)} style={{ padding: '7px 14px', fontSize: 12 }}>
+                  {aiLoading && aiTarget.startsWith('campaign_') ? tx.generating : tx.campaignGenerateMissing}
+                </button>
+              </div>
+            </div>
+
+            {planId === 'free' && (
+              <UpgradePrompt compact title={tx.upgradeAiTitle} description={tx.upgradeAiDesc} />
+            )}
+
+            <div className="card" style={{ marginBottom: 20, borderColor: 'rgba(112,144,208,0.22)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(180px, 240px)', gap: 14 }}>
+                <div>
+                  <h3 style={{ color: '#7090d0', fontWeight: 'normal', fontSize: 14, margin: '0 0 8px' }}>{tx.campaignReleaseInfo}</h3>
+                  <p style={{ color: '#8a7a60', fontSize: 12, margin: '0 0 10px', lineHeight: 1.5 }}>{tx.campaignReleaseInfoDesc}</p>
+                  <input
+                    type="date"
+                    value={campaignReleaseDate}
+                    onChange={e => updatePublishContent({ campaign_release_date: e.target.value })}
+                    aria-label={tx.campaignReleaseDate}
+                  />
+                </div>
+                <div style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(180,140,80,0.12)', borderRadius: 8, padding: 12 }}>
+                  <div style={{ color: '#8a7a60', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>{tx.campaignInputs}</div>
+                  <div style={{ color: '#c8c0b0', fontSize: 12, lineHeight: 1.6 }}>
+                    <div>{tx.song}: <span style={{ color: '#e8e0d0' }}>{title || '—'}</span></div>
+                    <div>{tx.artistName}: <span style={{ color: '#e8e0d0' }}>{artist?.name || '—'}</span></div>
+                    <div>{tx.genre}: <span style={{ color: '#e8e0d0' }}>{artist?.genre || '—'}</span></div>
+                    <div>{tx.lyrics}: <span style={{ color: lyrics ? '#7bc87b' : '#6a5a40' }}>{lyrics ? tx.yes : tx.no}</span></div>
+                    <div>{tx.backstory}: <span style={{ color: backstory ? '#7bc87b' : '#6a5a40' }}>{backstory ? tx.yes : tx.no}</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="card" style={{ marginBottom: 20, borderColor: 'rgba(123,200,123,0.22)' }}>
+              <h3 style={{ color: '#7bc87b', fontWeight: 'normal', fontSize: 14, margin: '0 0 12px' }}>{tx.campaignChecklist}</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 8 }}>
+                {campaignChecklist.map(item => {
+                  const derived: Record<string, boolean> = {
+                    cover_ready: !!coverImageUrl || !!song?.spotify_cover_url,
+                    canvas_ready: !!canvasUrl,
+                    spotify_link_added: !!song?.spotify_url || mediaLinks.some(l => (l.platform || '').toLowerCase() === 'spotify'),
+                    public_page_enabled: !!publicArtistPath,
+                    qr_generated: true,
+                    newsletter_drafted: !!publishContent.campaign_newsletter_announcement,
+                    social_captions_ready: ['tiktok_caption', 'instagram_caption', 'youtube_shorts_caption', 'facebook_post'].some(k => !!publishContent[`campaign_${k}`]),
+                  }
+                  const checked = campaignChecklistState[item.key] ?? derived[item.key] ?? false
+                  return (
+                    <label key={item.key} style={{ display: 'flex', alignItems: 'center', gap: 8, color: checked ? '#c8e0c8' : '#8a7a60', fontSize: 13, background: checked ? 'rgba(123,200,123,0.08)' : 'rgba(255,255,255,0.02)', border: checked ? '1px solid rgba(123,200,123,0.25)' : '1px solid rgba(180,140,80,0.12)', borderRadius: 6, padding: '8px 10px', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={checked} onChange={e => updateCampaignChecklist(item.key, e.target.checked)} style={{ accentColor: '#7bc87b' }} />
+                      {item.label}
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14, marginBottom: 22 }}>
+              {campaignAssets.map(asset => {
+                const value = publishContent[`campaign_${asset.key}`] || ''
+                return (
+                  <div key={asset.key} className="card" style={{ borderColor: value ? 'rgba(123,200,123,0.22)' : 'rgba(180,140,80,0.14)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+                      <span style={{ color: value ? '#7bc87b' : '#d4a843', fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' }}>{asset.label}</span>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        {value && <button className="btn-outline" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => copy(value)}>📋</button>}
+                        <button className="btn-gold" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => generateCampaignAsset(asset.key)} disabled={aiLoading}>
+                          {isLoading(`campaign_${asset.key}`) ? tx.generating : value ? '↻' : tx.generate}
+                        </button>
+                      </div>
+                    </div>
+                    <textarea
+                      value={value}
+                      onChange={e => updateCampaignAsset(asset.key, e.target.value)}
+                      rows={asset.rows}
+                      placeholder={tx.campaignAssetPlaceholder}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+
+            <div style={{ marginBottom: 18 }}>
+              <QRCodeCard path={`/s/${songId}`} title={tx.qrSongHint} />
+            </div>
+
+            <div style={{ marginBottom: 18 }}>
+              <EmbedCodeGenerator songId={songId} title={title || song?.title || 'Songcraft'} canRemoveBranding={planId === 'pro'} />
+              {planId === 'free' && (
+                <UpgradePrompt compact title={tx.upgradeEmbedTitle} description={tx.upgradeEmbedDesc} />
+              )}
+            </div>
+
+            {publicArtistPath ? (
+              <div className="card" style={{ borderColor: 'rgba(112,144,208,0.22)' }}>
+                <div style={{ color: '#7090d0', fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>{tx.publicPage}</div>
+                <a href={publicArtistPath} target="_blank" rel="noopener noreferrer" style={{ color: '#d4a843', wordBreak: 'break-all' }}>
+                  {typeof window !== 'undefined' ? window.location.origin : ''}{publicArtistPath}
+                </a>
+              </div>
+            ) : (
+              <div className="card" style={{ borderColor: 'rgba(192,120,80,0.25)' }}>
+                <p style={{ color: '#a09080', fontSize: 13, margin: 0 }}>{tx.campaignPublicPageMissing}</p>
+                {artist?.id && <Link href={`/artist/${artist.id}`} style={{ color: '#d4a843', fontSize: 13 }}>{tx.onboardingOpenArtist}</Link>}
+              </div>
+            )}
           </div>
         )}
 
