@@ -148,7 +148,7 @@ const labels = {
 type Section = 'users' | 'ai' | 'settings' | 'billing' | 'newsletter' | 'moderation' | 'feedback' | 'sanity' | 'audit'
 
 export default function AdminControlCenter() {
-  const [lang, setLang] = useState<Lang>('no')
+  const [lang, setLang] = useState<Lang>('en')
   const tx = labels[lang]
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)

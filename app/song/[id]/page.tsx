@@ -16,6 +16,7 @@ import UpgradePrompt from '@/components/UpgradePrompt'
 import EmbedCodeGenerator from '@/components/EmbedCodeGenerator'
 import MobileQuickActions from '@/components/MobileQuickActions'
 import { canUseFeature, getMonthlyAiUsage, getUserPlan } from '@/lib/subscription'
+import { AI_OUTPUT_LANGUAGES, aiOutputLanguageDirective, aiOutputLanguageName, normalizeAIOutputLang, type AIOutputLang } from '@/lib/aiOutputLanguage'
 
 const PLATFORMS = ['TikTok', 'Instagram', 'Facebook', 'YouTube', 'X/Twitter']
 const MEDIA_PLATFORMS = ['Spotify', 'YouTube', 'TikTok', 'Instagram', 'Facebook', 'Apple Music', 'SoundCloud', 'Other']
@@ -24,7 +25,7 @@ export default function SongPage() {
   const params = useParams()
   const router = useRouter()
   const songId = params.id as string
-  const [lang, setLangState] = useState<Lang>('no')
+  const [lang, setLangState] = useState<Lang>('en')
   const [tab, setTab] = useState('lyrics')
   const [song, setSong] = useState<any>(null)
   const [artist, setArtist] = useState<any>(null)
@@ -71,7 +72,7 @@ export default function SongPage() {
   const [aiProvider, setAiProvider] = useState<AIProvider>('anthropic')
 
   // Per-song output language for AI generations (independent from UI language).
-  const [aiOutputLang, setAiOutputLang] = useState<Lang>('no')
+  const [aiOutputLang, setAiOutputLang] = useState<AIOutputLang>('en')
 
   // Whether to include the song's lyrics in publish-tab generations (WordPress, FB, etc.).
   const [includeLyricsInPublish, setIncludeLyricsInPublish] = useState(false)
@@ -126,7 +127,6 @@ export default function SongPage() {
   useEffect(() => {
     const l = useLang()
     setLangState(l)
-    setAiOutputLang(l)
     setAiProvider(getStoredProvider())
     fetchSong()
   }, [songId])
@@ -160,6 +160,12 @@ export default function SongPage() {
     if (!user) return
     const currentPlan = await getUserPlan(supabase, user.id)
     setPlanId(currentPlan.id)
+    const { data: profilePrefs } = await supabase
+      .from('profiles')
+      .select('preferred_ai_output_lang, preferred_song_lang')
+      .eq('id', user.id)
+      .maybeSingle()
+    setAiOutputLang(normalizeAIOutputLang((profilePrefs as any)?.preferred_ai_output_lang || ((profilePrefs as any)?.preferred_song_lang === 'no' ? 'no' : 'en')))
     const { data } = await supabase
       .from('songs')
       .select('*, artists(*)')
@@ -219,7 +225,11 @@ export default function SongPage() {
         'Content-Type': 'application/json',
         ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
       },
-      body: JSON.stringify({ messages, system, provider: aiProvider }),
+      body: JSON.stringify({
+        messages,
+        system: `${aiOutputLanguageDirective(aiOutputLang)}\n${system}`,
+        provider: aiProvider,
+      }),
     })
     const data = await res.json()
     setAiLoading(false); setAiTarget('')
@@ -579,7 +589,7 @@ export default function SongPage() {
     if (!lyricsInstructions.trim()) return
     const artistCtx = buildArtistContext()
     const msgs = [{ role: 'user', content: lyricsInstructions + artistCtx }]
-    const sysLang = aiOutputLang === 'no' ? 'Norwegian' : 'English'
+    const sysLang = aiOutputLanguageName(aiOutputLang)
     const result = await callAI(msgs,
       `You are a creative songwriter. Write song lyrics based on the user's instructions. Write in ${sysLang}. Format with Verse 1, Verse 2, Chorus, Bridge etc.${artist?.song_structure && useProfileForLyrics ? ' Follow the song structure profile provided.' : ''} Output only the lyrics, no explanations.`,
       'lyrics')
@@ -590,7 +600,7 @@ export default function SongPage() {
 
   const generateBackstory = async () => {
     const artistCtx = buildArtistContext()
-    const lang = aiOutputLang === 'no' ? 'Norwegian' : 'English'
+    const lang = aiOutputLanguageName(aiOutputLang)
     const parts: string[] = []
     if (lyrics) parts.push(`LYRICS:\n${lyrics}`)
     if (sunoPrompt) parts.push(`SUNO PROMPT:\n${sunoPrompt}`)
@@ -681,7 +691,7 @@ export default function SongPage() {
   const generateSuno = async () => {
     const result = await callAI(
       [{ role: 'user', content: `Lyrics:\n\n${lyrics}` }],
-      'You are a Suno AI music generator expert. Create a detailed prompt based on the lyrics. Include genre, tempo, mood, instruments, vocal style and tags in [brackets]. Write in English, max 200 words.',
+      `You are a Suno AI music generator expert. Create a detailed prompt based on the lyrics. Include genre, tempo, mood, instruments, vocal style and tags in [brackets]. Write the output in: ${aiOutputLanguageName(aiOutputLang)}. Max 200 words.`,
       'suno')
     setSunoPrompt(result)
     await save({ suno_prompt: result })
@@ -689,7 +699,7 @@ export default function SongPage() {
 
   const getCaptionLang = () => {
     if (captionLangOverride) return captionForcedLang === 'no' ? 'Norwegian' : 'English'
-    return aiOutputLang === 'no' ? 'Norwegian' : 'English'
+    return aiOutputLanguageName(aiOutputLang)
   }
 
   const generateCaption = async (platform: string) => {
@@ -733,7 +743,7 @@ export default function SongPage() {
       '- Match the song\'s feeling. If the lyrics are dark/melancholic, choose colors and lighting accordingly.',
       '- Be specific about: lighting (golden hour, neon, fog, harsh sun, candlelight), camera/composition (close-up, wide shot, low angle, symmetrical), texture (grainy film, smooth digital, oil-painted), and palette (specify 2-4 dominant colors).',
       '- Add quality modifiers at the end: "8k", "ultra-detailed", "professional photography" for photoreal, or "masterpiece" / "trending on ArtStation" for stylized.',
-      '- Output only the prompt — no preamble, no markdown, no headers. Plain English, max 150 words.',
+      `- Output only the prompt — no preamble, no markdown, no headers. Write the output in: ${aiOutputLanguageName(aiOutputLang)}. Max 150 words.`,
     ].join('\n')
 
     const result = await callAI([{ role: 'user', content: userContent }], system, 'cover')
@@ -769,7 +779,7 @@ export default function SongPage() {
   }
 
   const generatePublish = async (type: string) => {
-    const publishLang = aiOutputLang === 'no' ? 'Norwegian' : 'English'
+    const publishLang = aiOutputLanguageName(aiOutputLang)
     const lyricsDirective = includeLyricsInPublish && lyrics
       ? ' Include the full song lyrics inside the post body, formatted as a clearly-set-off block (e.g., a markdown blockquote or a "Lyrics" section with a heading). Use the cleaned lyrics provided — preserve verse breaks, do not include section markers like [Verse 1].'
       : ' Reference the lyrics naturally but do NOT include the full lyrics text.'
@@ -924,7 +934,7 @@ export default function SongPage() {
         }).filter(Boolean).join('\n\n'),
       ].filter(Boolean).join('\n\n') }],
       [
-        `You are a practical release manager for independent artists. Write in ${aiOutputLang === 'no' ? 'Norwegian' : 'English'}.`,
+        `You are a practical release manager for independent artists. Write the output in: ${aiOutputLanguageName(aiOutputLang)}.`,
         'Review the lyrics, Suno prompt, backstory, campaign text, and missing readiness items.',
         'Return concise, actionable improvement tips. Use sections: Quick verdict, High impact fixes, Copy/content improvements, Release risk.',
         'Do not block publishing; this is advisory only.',
@@ -958,7 +968,7 @@ export default function SongPage() {
   }
 
   const generateCampaignAsset = async (key: string) => {
-    const outLang = aiOutputLang === 'no' ? 'Norwegian' : 'English'
+    const outLang = aiOutputLanguageName(aiOutputLang)
     const systemMap: Record<string, string> = {
       spotify_pitch: `Write a concise Spotify for Artists playlist pitch in ${outLang}. Max 500 characters. Include mood, genre, instrumentation, audience, and release angle. No markdown.`,
       tiktok_caption: `Write a TikTok release caption in ${outLang}. Short hook, personality, 3-5 hashtags, no more than 500 characters.`,
@@ -1031,33 +1041,20 @@ export default function SongPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <span style={{ color: '#5a4a30', fontSize: 11, letterSpacing: 1 }}>{tx.aiProviderLabel}</span>
           <AIProviderPicker value={aiProvider} onChange={pickProvider} disabled={aiLoading || imageGenerating} />
-          {/* Output language toggle for AI generations */}
-          <div role="radiogroup" aria-label="Output language" title={tx.aiOutputLangHint} style={{ display: 'inline-flex', border: '1px solid rgba(180,140,80,0.2)', borderRadius: 4, overflow: 'hidden', height: 36 }}>
-            {(['no', 'en'] as const).map(l => {
-              const active = aiOutputLang === l
-              return (
-                <button
-                  key={l}
-                  type="button"
-                  onClick={() => setAiOutputLang(l)}
-                  disabled={aiLoading}
-                  style={{
-                    padding: '0 12px',
-                    background: active ? 'rgba(212,168,67,0.15)' : 'transparent',
-                    border: 'none',
-                    borderLeft: l === 'en' ? '1px solid rgba(180,140,80,0.2)' : 'none',
-                    color: active ? '#d4a843' : '#6a5a40',
-                    fontSize: 12,
-                    fontWeight: active ? 600 : 400,
-                    cursor: 'pointer',
-                    letterSpacing: '0.5px',
-                  }}
-                >
-                  {l === 'no' ? 'NO' : 'EN'}
-                </button>
-              )
-            })}
-          </div>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#6a5a40', fontSize: 11 }}>
+            {lang === 'no' ? 'AI-språk' : 'AI output'}
+            <select
+              value={aiOutputLang}
+              onChange={e => setAiOutputLang(normalizeAIOutputLang(e.target.value))}
+              disabled={aiLoading}
+              title={tx.aiOutputLangHint}
+              style={{ width: 'auto', minWidth: 145, padding: '6px 9px', fontSize: 12 }}
+            >
+              {AI_OUTPUT_LANGUAGES.map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </label>
           <select value={song?.status || 'draft'} onChange={e => updateStatus(e.target.value)}
             style={{ width: 'auto', padding: '6px 10px', fontSize: '12px' }}>
             {statusOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -1497,7 +1494,7 @@ export default function SongPage() {
                 </span>
                 {!captionLangOverride && (
                   <span style={{ color: '#5a4a30', fontSize: '12px' }}>
-                    — {lang === 'no' ? `bruker nå: Norsk` : `currently using: English`}
+                    — {lang === 'no' ? `bruker nå: ${aiOutputLanguageName(aiOutputLang)}` : `currently using: ${aiOutputLanguageName(aiOutputLang)}`}
                   </span>
                 )}
               </label>
@@ -2368,7 +2365,7 @@ export default function SongPage() {
 
             {/* Options bar — language + include-lyrics flag */}
             <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(180,140,80,0.15)', borderRadius: 6, padding: '10px 14px', marginBottom: 22, display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'center' }}>
-              <span style={{ color: '#8a7a60', fontSize: 11, letterSpacing: 1 }}>{tx.publishLangLabel}: <span style={{ color: '#d4a843', fontWeight: 500 }}>{aiOutputLang === 'no' ? 'Norsk' : 'English'}</span></span>
+              <span style={{ color: '#8a7a60', fontSize: 11, letterSpacing: 1 }}>{tx.publishLangLabel}: <span style={{ color: '#d4a843', fontWeight: 500 }}>{aiOutputLanguageName(aiOutputLang)}</span></span>
               <span style={{ color: '#5a4a30', fontSize: 11 }}>↑ {tx.publishLangChangeHint}</span>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: lyrics ? 'pointer' : 'not-allowed', opacity: lyrics ? 1 : 0.5 }}>
                 <input

@@ -9,7 +9,7 @@ import { canUseFeature, getMonthlyAiUsage, getUserPlan, type UserPlan } from '@/
 
 export default function BillingPage() {
   const router = useRouter()
-  const [lang, setLangState] = useState<Lang>('no')
+  const [lang, setLangState] = useState<Lang>('en')
   const [plan, setPlan] = useState<UserPlan | null>(null)
   const [artistCount, setArtistCount] = useState(0)
   const [songCount, setSongCount] = useState(0)

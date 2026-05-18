@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase'
 import UpgradePrompt from '@/components/UpgradePrompt'
 import { t, useLang, type Lang } from '@/lib/i18n'
 import type { AIProvider } from '@/lib/aiProvider'
+import { aiOutputLanguageDirective, aiOutputLanguageName, normalizeAIOutputLang, type AIOutputLang } from '@/lib/aiOutputLanguage'
 
 type Subscriber = {
   id: string
@@ -41,7 +42,8 @@ export default function FanHubPanel({
   planId: 'free' | 'pro'
   aiProvider: AIProvider
 }) {
-  const [lang, setLang] = useState<Lang>('no')
+  const [lang, setLang] = useState<Lang>('en')
+  const [aiOutputLang, setAiOutputLang] = useState<AIOutputLang>('en')
   const tx = t[lang]
   const [newsletterSongId, setNewsletterSongId] = useState('')
   const [newsletterDraft, setNewsletterDraft] = useState(artist?.page_settings?.fan_hub?.newsletter_draft || '')
@@ -50,6 +52,12 @@ export default function FanHubPanel({
 
   useEffect(() => {
     setLang(useLang())
+    const supabase = createClient()
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return
+      const { data: profile } = await supabase.from('profiles').select('preferred_ai_output_lang, preferred_song_lang').eq('id', data.user.id).maybeSingle()
+      setAiOutputLang(normalizeAIOutputLang((profile as any)?.preferred_ai_output_lang || ((profile as any)?.preferred_song_lang === 'no' ? 'no' : 'en')))
+    }).catch(() => {})
     fetch('/api/newsletter/resend-status')
       .then(res => res.json())
       .then(data => setResendEnabled(!!data.enabled))
@@ -122,7 +130,8 @@ export default function FanHubPanel({
           provider: aiProvider,
           messages: [{ role: 'user', content: context }],
           system: [
-            `Write a fan newsletter announcement in ${lang === 'no' ? 'Norwegian' : 'English'}.`,
+            aiOutputLanguageDirective(aiOutputLang),
+            `Write a fan newsletter announcement in ${aiOutputLanguageName(aiOutputLang)}.`,
             'Return a practical email draft with Subject, Preview text, Body, and CTA.',
             'Keep it warm, direct, and safe to copy into an email tool. Do not claim it has been sent.',
           ].join('\n'),

@@ -50,7 +50,7 @@ const slugify = (s: string) => s.toLowerCase().trim()
 
 export default function StudioSettings() {
   const router = useRouter()
-  const [lang, setLangState] = useState<Lang>('no')
+  const [lang, setLangState] = useState<Lang>('en')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [page, setPage] = useState<StudioPage | null>(null)

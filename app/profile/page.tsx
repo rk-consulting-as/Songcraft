@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase'
 import { t, useLang, setLang, type Lang } from '@/lib/i18n'
 import Avatar, { AVATAR_PRESETS, type AvatarValue } from '@/components/Avatar'
 import { CREATOR_ROLES, CREATOR_LANGUAGES, NORDIC_LOCATIONS } from '@/lib/creatorRoles'
+import { AI_OUTPUT_LANGUAGES, normalizeAIOutputLang, type AIOutputLang } from '@/lib/aiOutputLanguage'
 
 type Profile = {
   id: string
@@ -20,6 +21,7 @@ type Profile = {
   referral_code: string
   preferred_lang: 'no' | 'en' | null
   preferred_song_lang: 'no' | 'en' | 'auto' | null
+  preferred_ai_output_lang?: AIOutputLang | null
   created_at: string
   roles?: string[] | null
   location?: string | null
@@ -32,7 +34,7 @@ const BIO_MAX = 280
 
 export default function ProfilePage() {
   const router = useRouter()
-  const [lang, setLangState] = useState<Lang>('no')
+  const [lang, setLangState] = useState<Lang>('en')
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [email, setEmail] = useState<string>('')
@@ -41,8 +43,9 @@ export default function ProfilePage() {
   const [displayName, setDisplayName] = useState('')
   const [bio, setBio] = useState('')
   const [avatarUrl, setAvatarUrl] = useState<AvatarValue>(null)
-  const [prefLang, setPrefLang] = useState<'no' | 'en'>('no')
+  const [prefLang, setPrefLang] = useState<'no' | 'en'>('en')
   const [prefSongLang, setPrefSongLang] = useState<'no' | 'en' | 'auto'>('auto')
+  const [prefAiOutputLang, setPrefAiOutputLang] = useState<AIOutputLang>('en')
 
   // Creator profile (Nordic catalog)
   const [creatorRoles, setCreatorRoles] = useState<string[]>([])
@@ -92,8 +95,9 @@ export default function ProfilePage() {
       setDisplayName(p.display_name || '')
       setBio(p.bio || '')
       setAvatarUrl(p.avatar_url)
-      setPrefLang((p.preferred_lang as any) || 'no')
+      setPrefLang((p.preferred_lang as any) || 'en')
       setPrefSongLang((p.preferred_song_lang as any) || 'auto')
+      setPrefAiOutputLang(normalizeAIOutputLang(p.preferred_ai_output_lang || (p.preferred_song_lang === 'no' ? 'no' : 'en')))
       setCreatorRoles(Array.isArray(p.roles) ? p.roles : [])
       setLocation(p.location || '')
       setCreationLangs(Array.isArray(p.languages) ? p.languages : [])
@@ -189,6 +193,7 @@ export default function ProfilePage() {
       .update({
         preferred_lang: prefLang,
         preferred_song_lang: prefSongLang,
+        preferred_ai_output_lang: prefAiOutputLang,
         updated_at: new Date().toISOString(),
       })
       .eq('id', profile.id)
@@ -414,6 +419,20 @@ export default function ProfilePage() {
                 ))}
               </div>
               <p style={{ color: '#5a4a30', fontSize: 11, marginTop: 6 }}>{tx.profileFieldUiLangHint}</p>
+            </div>
+
+            <div>
+              <Label>{lang === 'no' ? 'AI-språk' : 'AI output language'}</Label>
+              <select value={prefAiOutputLang} onChange={e => setPrefAiOutputLang(normalizeAIOutputLang(e.target.value))} style={{ marginTop: 6 }}>
+                {AI_OUTPUT_LANGUAGES.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+              <p style={{ color: '#5a4a30', fontSize: 11, marginTop: 6 }}>
+                {lang === 'no'
+                  ? 'Standardspråk for AI-generert innhold. Dette er separat fra UI-språk.'
+                  : 'Default language for AI-generated content. This is separate from UI language.'}
+              </p>
             </div>
 
             <div>

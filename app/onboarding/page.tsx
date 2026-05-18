@@ -60,7 +60,7 @@ function draftPrompt(lang: Lang, title: string, artist: string, genre: string) {
 export default function OnboardingPage() {
   const router = useRouter()
   const restartRequested = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('restart') === '1'
-  const [lang, setLangState] = useState<Lang>('no')
+  const [lang, setLangState] = useState<Lang>('en')
   const tx = t[lang]
 
   const [userId, setUserId] = useState('')
@@ -428,8 +428,8 @@ export default function OnboardingPage() {
               <h2 style={{ color: '#d4a843', fontWeight: 'normal' }}>{tx.onboardingLanguageTitle}</h2>
               <p style={{ color: '#8a7a60' }}>{tx.onboardingLanguageDesc}</p>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <button className="btn-gold" onClick={() => chooseLanguage('no')}>Norsk</button>
-                <button className="btn-outline" onClick={() => chooseLanguage('en')}>English</button>
+                <button className="btn-gold" onClick={() => chooseLanguage('en')}>English</button>
+                <button className="btn-outline" onClick={() => chooseLanguage('no')}>Norsk</button>
               </div>
             </section>
           )}

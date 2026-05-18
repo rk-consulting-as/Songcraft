@@ -37,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="no">
+    <html lang="en">
       <body>
         <DynamicFavicon />
         <PWARegister />

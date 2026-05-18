@@ -7,7 +7,7 @@ import { t, useLang, type Lang } from '@/lib/i18n'
 
 export default function MobileBottomNav() {
   const pathname = usePathname()
-  const [lang, setLang] = useState<Lang>('no')
+  const [lang, setLang] = useState<Lang>('en')
 
   useEffect(() => setLang(useLang()), [])
 

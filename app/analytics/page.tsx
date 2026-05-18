@@ -43,7 +43,7 @@ const SOURCE_LABELS: Record<string, string> = {
 
 export default function AnalyticsPage() {
   const router = useRouter()
-  const [lang, setLang] = useState<Lang>('no')
+  const [lang, setLang] = useState<Lang>('en')
   const [days, setDays] = useState(30)
   const [artistFilter, setArtistFilter] = useState<string>('')
   const [data, setData] = useState<Summary | null>(null)

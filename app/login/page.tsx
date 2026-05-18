@@ -9,7 +9,7 @@ const REF_STORAGE_KEY = 'songcraft_referral_code'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [lang, setLangState] = useState<Lang>('no')
+  const [lang, setLangState] = useState<Lang>('en')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSignup, setIsSignup] = useState(false)

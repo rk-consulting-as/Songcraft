@@ -4,7 +4,7 @@ import { t, useLang, type Lang } from '@/lib/i18n'
 import { useEffect, useState } from 'react'
 
 export default function PrintButton() {
-  const [lang, setLang] = useState<Lang>('no')
+  const [lang, setLang] = useState<Lang>('en')
   useEffect(() => setLang(useLang()), [])
   const tx = t[lang]
   return (

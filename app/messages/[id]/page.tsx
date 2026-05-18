@@ -36,7 +36,7 @@ export default function ConversationPage() {
   const params = useParams()
   const router = useRouter()
   const convId = String(params.id || '')
-  const [lang, setLangState] = useState<Lang>('no')
+  const [lang, setLangState] = useState<Lang>('en')
   const [me, setMe] = useState<string | null>(null)
   const [conv, setConv] = useState<{
     type: string

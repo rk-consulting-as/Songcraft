@@ -20,7 +20,7 @@ type Creator = {
 }
 
 export default function DiscoverPage() {
-  const [lang, setLangState] = useState<Lang>('no')
+  const [lang, setLangState] = useState<Lang>('en')
   const [loading, setLoading] = useState(true)
   const [creators, setCreators] = useState<Creator[]>([])
   const [search, setSearch] = useState('')

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { t, useLang, setLang, type Lang } from '@/lib/i18n'
+import { AI_OUTPUT_LANGUAGES, normalizeAIOutputLang, type AIOutputLang } from '@/lib/aiOutputLanguage'
 import { PLATFORM_RULES, type Platform } from '@/lib/platformRules'
 import Link from 'next/link'
 import AppVersionLabel from '@/components/AppVersionLabel'
@@ -11,13 +12,14 @@ const PLATFORMS = Object.keys(PLATFORM_RULES) as Platform[]
 
 export default function SettingsPage() {
   const router = useRouter()
-  const [lang, setLangState] = useState<Lang>('no')
+  const [lang, setLangState] = useState<Lang>('en')
+  const [aiOutputLang, setAiOutputLang] = useState<AIOutputLang>('en')
   const [rules, setRules] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [activeTab, setActiveTab] = useState<Platform>('TikTok')
 
-  useEffect(() => { setLangState(useLang()); fetchRules() }, [])
+  useEffect(() => { setLangState(useLang()); fetchRules(); fetchAiLanguage() }, [])
 
   const tx = t[lang]
 
@@ -29,6 +31,22 @@ export default function SettingsPage() {
       data.forEach((r: any) => { mapped[r.platform] = r.custom_rules || '' })
       setRules(mapped)
     }
+  }
+
+  const fetchAiLanguage = async () => {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data } = await supabase.from('profiles').select('preferred_ai_output_lang, preferred_song_lang').eq('id', user.id).maybeSingle()
+    setAiOutputLang(normalizeAIOutputLang((data as any)?.preferred_ai_output_lang || ((data as any)?.preferred_song_lang === 'no' ? 'no' : 'en')))
+  }
+
+  const saveAiLanguage = async (nextLang: AIOutputLang) => {
+    setAiOutputLang(nextLang)
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase.from('profiles').update({ preferred_ai_output_lang: nextLang, updated_at: new Date().toISOString() }).eq('id', user.id)
   }
 
   const saveRules = async () => {
@@ -119,6 +137,22 @@ export default function SettingsPage() {
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: '24px' }}>
+          <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '16px', marginTop: 0, marginBottom: '8px' }}>
+            ✨ {lang === 'no' ? 'AI-språk' : 'AI output language'}
+          </h2>
+          <p style={{ color: '#6a5a40', fontSize: '13px', margin: '0 0 14px', lineHeight: '1.6' }}>
+            {lang === 'no'
+              ? 'Velg standardspråk for tekster, prompts, captions, kampanjer og andre AI-genererte utkast. Dette er separat fra UI-språket.'
+              : 'Choose the default language for lyrics, prompts, captions, campaigns, and other AI-generated drafts. This is separate from the UI language.'}
+          </p>
+          <select value={aiOutputLang} onChange={e => saveAiLanguage(normalizeAIOutputLang(e.target.value))} style={{ maxWidth: 320 }}>
+            {AI_OUTPUT_LANGUAGES.map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
         </div>
 
         {/* Platform rules section */}

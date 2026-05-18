@@ -10,7 +10,7 @@ type FeedMode = 'following' | 'everyone'
 
 export default function FeedPage() {
   const router = useRouter()
-  const [lang, setLangState] = useState<Lang>('no')
+  const [lang, setLangState] = useState<Lang>('en')
   const [mode, setMode] = useState<FeedMode>('following')
   const [entries, setEntries] = useState<ActivityEntry[]>([])
   const [loading, setLoading] = useState(true)

@@ -66,7 +66,7 @@ const ROLES: Role[] = ['user', 'moderator', 'admin', 'super_admin']
 
 export default function AdminPage() {
   const router = useRouter()
-  const [lang, setLangState] = useState<Lang>('no')
+  const [lang, setLangState] = useState<Lang>('en')
   const [loading, setLoading] = useState(true)
   const [me, setMe] = useState<Profile | null>(null)
   const [accessDenied, setAccessDenied] = useState(false)

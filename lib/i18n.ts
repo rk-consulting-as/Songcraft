@@ -2481,8 +2481,9 @@ export const t = {
 }
 
 export function useLang(): Lang {
-  if (typeof window === 'undefined') return 'no'
-  return (localStorage.getItem('songcraft_lang') as Lang) || 'no'
+  if (typeof window === 'undefined') return 'en'
+  const stored = localStorage.getItem('songcraft_lang') as Lang | null
+  return stored === 'no' || stored === 'en' ? stored : 'en'
 }
 
 export function setLang(lang: Lang) {

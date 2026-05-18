@@ -20,7 +20,7 @@ type ConversationRow = {
 
 export default function MessagesPage() {
   const router = useRouter()
-  const [lang, setLangState] = useState<Lang>('no')
+  const [lang, setLangState] = useState<Lang>('en')
   const [loading, setLoading] = useState(true)
   const [me, setMe] = useState<string | null>(null)
   const [rows, setRows] = useState<ConversationRow[]>([])

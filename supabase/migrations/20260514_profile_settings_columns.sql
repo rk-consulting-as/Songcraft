@@ -9,7 +9,7 @@
 ALTER TABLE profiles
   ADD COLUMN IF NOT EXISTS avatar_url          text,
   ADD COLUMN IF NOT EXISTS bio                 text,
-  ADD COLUMN IF NOT EXISTS preferred_lang      text DEFAULT 'no'   CHECK (preferred_lang IN ('no', 'en')),
+  ADD COLUMN IF NOT EXISTS preferred_lang      text DEFAULT 'en'   CHECK (preferred_lang IN ('no', 'en')),
   ADD COLUMN IF NOT EXISTS preferred_song_lang text DEFAULT 'auto' CHECK (preferred_song_lang IN ('no', 'en', 'auto'));
 
 COMMENT ON COLUMN profiles.avatar_url IS 'Public URL of uploaded avatar, or preset key like "preset:guitar", or NULL for initial fallback.';

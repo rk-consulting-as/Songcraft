@@ -35,7 +35,7 @@ type LedgerEntry = {
 
 export default function ReferralsPage() {
   const router = useRouter()
-  const [lang, setLangState] = useState<Lang>('no')
+  const [lang, setLangState] = useState<Lang>('en')
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [downline, setDownline] = useState<Relationship[]>([])

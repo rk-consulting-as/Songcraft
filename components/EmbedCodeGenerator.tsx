@@ -12,7 +12,7 @@ export default function EmbedCodeGenerator({
   title: string
   canRemoveBranding?: boolean
 }) {
-  const [lang, setLang] = useState<Lang>('no')
+  const [lang, setLang] = useState<Lang>('en')
   const tx = t[lang]
   const [width, setWidth] = useState('100%')
   const [height, setHeight] = useState('420')

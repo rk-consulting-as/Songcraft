@@ -27,7 +27,7 @@ type ChartRow = {
 type Window = 'week' | 'all'
 
 export default function ChartsPage() {
-  const [lang, setLangState] = useState<Lang>('no')
+  const [lang, setLangState] = useState<Lang>('en')
   const [rows, setRows] = useState<ChartRow[]>([])
   const [loading, setLoading] = useState(true)
   const [windowMode, setWindowMode] = useState<Window>('week')

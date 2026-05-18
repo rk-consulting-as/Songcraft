@@ -13,6 +13,7 @@ import UpgradePrompt from '@/components/UpgradePrompt'
 import FanHubPanel from '@/components/FanHubPanel'
 import MobileQuickActions from '@/components/MobileQuickActions'
 import { getUserPlan } from '@/lib/subscription'
+import { AI_OUTPUT_LANGUAGES, aiOutputLanguageDirective, aiOutputLanguageName, normalizeAIOutputLang, type AIOutputLang } from '@/lib/aiOutputLanguage'
 
 import type { SocialLinksMap } from '@/lib/socialLinks'
 
@@ -123,7 +124,8 @@ export default function ArtistPage() {
   const params = useParams()
   const router = useRouter()
   const artistId = params.id as string
-  const [lang, setLangState] = useState<Lang>('no')
+  const [lang, setLangState] = useState<Lang>('en')
+  const [aiOutputLang, setAiOutputLang] = useState<AIOutputLang>('en')
   const [artist, setArtist] = useState<Artist | null>(null)
   const [planId, setPlanId] = useState<'free' | 'pro'>('free')
   const [songs, setSongs] = useState<Song[]>([])
@@ -251,6 +253,8 @@ export default function ArtistPage() {
     if (!user) { setLoading(false); return }
     const currentPlan = await getUserPlan(supabase, user.id)
     setPlanId(currentPlan.id)
+    const { data: profilePrefs } = await supabase.from('profiles').select('preferred_ai_output_lang, preferred_song_lang').eq('id', user.id).maybeSingle()
+    setAiOutputLang(normalizeAIOutputLang((profilePrefs as any)?.preferred_ai_output_lang || ((profilePrefs as any)?.preferred_song_lang === 'no' ? 'no' : 'en')))
     const { data: a } = await supabase
       .from('artists')
       .select('*')
@@ -361,7 +365,7 @@ export default function ArtistPage() {
         },
         body: JSON.stringify({
           provider: aiProvider,
-          system: 'You are an expert in AI image generation (Midjourney, DALL-E, Stable Diffusion). Create a detailed ALBUM cover image prompt for the given album. Include subject, style, colors, mood, lighting, composition. Format: Subject → Style → Colors → Mood → Technical. Album covers are 1:1 square. Write in English, max 150 words.',
+          system: `${aiOutputLanguageDirective(aiOutputLang)}\nYou are an expert in AI image generation (Midjourney, DALL-E, Stable Diffusion). Create a detailed ALBUM cover image prompt for the given album. Include subject, style, colors, mood, lighting, composition. Format: Subject → Style → Colors → Mood → Technical. Album covers are 1:1 square. Max 150 words.`,
           messages: [{ role: 'user', content: userContent }],
         }),
       })
@@ -801,7 +805,7 @@ export default function ArtistPage() {
           provider: aiProvider,
           messages: [{ role: 'user', content: context }],
           system: [
-            `You write professional Electronic Press Kits for musicians. Write in ${lang === 'no' ? 'Norwegian' : 'English'}.`,
+            `You write professional Electronic Press Kits for musicians. Write the output in: ${aiOutputLanguageName(aiOutputLang)}.`,
             'Return ONLY valid JSON with keys: short_bio, long_bio, release_highlight, tagline.',
             'short_bio: 2-3 sentences. long_bio: 3-5 paragraphs. release_highlight: concise latest-release section. tagline: one quotable press line.',
             'Do not invent awards, labels, contact addresses, streaming numbers, or facts not present in the source.',
@@ -840,7 +844,7 @@ export default function ArtistPage() {
       body: JSON.stringify({
         provider: aiProvider,
         messages: [{ role: 'user', content: `${artistContext ? artistContext + '\n\n' : ''}User request: ${prompt}\n\nNumber of songs: ${count}` }],
-        system: `You are a creative music producer and songwriter. The user describes a theme or concept for multiple songs. Your task: Create EXACTLY ${count} song proposals with title and instructions for a songwriter.\n\nRespond ONLY with valid JSON, no text around it:\n[\n  {\n    "title": "Song title here",\n    "instructions": "Detailed instructions for the songwriter: theme, mood, verse structure, specific images/metaphors, chorus idea, tone and style. At least 3-4 sentences.${artist?.song_structure && useProfile ? ' Follow the song structure profile provided.' : ''}"\n  }\n]`,
+        system: `${aiOutputLanguageDirective(aiOutputLang)}\nYou are a creative music producer and songwriter. The user describes a theme or concept for multiple songs. Your task: Create EXACTLY ${count} song proposals with title and instructions for a songwriter.\n\nRespond ONLY with valid JSON, no text around it:\n[\n  {\n    "title": "Song title here",\n    "instructions": "Detailed instructions for the songwriter: theme, mood, verse structure, specific images/metaphors, chorus idea, tone and style. At least 3-4 sentences.${artist?.song_structure && useProfile ? ' Follow the song structure profile provided.' : ''}"\n  }\n]`,
       }),
     })
     const data = await res.json()
@@ -1159,6 +1163,17 @@ export default function ArtistPage() {
                 {generating ? tx.planningText.replace('{n}', String(count)) : tx.generateProposals.replace('{n}', String(count))}
               </button>
               <AIProviderPicker value={aiProvider} onChange={pickProvider} disabled={generating} />
+              <select
+                value={aiOutputLang}
+                onChange={e => setAiOutputLang(normalizeAIOutputLang(e.target.value))}
+                disabled={generating}
+                title={tx.aiOutputLangHint}
+                style={{ width: 'auto', minWidth: 145, padding: '6px 9px', fontSize: 12 }}
+              >
+                {AI_OUTPUT_LANGUAGES.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
             </div>
 
             {generating && (
@@ -1532,6 +1547,16 @@ export default function ArtistPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ color: '#5a4a30', fontSize: 10 }}>AI:</span>
                     <AIProviderPicker value={aiProvider} onChange={pickProvider} disabled={albumPromptLoading || albumImageLoading} />
+                    <select
+                      value={aiOutputLang}
+                      onChange={e => setAiOutputLang(normalizeAIOutputLang(e.target.value))}
+                      disabled={albumPromptLoading || albumImageLoading}
+                      style={{ width: 'auto', minWidth: 130, padding: '5px 8px', fontSize: 11 }}
+                    >
+                      {AI_OUTPUT_LANGUAGES.map(option => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 

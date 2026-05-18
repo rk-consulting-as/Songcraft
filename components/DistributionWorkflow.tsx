@@ -55,7 +55,7 @@ export default function DistributionWorkflow({
   updatePublishContent: (updates: Record<string, any>) => Promise<void>
   copy: (text: string) => void
 }) {
-  const [lang, setLang] = useState<Lang>('no')
+  const [lang, setLang] = useState<Lang>('en')
   useEffect(() => setLang(useLang()), [])
   const tx = t[lang]
 
@@ -65,7 +65,7 @@ export default function DistributionWorkflow({
     explicit: 'unknown',
     audio_status: audioReady ? 'ready' : 'missing',
     release_date: releaseDate,
-    language: lang === 'no' ? 'Norwegian' : 'English',
+    language: 'English',
     ...((publishContent.distribution || {}) as DistributionData),
   }
 

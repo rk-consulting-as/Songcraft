@@ -182,7 +182,7 @@ function calculateDistribution(song: any): DistributionOverviewSong {
 
 export default function Dashboard() {
   const router = useRouter()
-  const [lang, setLangState] = useState<Lang>('no')
+  const [lang, setLangState] = useState<Lang>('en')
   const [artists, setArtists] = useState<Artist[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)

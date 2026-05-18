@@ -22,7 +22,7 @@ const PRIORITIES = [
 
 export default function NewTicketPage() {
   const router = useRouter()
-  const [lang, setLangState] = useState<Lang>('no')
+  const [lang, setLangState] = useState<Lang>('en')
   const [subject, setSubject] = useState('')
   const [category, setCategory] = useState<string>('technical')
   const [priority, setPriority] = useState<string>('normal')

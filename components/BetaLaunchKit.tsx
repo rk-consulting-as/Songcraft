@@ -15,7 +15,7 @@ type BetaStatus = {
 
 export default function BetaLaunchKit() {
   const pathname = usePathname()
-  const [lang, setLang] = useState<Lang>('no')
+  const [lang, setLang] = useState<Lang>('en')
   const tx = t[lang]
   const [mounted, setMounted] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
