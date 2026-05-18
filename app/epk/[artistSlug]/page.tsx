@@ -7,6 +7,9 @@ import { getUserPlan } from '@/lib/subscription'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://songcraft-lilac.vercel.app').replace(/\/$/, '')
+const FALLBACK_OG_IMAGE = '/icons/icon-512.svg'
+
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -47,18 +50,80 @@ async function fetchEpk(slug: string) {
   return { artist, epk, songs: selectedSongs }
 }
 
+function stripMarkup(value: unknown) {
+  return String(value || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/!\[[^\]]*]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]+)]\([^)]*\)/g, '$1')
+    .replace(/[#*_`>~|]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function trimText(value: unknown, max: number) {
+  const text = stripMarkup(value)
+  if (text.length <= max) return text
+  return `${text.slice(0, max - 1).replace(/\s+\S*$/, '')}…`
+}
+
+function absoluteUrl(value?: string | null) {
+  if (!value) return `${APP_URL}${FALLBACK_OG_IMAGE}`
+  if (/^https?:\/\//i.test(value)) return value
+  return `${APP_URL}${value.startsWith('/') ? value : `/${value}`}`
+}
+
+function epkImage(artist: any, epk: any, songs: any[]) {
+  const selectedSongCover = songs.find(song => song.cover_image_url || song.spotify_cover_url)
+  return absoluteUrl(
+    epk.image_url ||
+    epk.cover_image_url ||
+    epk.press_image_url ||
+    artist.spotify_image_url ||
+    artist.avatar_url ||
+    selectedSongCover?.cover_image_url ||
+    selectedSongCover?.spotify_cover_url
+  )
+}
+
+function epkDescription(artist: any, epk: any) {
+  return trimText(
+    epk.short_bio ||
+    epk.tagline ||
+    artist.description ||
+    [artist.genre, `${artist.name} Electronic Press Kit`].filter(Boolean).join(' · '),
+    180
+  )
+}
+
 export async function generateMetadata({ params }: { params: { artistSlug: string } }): Promise<Metadata> {
   const data = await fetchEpk(params.artistSlug)
-  if (!data) return { title: 'EPK not found' }
-  const { artist, epk } = data
-  const cover = artist.spotify_image_url || artist.avatar_url
+  if (!data) {
+    return {
+      title: 'EPK not found',
+      robots: { index: false, follow: false },
+    }
+  }
+  const { artist, epk, songs } = data
+  const title = trimText(`${artist.name} Electronic Press Kit`, 70)
+  const description = epkDescription(artist, epk)
+  const image = epkImage(artist, epk, songs)
+  const url = `${APP_URL}/epk/${params.artistSlug}`
   return {
-    title: `${artist.name} EPK`,
-    description: epk.short_bio || artist.description || `${artist.name} electronic press kit`,
+    title,
+    description,
+    alternates: { canonical: url },
     openGraph: {
-      title: `${artist.name} EPK`,
-      description: epk.short_bio || artist.description || undefined,
-      images: cover ? [cover] : [],
+      title,
+      description,
+      url,
+      type: 'website',
+      images: [{ url: image, width: 1200, height: 630, alt: artist.name }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [image],
     },
   }
 }
@@ -67,42 +132,69 @@ export default async function EpkPage({ params }: { params: { artistSlug: string
   const data = await fetchEpk(params.artistSlug)
   if (!data) notFound()
   const { artist, epk, songs } = data
-  const cover = artist.spotify_image_url || artist.avatar_url
+  const cover = epk.image_url || epk.cover_image_url || epk.press_image_url || artist.spotify_image_url || artist.avatar_url
   const socialLinks = Object.entries(epk.social_links || {}).filter(([, url]) => !!url) as [string, string][]
 
   return (
-    <main style={{ minHeight: '100vh', background: '#f6f1e8', color: '#18130c', fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', padding: '28px 18px' }}>
+    <main className="epk-page" style={{ minHeight: '100vh', background: '#f6f1e8', color: '#18130c', fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', padding: '28px 18px' }}>
       <style>{`
+        .epk-topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 22px; border-bottom: 1px solid rgba(80,55,20,0.12); }
+        .epk-hero { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 28px; padding: 34px; }
+        .epk-cover { width: 220px; height: 220px; object-fit: cover; border-radius: 16px; border: 1px solid rgba(80,55,20,0.16); }
+        .epk-cover-fallback { width: 220px; height: 220px; border-radius: 16px; background: #eadcc7; display: flex; align-items: center; justify-content: center; font-size: 54px; }
+        .epk-title { margin: 0; font-size: 46px; line-height: 1; color: #18130c; overflow-wrap: anywhere; }
+        .epk-body { padding: 0 34px 34px; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr); gap: 28px; }
+        .epk-song-card { display: flex; gap: 12px; padding: 12px; border: 1px solid rgba(80,55,20,0.12); border-radius: 12px; background: rgba(255,255,255,0.55); min-width: 0; }
+        .epk-song-cover { width: 58px; height: 58px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+        .epk-side-card { border: 1px solid rgba(80,55,20,0.12); border-radius: 14px; padding: 18px; background: rgba(255,255,255,0.55); margin-bottom: 16px; }
+        .epk-link-list a { display: block; min-height: 34px; line-height: 34px; }
+        @media (max-width: 720px) {
+          .epk-page { padding: 12px 10px !important; }
+          .epk-shell { border-radius: 14px !important; }
+          .epk-topbar { padding: 13px 14px; align-items: flex-start; }
+          .epk-topbar .print-button-wrap { display: none; }
+          .epk-hero { grid-template-columns: 1fr; gap: 18px; padding: 22px 16px; text-align: center; }
+          .epk-cover, .epk-cover-fallback { width: min(78vw, 260px); height: min(78vw, 260px); margin: 0 auto; }
+          .epk-title { font-size: clamp(32px, 11vw, 44px); line-height: 1.05; }
+          .epk-body { grid-template-columns: 1fr; padding: 0 16px 22px; gap: 20px; }
+          .epk-body h2 { font-size: 13px !important; }
+          .epk-body p { font-size: 15px !important; line-height: 1.65 !important; }
+          .epk-song-card { flex-direction: column; padding: 14px; }
+          .epk-song-cover { width: 100%; height: auto; max-height: 240px; aspect-ratio: 1 / 1; border-radius: 10px; }
+          .epk-side-card { padding: 16px; }
+        }
         @media print {
           body { background: #fff !important; }
           .print-hide { display: none !important; }
           .epk-shell { box-shadow: none !important; border: none !important; }
+          .epk-hero { grid-template-columns: 180px minmax(0, 1fr); }
+          .epk-cover, .epk-cover-fallback { width: 180px; height: 180px; }
         }
       `}</style>
       <div className="epk-shell" style={{ maxWidth: 980, margin: '0 auto', background: '#fffaf2', border: '1px solid rgba(80,55,20,0.16)', borderRadius: 18, boxShadow: '0 24px 80px rgba(80,55,20,0.12)', overflow: 'hidden' }}>
-        <div className="print-hide" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '16px 22px', borderBottom: '1px solid rgba(80,55,20,0.12)' }}>
+        <div className="print-hide epk-topbar">
           <a href={`/p/${artist.page_slug}`} style={{ color: '#8a6a20', textDecoration: 'none', fontSize: 13 }}>Songcraft EPK</a>
-          <PrintButton />
+          <span className="print-button-wrap"><PrintButton /></span>
         </div>
 
-        <section style={{ display: 'grid', gridTemplateColumns: '220px minmax(0, 1fr)', gap: 28, padding: 34 }}>
+        <section className="epk-hero">
           <div>
             {cover ? (
-              <img src={cover} alt={artist.name} style={{ width: 220, height: 220, objectFit: 'cover', borderRadius: 16, border: '1px solid rgba(80,55,20,0.16)' }} />
+              <img className="epk-cover" src={cover} alt={artist.name} />
             ) : (
-              <div style={{ width: 220, height: 220, borderRadius: 16, background: '#eadcc7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 54 }}>♪</div>
+              <div className="epk-cover-fallback">♪</div>
             )}
           </div>
           <div>
             <div style={{ color: '#8a6a20', fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>Electronic Press Kit</div>
-            <h1 style={{ margin: 0, fontSize: 46, lineHeight: 1, color: '#18130c' }}>{artist.name}</h1>
+            <h1 className="epk-title">{artist.name}</h1>
             {artist.genre && <p style={{ color: '#755f3c', fontSize: 14, margin: '10px 0 0' }}>{artist.genre}</p>}
             {epk.tagline && <p style={{ color: '#8a6a20', fontSize: 21, lineHeight: 1.35, margin: '22px 0 0' }}>"{epk.tagline}"</p>}
             {epk.short_bio && <p style={{ color: '#3a3020', fontSize: 16, lineHeight: 1.65, margin: '22px 0 0' }}>{epk.short_bio}</p>}
           </div>
         </section>
 
-        <section style={{ padding: '0 34px 34px', display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(260px, 0.8fr)', gap: 28 }}>
+        <section className="epk-body">
           <div>
             {epk.long_bio && (
               <div style={{ marginBottom: 28 }}>
@@ -125,9 +217,9 @@ export default async function EpkPage({ params }: { params: { artistSlug: string
                 <h2 style={{ color: '#8a6a20', fontSize: 15, letterSpacing: 1.5, textTransform: 'uppercase' }}>Selected Songs</h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {songs.map((song: any) => (
-                    <div key={song.id} style={{ display: 'flex', gap: 12, padding: 12, border: '1px solid rgba(80,55,20,0.12)', borderRadius: 12, background: 'rgba(255,255,255,0.55)' }}>
-                      {(song.cover_image_url || song.spotify_cover_url) && <img src={song.cover_image_url || song.spotify_cover_url} alt="" style={{ width: 58, height: 58, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />}
-                      <div>
+                    <div key={song.id} className="epk-song-card">
+                      {(song.cover_image_url || song.spotify_cover_url) && <img className="epk-song-cover" src={song.cover_image_url || song.spotify_cover_url} alt="" />}
+                      <div style={{ minWidth: 0 }}>
                         <h3 style={{ margin: 0, color: '#18130c', fontSize: 16 }}>{song.title}</h3>
                         {(song.backstory || song.lyrics_instructions) && (
                           <p style={{ color: '#5f5138', fontSize: 13, lineHeight: 1.45, margin: '5px 0 0' }}>
@@ -145,7 +237,7 @@ export default async function EpkPage({ params }: { params: { artistSlug: string
           </div>
 
           <aside>
-            <div style={{ border: '1px solid rgba(80,55,20,0.12)', borderRadius: 14, padding: 18, background: 'rgba(255,255,255,0.55)', marginBottom: 16 }}>
+            <div className="epk-side-card">
               <h2 style={{ color: '#8a6a20', fontSize: 14, letterSpacing: 1.5, textTransform: 'uppercase', marginTop: 0 }}>Contact</h2>
               {epk.contact_info ? (
                 <p style={{ whiteSpace: 'pre-wrap', color: '#302818', fontSize: 13, lineHeight: 1.6 }}>{epk.contact_info}</p>
@@ -155,9 +247,9 @@ export default async function EpkPage({ params }: { params: { artistSlug: string
             </div>
 
             {socialLinks.length > 0 && (
-              <div style={{ border: '1px solid rgba(80,55,20,0.12)', borderRadius: 14, padding: 18, background: 'rgba(255,255,255,0.55)', marginBottom: 16 }}>
+              <div className="epk-side-card">
                 <h2 style={{ color: '#8a6a20', fontSize: 14, letterSpacing: 1.5, textTransform: 'uppercase', marginTop: 0 }}>Links</h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div className="epk-link-list" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {socialLinks.map(([platform, url]) => (
                     <a key={platform} href={url} target="_blank" rel="noopener noreferrer" style={{ color: '#302818', textDecoration: 'none', fontSize: 13, textTransform: 'capitalize' }}>{platform}</a>
                   ))}
