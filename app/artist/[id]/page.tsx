@@ -18,6 +18,11 @@ import EpkSongSelector from '@/components/EpkSongSelector'
 import EpkSelectedSongsList from '@/components/EpkSelectedSongsList'
 import { resolveEpkSongsFromCatalog } from '@/lib/epkSongs'
 import { clientPublicUrl } from '@/lib/appUrl'
+import ArtistWorkspaceNav from '@/components/ArtistWorkspaceNav'
+import ArtistWorkspaceOverview from '@/components/ArtistWorkspaceOverview'
+import ArtistCampaignsSummary from '@/components/ArtistCampaignsSummary'
+import ArtistSettingsPanel from '@/components/ArtistSettingsPanel'
+import { tabFromHash, type ArtistWorkspaceTab } from '@/lib/artistWorkspaceTabs'
 
 import type { SocialLinksMap } from '@/lib/socialLinks'
 
@@ -781,6 +786,22 @@ export default function ArtistPage() {
     [songs, epk.selected_song_ids]
   )
 
+  const [workspaceTab, setWorkspaceTab] = useState<ArtistWorkspaceTab>('overview')
+
+  useEffect(() => {
+    document.body.classList.add('artist-workspace-page')
+    const fromHash = tabFromHash(window.location.hash)
+    if (fromHash) setWorkspaceTab(fromHash)
+    return () => document.body.classList.remove('artist-workspace-page')
+  }, [])
+
+  const changeWorkspaceTab = (tab: ArtistWorkspaceTab) => {
+    setWorkspaceTab(tab)
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${tab}`)
+    }
+  }
+
   const generateEpk = async () => {
     if (!artist) return
     setEpkGenerating(true)
@@ -1036,7 +1057,7 @@ export default function ArtistPage() {
   const statusLabel = (s: string) => ({ draft: tx.draft, in_progress: tx.inProgress, complete: tx.complete, released: tx.released }[s] || s)
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0a0f 0%, #12071e 50%, #0a0f0a 100%)' }}>
+    <div className="artist-workspace" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0a0f 0%, #12071e 50%, #0a0f0a 100%)' }}>
       <div className="app-header" data-header="page" style={{ borderBottom: '1px solid rgba(180,140,80,0.2)', padding: '20px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <Link href="/dashboard" style={{ color: '#6a5a40', textDecoration: 'none', fontSize: '13px' }}>← {tx.dashboard}</Link>
@@ -1099,20 +1120,49 @@ export default function ArtistPage() {
             </div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          {artist?.spotify_id && (
-            <button
-              onClick={openImport}
-              style={{ background: 'rgba(30,215,96,0.12)', border: '1px solid rgba(30,215,96,0.4)', color: '#1ed760', padding: '10px 18px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}
-            >
-              {tx.importFromSpotify}
-            </button>
-          )}
-          <button className="btn-gold" onClick={() => { setShowGenerator(true); setGeneratedSongs([]) }}>{tx.generateWithAI}</button>
-        </div>
+        {workspaceTab === 'songs' && (
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            {artist?.spotify_id && (
+              <button
+                onClick={openImport}
+                style={{ background: 'rgba(30,215,96,0.12)', border: '1px solid rgba(30,215,96,0.4)', color: '#1ed760', padding: '10px 18px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}
+              >
+                {tx.importFromSpotify}
+              </button>
+            )}
+            <button className="btn-gold" onClick={() => { setShowGenerator(true); setGeneratedSongs([]) }}>{tx.generateWithAI}</button>
+          </div>
+        )}
       </div>
 
-      <div className="page-pad" style={{ padding: '32px', maxWidth: '900px', margin: '0 auto' }}>
+      <ArtistWorkspaceNav active={workspaceTab} onChange={changeWorkspaceTab} />
+
+      <div className="artist-workspace-body">
+        {workspaceTab === 'overview' && artist && (
+          <>
+            <MobileQuickActions
+              title={tx.mobileQuickActions}
+              actions={[
+                { label: tx.mobileCreateSong, icon: '+', onClick: () => { changeWorkspaceTab('songs'); setShowGenerator(true); setGeneratedSongs([]) } },
+                { label: tx.mobileOpenPublicPage, icon: '↗', href: artist?.page_enabled && artist?.page_slug ? `/p/${artist.page_slug}` : undefined, disabled: !artist?.page_enabled || !artist?.page_slug },
+                { label: tx.mobileCopyShareLink, icon: '⧉', onClick: () => {
+                  if (artist?.page_slug) navigator.clipboard.writeText(`${window.location.origin}/p/${artist.page_slug}`)
+                }, disabled: !artist?.page_slug },
+              ]}
+            />
+            <ArtistWorkspaceOverview
+              artist={artist}
+              songs={songs}
+              subscriberCount={subscribers.length}
+              publicPageViews={publicPageViews.length}
+              newsletterSignups={newsletterConversions}
+              onOpenTab={tab => changeWorkspaceTab(tab as ArtistWorkspaceTab)}
+            />
+          </>
+        )}
+
+        {workspaceTab === 'songs' && (
+          <>
         <MobileQuickActions
           title={tx.mobileQuickActions}
           actions={[
@@ -1894,8 +1944,15 @@ export default function ArtistPage() {
           </div>
         )}
 
+          </>
+        )}
+
+        {workspaceTab === 'campaigns' && <ArtistCampaignsSummary songs={songs} />}
+
+        {workspaceTab === 'analytics' && (
+        <>
         {/* Public growth analytics */}
-        <div className="card" style={{ marginTop: 36, borderColor: 'rgba(112,144,208,0.25)' }}>
+        <div className="card workspace-card" style={{ borderColor: 'rgba(112,144,208,0.25)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
             <div>
               <h2 style={{ color: '#7090d0', fontWeight: 'normal', fontSize: 16, letterSpacing: 1, textTransform: 'uppercase', margin: 0 }}>
@@ -1935,7 +1992,7 @@ export default function ArtistPage() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 18 }}>
+          <div className="workspace-analytics-grid" style={{ marginBottom: 18 }}>
             {[
               [tx.fanAnalyticsTotalViews, publicPageViews.length],
               [tx.fanAnalyticsArtistViews, artistPageViews],
@@ -2028,8 +2085,24 @@ export default function ArtistPage() {
           )}
         </div>
 
-        {/* EPK / press kit */}
-        <div className="card" style={{ marginTop: 36, borderColor: 'rgba(112,144,208,0.28)' }}>
+        {artist?.id && (
+          <div className="card workspace-card" style={{ marginTop: 14 }}>
+            <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: 16, letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 6px' }}>
+              📊 {lang === 'no' ? 'Klikkstatistikk for artist' : 'Click stats for artist'}
+            </h2>
+            <p style={{ color: '#8a7a60', fontSize: 12, margin: '0 0 16px' }}>
+              {lang === 'no'
+                ? 'Hvor mange klikker på lenker fra denne artistens offentlige sider.'
+                : 'How many people click through links on this artist\'s public pages.'}
+            </p>
+            <ClickStats artistId={artist.id} />
+          </div>
+        )}
+        </>
+        )}
+
+        {workspaceTab === 'epk' && (
+        <div className="card workspace-card" style={{ borderColor: 'rgba(112,144,208,0.28)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
             <div>
               <h2 style={{ color: '#7090d0', fontWeight: 'normal', fontSize: 16, letterSpacing: 1, textTransform: 'uppercase', margin: 0 }}>
@@ -2144,8 +2217,9 @@ export default function ArtistPage() {
             )}
           </div>
         </div>
+        )}
 
-        {artist && (
+        {workspaceTab === 'fanhub' && artist && (
           <FanHubPanel
             artist={artist}
             songs={songs}
@@ -2156,7 +2230,8 @@ export default function ArtistPage() {
           />
         )}
 
-        <div className="card" style={{ marginTop: 18, borderColor: 'rgba(212,168,67,0.25)' }}>
+        {workspaceTab === 'events' && (
+        <div className="card workspace-card" style={{ borderColor: 'rgba(212,168,67,0.25)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: 16, letterSpacing: 1, textTransform: 'uppercase', margin: 0 }}>
               {tx.eventsTitle}
@@ -2237,29 +2312,39 @@ export default function ArtistPage() {
             </div>
           )}
         </div>
+        )}
 
-        {artist?.page_enabled && artist?.page_slug && (
-          <div style={{ marginTop: 18 }}>
-            <QRCodeCard path={`/p/${artist.page_slug}`} title={tx.qrArtistHint} />
-            {planId === 'free' && (
-              <UpgradePrompt compact title={tx.upgradeQrTitle} description={tx.upgradeQrDesc} />
+        {workspaceTab === 'public' && (
+          <div className="workspace-section">
+            {artist?.page_enabled && artist?.page_slug ? (
+              <>
+                <div className="card workspace-card">
+                  <h2 className="workspace-section-title">{tx.publicPage}</h2>
+                  <p style={{ color: '#8a7a60', fontSize: 13, margin: '0 0 12px', wordBreak: 'break-all' }}>
+                    {clientPublicUrl(`/p/${artist.page_slug}`)}
+                  </p>
+                  <a href={`/p/${artist.page_slug}`} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ textDecoration: 'none', display: 'inline-block' }}>
+                    {tx.workspaceActionPublicPage} ↗
+                  </a>
+                </div>
+                <QRCodeCard path={`/p/${artist.page_slug}`} title={tx.qrArtistHint} />
+                {planId === 'free' && (
+                  <UpgradePrompt compact title={tx.upgradeQrTitle} description={tx.upgradeQrDesc} />
+                )}
+              </>
+            ) : (
+              <div className="card workspace-card">
+                <p style={{ color: '#8a7a60', fontSize: 13, margin: 0, lineHeight: 1.55 }}>{tx.publicPageSlugRequired}</p>
+                <button type="button" className="btn-outline" style={{ marginTop: 12 }} onClick={() => changeWorkspaceTab('settings')}>
+                  {tx.workspaceTabSettings}
+                </button>
+              </div>
             )}
           </div>
         )}
 
-        {/* Click stats — total outbound clicks across all this artist's songs */}
-        {artist?.id && (
-          <div className="card" style={{ marginTop: 36 }}>
-            <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: 16, letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 6px' }}>
-              📊 {lang === 'no' ? 'Klikkstatistikk for artist' : 'Click stats for artist'}
-            </h2>
-            <p style={{ color: '#8a7a60', fontSize: 12, margin: '0 0 16px' }}>
-              {lang === 'no'
-                ? 'Hvor mange klikker på lenker fra denne artistens offentlige sider.'
-                : 'How many people click through links on this artist\'s public pages.'}
-            </p>
-            <ClickStats artistId={artist.id} />
-          </div>
+        {workspaceTab === 'settings' && artist && (
+          <ArtistSettingsPanel artist={artist} planId={planId} onSaved={setArtist} />
         )}
       </div>
     </div>

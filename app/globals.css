@@ -390,3 +390,189 @@ select option:checked {
     min-height: 36px;
   }
 }
+
+/* ── Artist workspace (tabbed sections) ───────────────────────────── */
+.artist-workspace {
+  min-height: 100vh;
+}
+
+.artist-workspace-nav {
+  position: sticky;
+  top: 0;
+  z-index: 70;
+  background: rgba(10, 10, 15, 0.92);
+  border-bottom: 1px solid rgba(180, 140, 80, 0.18);
+  backdrop-filter: blur(12px);
+}
+
+.artist-workspace-nav-scroll {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 10px 16px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.artist-workspace-nav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.artist-workspace-tab {
+  flex: 0 0 auto;
+  border: 1px solid rgba(180, 140, 80, 0.2);
+  background: rgba(255, 255, 255, 0.02);
+  color: #8a7a60;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.artist-workspace-tab.is-active {
+  border-color: rgba(212, 168, 67, 0.55);
+  background: rgba(212, 168, 67, 0.14);
+  color: #d4a843;
+}
+
+.artist-workspace-body {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 24px 24px 140px;
+}
+
+.workspace-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.workspace-section-title {
+  margin: 0 0 4px;
+  color: #d4a843;
+  font-weight: normal;
+  font-size: 16px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.workspace-card-title {
+  margin: 0 0 12px;
+  color: #a8b8e8;
+  font-weight: normal;
+  font-size: 14px;
+}
+
+.workspace-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.workspace-stat-card {
+  text-align: left;
+  border: 1px solid rgba(180, 140, 80, 0.16);
+  background: rgba(255, 255, 255, 0.025);
+  border-radius: 10px;
+  padding: 14px;
+  cursor: pointer;
+}
+
+.workspace-stat-label {
+  display: block;
+  color: #8a7a60;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.workspace-stat-value {
+  color: #e8e0d0;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.workspace-two-col {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.workspace-action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.workspace-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.workspace-list-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(180, 140, 80, 0.12);
+  background: rgba(255, 255, 255, 0.02);
+  text-decoration: none;
+}
+
+.workspace-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.workspace-analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+body.artist-workspace-page {
+  --workspace-fab-offset: 88px;
+}
+
+body.artist-workspace-page .feedback-fab {
+  bottom: calc(var(--workspace-fab-offset) + env(safe-area-inset-bottom));
+}
+
+@media (max-width: 760px) {
+  .artist-workspace-body {
+    padding: 16px 14px calc(160px + env(safe-area-inset-bottom));
+  }
+
+  body.artist-workspace-page .feedback-fab {
+    bottom: calc(var(--mobile-nav-height) + var(--workspace-fab-offset) + env(safe-area-inset-bottom));
+  }
+
+  body.artist-workspace-page .artist-workspace-nav {
+    top: 0;
+  }
+}
+
+@media (min-width: 761px) {
+  body.artist-workspace-page .feedback-fab {
+    bottom: calc(24px + var(--workspace-fab-offset));
+  }
+}
+
+/* Stack chat above feedback FAB on artist workspace */
+body.artist-workspace-page button[title="Open chat"] {
+  bottom: calc(24px + var(--workspace-fab-offset) + 52px) !important;
+}
+
+@media (max-width: 760px) {
+  body.artist-workspace-page button[title="Open chat"] {
+    bottom: calc(var(--mobile-nav-height) + var(--workspace-fab-offset) + 52px + env(safe-area-inset-bottom)) !important;
+  }
+}

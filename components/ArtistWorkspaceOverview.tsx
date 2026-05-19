@@ -1,0 +1,131 @@
+'use client'
+
+import Link from 'next/link'
+import { clientPublicUrl } from '@/lib/appUrl'
+import { t, useLang } from '@/lib/i18n'
+
+type Song = { id: string; title: string; status: string; created_at: string }
+type Artist = {
+  id: string
+  name: string
+  genre?: string | null
+  page_enabled?: boolean
+  page_slug?: string | null
+  spotify_id?: string | null
+}
+
+export default function ArtistWorkspaceOverview({
+  artist,
+  songs,
+  subscriberCount,
+  publicPageViews,
+  newsletterSignups,
+  onOpenTab,
+}: {
+  artist: Artist
+  songs: Song[]
+  subscriberCount: number
+  publicPageViews: number
+  newsletterSignups: number
+  onOpenTab: (tab: string) => void
+}) {
+  const lang = useLang()
+  const tx = t[lang]
+  const released = songs.filter(s => s.status === 'released').length
+  const recent = songs.slice(0, 5)
+
+  const stats = [
+    { label: tx.workspaceStatSongs, value: songs.length, tab: 'songs' },
+    { label: tx.workspaceStatReleased, value: released, tab: 'songs' },
+    { label: tx.workspaceStatSubscribers, value: subscriberCount, tab: 'fanhub' },
+    { label: tx.workspaceStatPageViews, value: publicPageViews, tab: 'analytics' },
+    { label: tx.workspaceStatSignups, value: newsletterSignups, tab: 'fanhub' },
+  ]
+
+  return (
+    <div className="workspace-section">
+      <div className="workspace-stat-grid">
+        {stats.map(stat => (
+          <button
+            key={stat.label}
+            type="button"
+            className="workspace-stat-card"
+            onClick={() => onOpenTab(stat.tab)}
+          >
+            <span className="workspace-stat-label">{stat.label}</span>
+            <span className="workspace-stat-value">{stat.value}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="workspace-two-col">
+        <div className="card workspace-card">
+          <h3 className="workspace-card-title">{tx.workspaceQuickActions}</h3>
+          <div className="workspace-action-grid">
+            <button type="button" className="btn-gold" onClick={() => onOpenTab('songs')}>
+              + {tx.workspaceActionNewSong}
+            </button>
+            {artist.spotify_id && (
+              <button type="button" className="btn-outline" onClick={() => onOpenTab('songs')}>
+                {tx.importFromSpotify}
+              </button>
+            )}
+            {artist.page_enabled && artist.page_slug && (
+              <a
+                href={`/p/${artist.page_slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-outline"
+                style={{ textDecoration: 'none', textAlign: 'center' }}
+              >
+                {tx.workspaceActionPublicPage}
+              </a>
+            )}
+            <button type="button" className="btn-outline" onClick={() => onOpenTab('epk')}>
+              {tx.workspaceActionEpk}
+            </button>
+            <button type="button" className="btn-outline" onClick={() => onOpenTab('analytics')}>
+              {tx.workspaceActionAnalytics}
+            </button>
+          </div>
+        </div>
+
+        <div className="card workspace-card">
+          <h3 className="workspace-card-title">{tx.workspaceRecentSongs}</h3>
+          {recent.length === 0 ? (
+            <p style={{ color: '#6a5a40', fontSize: 13, margin: 0 }}>{tx.noSongs}</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {recent.map(song => (
+                <Link
+                  key={song.id}
+                  href={`/song/${song.id}`}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 10,
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: '1px solid rgba(180,140,80,0.14)',
+                    background: 'rgba(255,255,255,0.02)',
+                    textDecoration: 'none',
+                    color: '#e8e0d0',
+                    fontSize: 13,
+                  }}
+                >
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{song.title}</span>
+                  <span style={{ color: '#8a7a60', fontSize: 11, textTransform: 'capitalize', flexShrink: 0 }}>{song.status}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+          {artist.page_slug && (
+            <p style={{ color: '#6a5a40', fontSize: 12, margin: '14px 0 0', wordBreak: 'break-all' }}>
+              {clientPublicUrl(`/p/${artist.page_slug}`)}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

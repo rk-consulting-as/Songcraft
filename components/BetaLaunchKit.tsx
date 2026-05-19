@@ -102,7 +102,7 @@ export default function BetaLaunchKit() {
         <div className="beta-banner">
           <div>
             <strong>{tx.betaBannerTitle}</strong>
-            <span>{status.beta_mode.message || tx.betaBannerDesc}</span>
+            <span>{tx.betaBannerDesc}</span>
           </div>
           {status.beta_mode.show_checklist !== false && (
             <button type="button" onClick={() => setOpenChecklist(v => !v)}>

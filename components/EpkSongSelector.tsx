@@ -104,7 +104,7 @@ export default function EpkSongSelector({
                 key={song.id}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'auto 52px minmax(0, 1fr)',
+                  gridTemplateColumns: 'auto 64px minmax(0, 1fr)',
                   gap: 12,
                   alignItems: 'start',
                   padding: 12,
@@ -125,14 +125,14 @@ export default function EpkSongSelector({
                   <img
                     src={cover}
                     alt=""
-                    style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }}
+                    style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }}
                   />
                 ) : (
                   <div
                     style={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: 8,
+                      width: 64,
+                      height: 64,
+                      borderRadius: 10,
                       background: 'rgba(112,144,208,0.12)',
                       border: '1px solid rgba(112,144,208,0.2)',
                       display: 'flex',
