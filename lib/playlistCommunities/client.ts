@@ -151,6 +151,12 @@ export async function reviewCampaignActivityLog(
   )
 }
 
+export async function fetchParticipationSummary() {
+  return apiFetch<{ summary: import('./participationSummary').UserParticipationSummary }>(
+    '/api/playlist-communities/participation-summary'
+  )
+}
+
 export async function runCampaignActivityAiReview(campaignId: string, logId: string) {
   return apiFetch<{ log: CampaignActivityLog; disclaimer: string }>(
     `/api/playlist-communities/campaigns/${campaignId}/activity/${logId}/ai-review`,

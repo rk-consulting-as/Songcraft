@@ -17,6 +17,9 @@ export async function fetchPlaybookContext(selectedArtistId?: string | null): Pr
     { count: creatorPlaylistCount },
     { count: playlistCampaignCount },
     { count: joinedPlaylistCampaignCount },
+    { count: activityProofSubmitCount },
+    { count: approvedActivityProofCount },
+    { data: ownedCampaignRows },
   ] = await Promise.all([
     supabase.from('artists').select('id, name, genre, description, avatar_url, spotify_image_url, social_links, page_enabled, page_slug, page_settings').eq('user_id', user.id).order('created_at', { ascending: true }),
     supabase.from('songs').select('id, artist_id, title, status, lyrics_text, lyrics_instructions, cover_image_url, spotify_cover_url, spotify_url, media_links, publish_content, album_id, spotify_release_date, public_hidden').eq('user_id', user.id),
@@ -29,7 +32,40 @@ export async function fetchPlaybookContext(selectedArtistId?: string | null): Pr
       .select('id', { count: 'exact', head: true })
       .eq('user_id', user.id)
       .in('status', ['requested', 'approved']),
+    supabase
+      .from('campaign_activity_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .in('status', ['submitted', 'pending', 'approved']),
+    supabase
+      .from('campaign_activity_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('status', 'approved'),
+    supabase.from('playlist_campaigns').select('id, status').eq('user_id', user.id),
   ])
+
+  const hostedActiveCampaignCount = (ownedCampaignRows || []).filter(c =>
+    ['open', 'active'].includes(c.status)
+  ).length
+
+  let hasCompletedCampaignWeek = false
+  const { data: approvedMemberships } = await supabase
+    .from('playlist_campaign_members')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('status', 'approved')
+    .limit(5)
+
+  if (approvedMemberships?.length) {
+    const memberIds = approvedMemberships.map(m => m.id)
+    const { count: weekApproved } = await supabase
+      .from('campaign_activity_logs')
+      .select('id', { count: 'exact', head: true })
+      .in('member_id', memberIds)
+      .eq('status', 'approved')
+    hasCompletedCampaignWeek = (weekApproved || 0) >= 5
+  }
 
   const artistIds = (artists || []).map(a => a.id)
   let qrClickCount = 0
@@ -78,6 +114,10 @@ export async function fetchPlaybookContext(selectedArtistId?: string | null): Pr
     playlistCampaignCount: playlistCampaignCount || 0,
     joinedPlaylistCampaignCount: joinedPlaylistCampaignCount || 0,
     hasPlaylistSpotifyUrl,
+    activityProofSubmitCount: activityProofSubmitCount || 0,
+    approvedActivityProofCount: approvedActivityProofCount || 0,
+    hasCompletedCampaignWeek,
+    hostedActiveCampaignCount,
   }
 }
 

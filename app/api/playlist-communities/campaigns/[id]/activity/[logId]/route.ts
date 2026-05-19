@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUser } from '@/lib/playlistCommunities/apiAuth'
 import { isCampaignOwner } from '@/lib/playlistCommunities/campaignAccess'
+import { queueCampaignParticipationNotification } from '@/lib/notifications/campaignParticipation'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -59,5 +60,30 @@ export async function PATCH(
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  if (owner && patch.status && existing.user_id) {
+    const { data: campaign } = await sb.from('playlist_campaigns').select('title').eq('id', params.id).maybeSingle()
+    const kind =
+      patch.status === 'approved'
+        ? 'activity_proof_approved'
+        : patch.status === 'rejected'
+          ? 'activity_proof_rejected'
+          : patch.status === 'missed'
+            ? 'campaign_member_missed_activity'
+            : null
+    if (kind) {
+      await queueCampaignParticipationNotification({
+        recipientUserId: existing.user_id,
+        kind,
+        payload: {
+          campaign_id: params.id,
+          campaign_title: campaign?.title,
+          activity_date: existing.activity_date,
+          owner_note: (patch.owner_note as string) || undefined,
+        },
+      })
+    }
+  }
+
   return NextResponse.json({ log: data })
 }

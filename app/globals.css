@@ -3294,3 +3294,105 @@ body.artist-workspace-page button[title="Open chat"] {
 .participation-owner-review-block {
   margin-top: 20px;
 }
+
+/* Phase 47B: Participation integration */
+.playlist-community-hint--attention {
+  border-color: rgba(212, 168, 67, 0.35);
+}
+.campaign-activity-dashboard-card {
+  margin-bottom: 16px;
+}
+.campaign-activity-dashboard-card__title {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: #d4a843;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.campaign-activity-dashboard-card__intro {
+  margin: 0 0 14px;
+  font-size: 12px;
+  color: #8a7a60;
+  line-height: 1.5;
+}
+.campaign-activity-dashboard-card__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+@media (max-width: 520px) {
+  .campaign-activity-dashboard-card__stats {
+    grid-template-columns: 1fr;
+  }
+}
+.campaign-activity-stat {
+  text-align: center;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(180, 140, 80, 0.12);
+}
+.campaign-activity-stat__value {
+  display: block;
+  font-size: 22px;
+  font-weight: 700;
+  color: #d4a843;
+}
+.campaign-activity-stat__label {
+  display: block;
+  font-size: 10px;
+  color: #8a7a60;
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.campaign-activity-dashboard-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.playlist-campaign-card__proof-pending {
+  font-size: 11px;
+  color: #d4a843;
+}
+.playlist-campaign-card__proof-approved {
+  font-size: 11px;
+  color: #7bc87b;
+}
+.playlist-campaign-card__proof-attention {
+  font-size: 11px;
+  color: #c08060;
+}
+.admin-campaign-safety__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.admin-campaign-safety__list li {
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(180, 140, 80, 0.12);
+}
+.admin-campaign-safety__list strong {
+  display: block;
+  color: #e8e0d0;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.admin-campaign-safety__list span {
+  font-size: 12px;
+  color: #6a5a40;
+}
+.admin-campaign-safety__note {
+  margin: 14px 0 0;
+  font-size: 11px;
+  color: #6a5a40;
+  font-style: italic;
+  line-height: 1.5;
+}

@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase'
 import { t, useLang, type Lang } from '@/lib/i18n'
 import Avatar from '@/components/Avatar'
 import AdminControlCenter from '@/components/AdminControlCenter'
+import AdminCampaignSafetyPlaceholder from '@/components/admin/AdminCampaignSafetyPlaceholder'
 
 type Role = 'user' | 'moderator' | 'admin' | 'super_admin'
 
@@ -1127,6 +1128,7 @@ export default function AdminPage() {
                 ))}
               </div>
             )}
+            <AdminCampaignSafetyPlaceholder />
           </div>
         )}
 

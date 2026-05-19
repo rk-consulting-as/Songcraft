@@ -66,6 +66,9 @@ export type CampaignCardData = PlaylistCampaign & {
   memberCount?: number
   approvedCount?: number
   pendingCount?: number
+  pendingProofCount?: number
+  approvedThisWeek?: number
+  membersNeedingAttention?: number
   artistName?: string | null
   isOwner?: boolean
   myMembership?: Pick<PlaylistCampaignMember, 'id' | 'status'> | null

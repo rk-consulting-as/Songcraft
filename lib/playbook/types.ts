@@ -55,6 +55,10 @@ export type PlaybookContext = {
   playlistCampaignCount: number
   joinedPlaylistCampaignCount: number
   hasPlaylistSpotifyUrl: boolean
+  activityProofSubmitCount: number
+  approvedActivityProofCount: number
+  hasCompletedCampaignWeek: boolean
+  hostedActiveCampaignCount: number
 }
 
 export type PlaybookTaskDef = {

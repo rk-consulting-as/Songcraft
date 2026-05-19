@@ -11,9 +11,11 @@ import {
   createCreatorPlaylist,
   fetchCampaigns,
   fetchCreatorPlaylists,
+  fetchParticipationSummary,
   fetchSpotifyPlaylistByUrl,
   requestJoinCampaign,
 } from '@/lib/playlistCommunities/client'
+import type { UserParticipationSummary } from '@/lib/playlistCommunities/participationSummary'
 import { buildCampaignInviteUrl } from '@/lib/playlistCommunities/serialize'
 import PlaylistCampaignCard from './PlaylistCampaignCard'
 import PlaylistCommunityDisclaimer from './PlaylistCommunityDisclaimer'
@@ -53,19 +55,28 @@ export default function ArtistWorkspacePlaylistCommunities({ artistId, artistNam
   const [campaignRules, setCampaignRules] = useState('')
   const [campaignVisibility, setCampaignVisibility] = useState<'private' | 'public'>('public')
   const [campaignStatus, setCampaignStatus] = useState<'draft' | 'open'>('open')
+  const [participationSummary, setParticipationSummary] = useState<UserParticipationSummary | null>(null)
 
   const refresh = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const [pl, owned, joined] = await Promise.all([
+      const [pl, owned, joined, part] = await Promise.all([
         fetchCreatorPlaylists(artistId),
         fetchCampaigns({ artistId, scope: 'owned' }),
         fetchCampaigns({ artistId, scope: 'joined' }),
+        fetchParticipationSummary(),
       ])
       setPlaylists(pl?.playlists || [])
-      setOwnedCampaigns((owned?.campaigns || []) as CampaignCardData[])
+      const stats = part?.summary?.campaignStats || {}
+      setOwnedCampaigns(
+        ((owned?.campaigns || []) as CampaignCardData[]).map(c => ({
+          ...c,
+          membersNeedingAttention: stats[c.id]?.membersNeedingAttention ?? c.membersNeedingAttention,
+        }))
+      )
       setJoinedCampaigns((joined?.campaigns || []) as CampaignCardData[])
+      setParticipationSummary(part?.summary || null)
       if (owned?.limits) setLimits(owned.limits)
 
       const res = await fetch('/api/discover/catalog')
@@ -219,6 +230,7 @@ export default function ArtistWorkspacePlaylistCommunities({ artistId, artistNam
           ownedCampaigns={ownedCampaigns}
           joinedCount={joinedCampaigns.length}
           artistId={artistId}
+          participationSummary={participationSummary}
         />
       )}
 

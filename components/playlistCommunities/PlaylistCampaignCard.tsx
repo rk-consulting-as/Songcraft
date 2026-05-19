@@ -58,6 +58,21 @@ export default function PlaylistCampaignCard({ campaign, accent = '#d4a843', onM
         )}
         <span>{tx.playlistCommunityMemberCount.replace('{n}', String(campaign.memberCount ?? 0))}</span>
         {atCapacity && <span className="playlist-campaign-card__full">{tx.playlistCampaignFull}</span>}
+        {(campaign.pendingProofCount ?? 0) > 0 && campaign.isOwner && (
+          <span className="playlist-campaign-card__proof-pending">
+            {tx.campaignCardPendingProofs.replace('{n}', String(campaign.pendingProofCount))}
+          </span>
+        )}
+        {(campaign.approvedThisWeek ?? 0) > 0 && (
+          <span className="playlist-campaign-card__proof-approved">
+            {tx.campaignCardApprovedWeek.replace('{n}', String(campaign.approvedThisWeek))}
+          </span>
+        )}
+        {(campaign.membersNeedingAttention ?? 0) > 0 && campaign.isOwner && (
+          <span className="playlist-campaign-card__proof-attention">
+            {tx.campaignCardNeedsAttention.replace('{n}', String(campaign.membersNeedingAttention))}
+          </span>
+        )}
       </div>
 
       {rules && <p className="playlist-campaign-card__rules">{rules}</p>}

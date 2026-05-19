@@ -110,5 +110,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  const { data: campaign } = await sb.from('playlist_campaigns').select('title, user_id').eq('id', params.id).maybeSingle()
+  if (campaign?.user_id) {
+    const { queueCampaignParticipationNotification } = await import('@/lib/notifications/campaignParticipation')
+    await queueCampaignParticipationNotification({
+      recipientUserId: campaign.user_id,
+      kind: 'activity_proof_review_needed',
+      payload: { campaign_id: params.id, campaign_title: campaign.title, activity_date: activityDate },
+    })
+  }
+
   return NextResponse.json({ log: data })
 }

@@ -48,6 +48,10 @@ export const PLAYBOOK_TASKS: PlaybookTaskDef[] = [
   { id: 'playlist_join_campaign', category: 'growth', checkId: 'has_joined_playlist_campaign', weight: 2, priority: 7, labelKey: 'playbookTaskPlaylistJoin', tags: ['growth'], href: () => '/discover' },
   { id: 'playlist_spotify_link', category: 'growth', checkId: 'has_playlist_with_spotify_url', weight: 2, priority: 8, labelKey: 'playbookTaskPlaylistSpotify', tags: ['growth'], href: ctx => artistHref(ctx, '#playlists') },
   { id: 'playlist_invite_creator', category: 'growth', checkId: 'has_invited_playlist_creator', weight: 1, priority: 9, labelKey: 'playbookTaskPlaylistInvite', tags: ['growth'], href: ctx => artistHref(ctx, '#playlists') },
+  { id: 'playlist_submit_proof', category: 'growth', checkId: 'has_submitted_activity_proof', weight: 2, priority: 4, labelKey: 'playbookTaskPlaylistSubmitProof', tags: ['growth'], href: () => '/discover' },
+  { id: 'playlist_approved_proof', category: 'growth', checkId: 'has_approved_activity_proof', weight: 2, priority: 3, labelKey: 'playbookTaskPlaylistApprovedProof', tags: ['growth'], href: () => '/discover' },
+  { id: 'playlist_complete_week', category: 'growth', checkId: 'has_completed_campaign_week', weight: 3, priority: 2, labelKey: 'playbookTaskPlaylistCompleteWeek', tags: ['growth'], href: () => '/discover' },
+  { id: 'playlist_host_active', category: 'growth', checkId: 'has_hosted_active_campaign', weight: 2, priority: 1, labelKey: 'playbookTaskPlaylistHostActive', tags: ['growth'], href: ctx => artistHref(ctx, '#playlists') },
 ]
 
 export const PLAYBOOK_MILESTONES: PlaybookMilestoneDef[] = [

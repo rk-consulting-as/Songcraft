@@ -118,6 +118,11 @@ export const PLAYBOOK_CHECKS: Record<string, PlaybookCheckFn> = {
   has_playlist_campaign: ctx => ctx.playlistCampaignCount > 0,
   has_joined_playlist_campaign: ctx => ctx.joinedPlaylistCampaignCount > 0,
   has_playlist_with_spotify_url: ctx => ctx.hasPlaylistSpotifyUrl,
+  has_submitted_activity_proof: ctx => ctx.activityProofSubmitCount > 0,
+  has_approved_activity_proof: ctx => ctx.approvedActivityProofCount > 0,
+  has_completed_campaign_week: ctx => ctx.hasCompletedCampaignWeek,
+  has_hosted_active_campaign: ctx =>
+    ctx.hostedActiveCampaignCount > 0 && ctx.playlistCampaignCount > 0,
   has_invited_playlist_creator: () => {
     if (typeof window === 'undefined') return false
     try {

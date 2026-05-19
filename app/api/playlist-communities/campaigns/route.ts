@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { getUserPlan } from '@/lib/subscription'
 import { requireUser } from '@/lib/playlistCommunities/apiAuth'
 import { getPlaylistCommunityLimits } from '@/lib/playlistCommunities/limits'
+import { getWeekDates } from '@/lib/playlistCommunities/participationBoard'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -25,6 +26,22 @@ async function attachCounts(sb: SupabaseClient, campaigns: Record<string, unknow
     if (m.status === 'requested') c.pending += 1
   }
 
+  const weekDates = getWeekDates()
+  const weekSet = new Set(weekDates)
+  const { data: activityLogs } = await sb
+    .from('campaign_activity_logs')
+    .select('campaign_id, status, activity_date')
+    .in('campaign_id', ids)
+
+  const proofStats: Record<string, { pending: number; approvedWeek: number }> = {}
+  for (const id of ids) proofStats[id] = { pending: 0, approvedWeek: 0 }
+  for (const log of activityLogs || []) {
+    const s = proofStats[log.campaign_id]
+    if (!s) continue
+    if (log.status === 'submitted' || log.status === 'pending') s.pending += 1
+    if (log.status === 'approved' && weekSet.has(log.activity_date)) s.approvedWeek += 1
+  }
+
   const playlistIds = Array.from(new Set(campaigns.map(c => c.playlist_id as string)))
   const { data: playlists } = await sb.from('creator_playlists').select('id, title, image_url, spotify_url, owner_name').in('id', playlistIds)
   const playlistMap = Object.fromEntries((playlists || []).map(p => [p.id, p]))
@@ -39,12 +56,15 @@ async function attachCounts(sb: SupabaseClient, campaigns: Record<string, unknow
   return campaigns.map(c => {
     const cc = counts[c.id as string] || { total: 0, approved: 0, pending: 0 }
     const pl = playlistMap[c.playlist_id as string]
+    const ps = proofStats[c.id as string] || { pending: 0, approvedWeek: 0 }
     return {
       ...c,
       playlist: pl,
       memberCount: cc.total,
       approvedCount: cc.approved,
       pendingCount: cc.pending,
+      pendingProofCount: ps.pending,
+      approvedThisWeek: ps.approvedWeek,
       artistName: c.artist_id ? artistMap[c.artist_id as string]?.name || null : null,
     }
   })
