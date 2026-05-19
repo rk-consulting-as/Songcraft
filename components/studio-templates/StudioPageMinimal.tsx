@@ -99,7 +99,7 @@ export default function StudioPageMinimal({
           textAlign: 'center', paddingTop: 40, borderTop: '1px solid rgba(180,140,80,0.08)',
           color: '#5a4a30', fontSize: 11, letterSpacing: 3,
         }}>
-          <Link href="/" style={{ color: '#5a4a30', textDecoration: 'none' }}>SONGCRAFT</Link>
+          <Link href="/" style={{ color: '#5a4a30', textDecoration: 'none' }}>VIATONE</Link>
         </footer>
       </div>
     </div>

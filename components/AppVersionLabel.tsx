@@ -4,7 +4,7 @@ export default function AppVersionLabel({ compact = false }: { compact?: boolean
 
   return (
     <span style={{ color: '#5a4a30', fontSize: compact ? 10 : 11, letterSpacing: 0.5 }}>
-      Songcraft v{version} · {build}
+      ViaTone v{version} · {build}
     </span>
   )
 }

@@ -1,4 +1,4 @@
-// Songcraft design tokens — same values as design/songcraft-design.css.
+// ViaTone design tokens — same values as design/songcraft-design.css.
 // Use this when you want the colors as JS/TS constants for React inline styles
 // or for Tailwind config in another project.
 //

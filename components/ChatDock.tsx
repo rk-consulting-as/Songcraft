@@ -464,7 +464,7 @@ export default function ChatDock() {
                     <Avatar value={otherProfile?.avatar_url} name={otherProfile?.display_name} seed={activeConvId || ''} size={28} />
                   )}
                   <div style={{ color: '#e8e0d0', fontSize: 13, fontWeight: 600 }}>
-                    {convMeta?.type === 'support' ? 'Songcraft Support' : convMeta?.title || otherProfile?.display_name || 'Conversation'}
+                    {convMeta?.type === 'support' ? 'ViaTone Support' : convMeta?.title || otherProfile?.display_name || 'Conversation'}
                   </div>
                 </div>
               )}

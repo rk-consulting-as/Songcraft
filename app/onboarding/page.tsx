@@ -382,7 +382,7 @@ export default function OnboardingPage() {
     <main style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0a0f 0%, #12071e 50%, #0a0f0a 100%)', color: '#e8e0d0', padding: 24 }}>
       <div style={{ maxWidth: 980, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 24, flexWrap: 'wrap' }}>
-          <Link href="/dashboard" style={{ color: '#d4a843', textDecoration: 'none', letterSpacing: 3, fontSize: 13 }}>SONGCRAFT</Link>
+          <Link href="/dashboard" style={{ color: '#d4a843', textDecoration: 'none', letterSpacing: 3, fontSize: 13 }}>VIATONE</Link>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn-outline" onClick={skipOnboarding}>{tx.onboardingSkip}</button>
             <button className="btn-outline" onClick={restart}>{tx.onboardingRestart}</button>
@@ -524,9 +524,9 @@ export default function OnboardingPage() {
               {publicPath && <QRCodeCard path={publicPath} title={tx.qrArtistHint} />}
               {songId && (
                 <div style={{ marginTop: 16 }}>
-                  <EmbedCodeGenerator songId={songId} title={songTitle || 'Songcraft'} canRemoveBranding={planId === 'pro'} />
+                  <EmbedCodeGenerator songId={songId} title={songTitle || 'ViaTone'} canRemoveBranding={planId === 'pro'} />
                   <div style={{ marginTop: 12, border: '1px solid rgba(180,140,80,0.18)', borderRadius: 14, overflow: 'hidden' }}>
-                    <iframe src={embedUrl} title="Songcraft embed preview" style={{ width: '100%', height: 420, border: 0, display: 'block' }} />
+                    <iframe src={embedUrl} title="ViaTone embed preview" style={{ width: '100%', height: 420, border: 0, display: 'block' }} />
                   </div>
                   {planId === 'free' && <UpgradePrompt compact title={tx.upgradeEmbedTitle} description={tx.upgradeEmbedDesc} />}
                 </div>

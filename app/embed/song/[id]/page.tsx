@@ -91,8 +91,8 @@ export default async function EmbedSongPage({
             )}
 
             {showBranding && (
-              <a href="https://songcraft.local" target="_blank" rel="noopener noreferrer" style={{ display: 'block', color: muted, textDecoration: 'none', fontSize: 11, marginTop: 12, textAlign: 'right' }}>
-                Powered by <span style={{ color: accent }}>Songcraft</span>
+              <a href="/" target="_blank" rel="noopener noreferrer" style={{ display: 'block', color: muted, textDecoration: 'none', fontSize: 11, marginTop: 12, textAlign: 'right' }}>
+                Powered by <span style={{ color: accent }}>ViaTone</span>
               </a>
             )}
           </div>

@@ -1,7 +1,7 @@
 {
-  "name": "Songcraft",
-  "short_name": "Songcraft",
-  "description": "AI Music Creation Studio for artists",
+  "name": "ViaTone",
+  "short_name": "ViaTone",
+  "description": "Online Artist Platform for music creation, release planning, promotion, fan growth and analytics",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",

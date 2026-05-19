@@ -223,7 +223,7 @@ export default function ArtistPageCinematic({
         fontSize: 12,
         letterSpacing: 1,
       }}>
-        <Link href="/" style={{ color: accent, textDecoration: 'none', letterSpacing: 3 }}>SONGCRAFT</Link>
+        <Link href="/" style={{ color: accent, textDecoration: 'none', letterSpacing: 3 }}>VIATONE</Link>
       </footer>
     </div>
   )

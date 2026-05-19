@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { BRAND_NAME } from '@/lib/brand'
 import ClientEmbedPlayer from '@/components/ClientEmbedPlayer'
 import ReactionBar from '@/components/ReactionBar'
 import CommentsThread from '@/components/CommentsThread'
@@ -41,16 +42,16 @@ async function fetchSong(songId: string) {
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   try {
     const song = await fetchSong(params.id)
-    if (!song) return { title: 'Songcraft — Song not found' }
+    if (!song) return { title: 'ViaTone — Song not found' }
     const cover = song.cover_image_url || song.spotify_cover_url
     return {
-      title: `${song.title} · ${song.artists?.name || 'Songcraft'}`,
-      description: `Listen to ${song.title} by ${song.artists?.name || 'this artist'} on Songcraft.`,
-      openGraph: { title: song.title, images: cover ? [cover] : [] },
+      title: `${song.title} · ${song.artists?.name || 'ViaTone'}`,
+      description: `Listen to ${song.title} by ${song.artists?.name || 'this artist'} on ViaTone.`,
+      openGraph: { siteName: BRAND_NAME, title: song.title, images: cover ? [cover] : [] },
       twitter: { card: cover ? 'summary_large_image' : 'summary', title: song.title, images: cover ? [cover] : [] },
     }
   } catch {
-    return { title: 'Songcraft' }
+    return { title: 'ViaTone' }
   }
 }
 
@@ -83,7 +84,7 @@ export default async function PublicSongPage({ params }: { params: { id: string 
         ) : (
           <Link href="/discover" style={{ color: '#6a5a40', textDecoration: 'none', fontSize: 13 }}>← Discover</Link>
         )}
-        <Link href="/" style={{ color: accent, textDecoration: 'none', fontSize: 14, letterSpacing: 2 }}>SONGCRAFT</Link>
+        <Link href="/" style={{ color: accent, textDecoration: 'none', fontSize: 14, letterSpacing: 2 }}>VIATONE</Link>
         <Link href="/login" style={{ color: '#8a7a60', textDecoration: 'none', fontSize: 13 }}>Sign in</Link>
       </div>
 
@@ -168,7 +169,7 @@ export default async function PublicSongPage({ params }: { params: { id: string 
           <ShareButtons
             url={`/s/${song.id}`}
             title={`${song.title} · ${artist.name}`}
-            text={`Listen to "${song.title}" by ${artist.name} on Songcraft`}
+            text={`Listen to "${song.title}" by ${artist.name} on ViaTone`}
           />
         </div>
 

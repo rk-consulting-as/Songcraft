@@ -1,8 +1,8 @@
-# Songcraft
+# ViaTone
 
-**AI Music Creation Platform** — a writing studio for songwriters, producers and managers, with built-in Spotify and Suno integration and publishable public landing pages for both individual artists and the studio/management company itself.
+**Online Artist Platform** — create, release, promote and grow your music. Built for artists, producers and managers, with Spotify and Suno integration and publishable landing pages for artists and studios.
 
-Songcraft helps you go from blank page to released track:
+ViaTone helps you go from blank page to released track:
 **lyrics → Suno prompt → cover image → captions → press release → published landing page.**
 
 Live: <https://songcraft-lilac.vercel.app>
@@ -14,7 +14,7 @@ Live: <https://songcraft-lilac.vercel.app>
 - [What it does](#what-it-does)
 - [Tech stack](#tech-stack)
 - [Public pages — for sharing & embedding](#public-pages--for-sharing--embedding)
-- [Linking Songcraft from another site](#linking-songcraft-from-another-site)
+- [Linking ViaTone from another site](#linking-viatone-from-another-site)
 - [Local setup](#local-setup)
 - [Environment variables](#environment-variables)
 - [Data model](#data-model)
@@ -35,21 +35,21 @@ Live: <https://songcraft-lilac.vercel.app>
 - **Suno track import** — paste a finished Suno song link, we fetch metadata (cover, audio URL, tags) and attach it to the song. Audio plays inline.
 - **Captions** — per-platform (TikTok, Instagram, Facebook, YouTube, X) with platform-specific rules + your own custom rules.
 - **Cover image** — write a prompt manually or let AI generate one, then create the image with OpenAI `gpt-image-1`. Saves to Supabase Storage.
-- **Canvas (short video loop)** — Spotify-Canvas-style 3–10 second video clips. Generate with AI via fal.ai (Seedance Pro) directly inside Songcraft, or upload a video you made elsewhere (e.g. artlist.io). Stored in Supabase Storage. Aspect ratio + duration configurable per generation.
+- **Canvas (short video loop)** — Spotify-Canvas-style 3–10 second video clips. Generate with AI via fal.ai (Seedance Pro) directly inside ViaTone, or upload a video you made elsewhere (e.g. artlist.io). Stored in Supabase Storage. Aspect ratio + duration configurable per generation.
 - **Publish** — auto-generates WordPress post, Facebook post, Instagram post, press release.
 
 ### Catalogue management
 
 - **Artists** with Spotify search + verification, social links (YouTube, Instagram, TikTok, …), and an artist roster.
 - **Albums** with cover image (manual upload, AI generation, or fetched from a Spotify album link). Songs can be assigned to one album.
-- **Spotify import** — bring released tracks into Songcraft via top-tracks list, search fallback, or a single Spotify track URL. Stores cover, popularity, release date, ISRC.
+- **Spotify import** — bring released tracks into ViaTone via top-tracks list, search fallback, or a single Spotify track URL. Stores cover, popularity, release date, ISRC.
 - **Status tracking** — Draft / In progress / Complete / Released, plus filtering and search.
 - **Drag & drop reorder** + up/down buttons on every song.
 
 ### Public landing pages
 
 - **`/p/{slug}` — Artist page**: hero, social buttons, Spotify embed, featured YouTube videos, albums, tracks list with audio. Configurable per artist; off by default.
-- **`/studio/{slug}` — Studio / manager page**: hero, markdown bio, services, featured projects, artist roster (each with mini playlist of starred songs), contact form, social links. One per Songcraft account.
+- **`/studio/{slug}` — Studio / manager page**: hero, markdown bio, services, featured projects, artist roster (each with mini playlist of starred songs), contact form, social links. One per ViaTone account.
 - Both pages support **custom favicons**, **accent colors**, OG/Twitter meta tags for sharing.
 
 ### AI provider switching
@@ -79,23 +79,23 @@ Per-call toggle (Claude / GPT) on every AI button. Default Anthropic; OpenAI for
 
 ### Artist page — `/p/{slug}`
 
-Each artist can opt-in to a public landing page from the artist edit modal in Songcraft:
+Each artist can opt-in to a public landing page from the artist edit modal in ViaTone:
 
 - Slug auto-generated from artist name (editable, must be unique)
 - Toggle visibility per section (hero, social links, bio, Spotify embed, YouTube videos, albums, songs)
 - Featured YouTube videos (paste links, one per line)
 - Custom favicon
-- Public link from the artist's detail page in Songcraft
+- Public link from the artist's detail page in ViaTone
 
 ### Studio / manager page — `/studio/{slug}`
 
-One per Songcraft account, edited at `/studio-settings`. Includes:
+One per ViaTone account, edited at `/studio-settings`. Includes:
 
 - Hero with name, tagline, background image, accent color, custom favicon
 - Markdown bio with live preview
 - Services list
 - Featured projects (manual cards: title, description, image, link)
-- Artist roster — pick which of your Songcraft artists to feature, each with its own **mini playlist** of songs you've starred
+- Artist roster — pick which of your ViaTone artists to feature, each with its own **mini playlist** of songs you've starred
 - Contact form (saved to inbox, optionally forwarded to email via Resend)
 - Social links (Spotify, YouTube, Instagram, TikTok, LinkedIn, website)
 
@@ -103,9 +103,9 @@ The starred-songs playlist is populated by clicking the ★ next to any song in 
 
 ---
 
-## Linking Songcraft from another site
+## Linking ViaTone from another site
 
-If you already run a website (`yoursite.com`) and want to point visitors to Songcraft pages:
+If you already run a website (`yoursite.com`) and want to point visitors to ViaTone pages:
 
 ### Direct links
 
@@ -132,7 +132,7 @@ You can embed an artist or studio page inside an `<iframe>`:
 ></iframe>
 ```
 
-For a more native feel, link to the Spotify/YouTube embeds directly using IDs you can also see in Songcraft data.
+For a more native feel, link to the Spotify/YouTube embeds directly using IDs you can also see in ViaTone data.
 
 ### Future: custom domain mapping
 
@@ -142,7 +142,7 @@ When the paid tier launches, you'll be able to map `youstudio.com` → `/studio/
 
 Common patterns:
 
-- From your blog post → individual song page only externally via Spotify/Suno; songs themselves are private inside Songcraft.
+- From your blog post → individual song page only externally via Spotify/Suno; songs themselves are private inside ViaTone.
 - From your "Roster"-page → `/studio/{slug}` (full roster + contact form).
 - From "Press"-page → individual artist `/p/{slug}` with bio + tracks + social.
 
@@ -184,7 +184,7 @@ SPOTIFY_CLIENT_SECRET=...
 
 # Optional: Resend for studio contact form forwarding
 # RESEND_API_KEY=re_...
-# RESEND_FROM=Songcraft <onboarding@resend.dev>
+# RESEND_FROM=ViaTone <onboarding@resend.dev>
 ```
 
 See [Environment variables](#environment-variables) below for details on each.
@@ -210,7 +210,7 @@ Open <http://localhost:3000>, sign up, start creating.
 | `SPOTIFY_CLIENT_ID`               | Optional | All Spotify routes                           | Required for artist/track import. [developer.spotify.com](https://developer.spotify.com/dashboard) |
 | `SPOTIFY_CLIENT_SECRET`           | Optional | All Spotify routes                           | Pair with above |
 | `RESEND_API_KEY`                  | Optional | `/api/studio/contact`                        | If set, contact form submissions are emailed to the studio's `contact_email`. Otherwise saved to DB only. [resend.com](https://resend.com) |
-| `RESEND_FROM`                     | Optional | `/api/studio/contact`                        | Default `Songcraft <onboarding@resend.dev>`. Use a verified domain in production. |
+| `RESEND_FROM`                     | Optional | `/api/studio/contact`                        | Default `ViaTone <onboarding@resend.dev>`. Use a verified domain in production. |
 | `FAL_KEY`                         | Optional | `/api/canvas/*`                              | Required for inline AI video generation (Spotify Canvas). [fal.ai](https://fal.ai) — ~$0.10–0.30 per video. |
 | `FAL_VIDEO_MODEL`                 | Optional | `/api/canvas/generate`                       | Override the default Seedance model path. Defaults to `fal-ai/bytedance/seedance-1-pro/text-to-video`. |
 
@@ -344,7 +344,7 @@ With Resend: same as above, plus emails arrive at the studio `contact_email` (Re
 Schema and architecture are designed to support a paid tier without invasive refactors:
 
 - **Custom domain mapping** — `yourstudio.com` → `/studio/{slug}` via Vercel + middleware
-- **White-label mode** — hide "Powered by Songcraft" footer on public pages
+- **White-label mode** — hide "Powered by ViaTone" footer on public pages
 - **Featured-songs cap** — free tier = N tracks per artist on studio page; pro = unlimited
 - **Project / artist limits** — gate roster size on free tier
 - **Analytics** — page views, contact-form conversion, top tracks

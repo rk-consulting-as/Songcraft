@@ -175,7 +175,7 @@ export default function ArtistPageMinimal({
           fontSize: 11,
           letterSpacing: 2,
         }}>
-          <Link href="/" style={{ color: '#5a4a30', textDecoration: 'none' }}>SONGCRAFT</Link>
+          <Link href="/" style={{ color: '#5a4a30', textDecoration: 'none' }}>VIATONE</Link>
         </footer>
       </div>
     </div>

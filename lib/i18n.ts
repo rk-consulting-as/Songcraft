@@ -35,7 +35,7 @@ export const t = {
     newUser: 'Ny bruker?',
     hasAccount: 'Har du allerede konto?',
     confirmEmail: 'Sjekk e-posten din for å bekrefte kontoen!',
-    loginSubtitle: 'AI MUSIC STUDIO',
+    loginSubtitle: 'ONLINE ARTIST PLATFORM',
 
     // Dashboard
     dashboard: 'Dashboard',
@@ -139,7 +139,7 @@ export const t = {
     mobileCopyShareLink: 'Kopier delingslenke',
     mobileCreateArtist: 'Ny artist',
     betaBannerTitle: 'Beta/testmodus',
-    betaBannerDesc: 'Songcraft er i beta. Test trygt og send feedback underveis.',
+    betaBannerDesc: 'ViaTone er i beta. Test trygt og send feedback underveis.',
     betaChecklistTitle: 'Beta-sjekkliste',
     betaChecklistArtist: 'Opprett artist',
     betaChecklistSong: 'Opprett låt',
@@ -319,7 +319,7 @@ export const t = {
     billingFeatureAdvancedTemplates: 'Avanserte public templates',
     billingFeatureEmbedWidget: 'Embed-widget',
     billingFeatureCustomBranding: 'Custom branding',
-    billingFeatureRemoveBranding: 'Fjern Songcraft-branding',
+    billingFeatureRemoveBranding: 'Fjern ViaTone-branding',
     upgradeSoftTitle: 'Pro-funksjon',
     upgradeSoftDesc: 'Du kan teste videre, men Pro åpner høyere grenser og avanserte vekstverktøy.',
     upgradeSoftCta: 'Se Pro',
@@ -337,7 +337,7 @@ export const t = {
     embedThemeLight: 'Lys stil',
     embedWidth: 'Bredde',
     embedHeight: 'Høyde',
-    embedRemoveBranding: 'Fjern Songcraft-branding',
+    embedRemoveBranding: 'Fjern ViaTone-branding',
     embedCopyCode: 'Kopier embed-kode',
     embedPreview: 'Forhåndsvis embed',
     embedViews: 'Embed-visninger',
@@ -366,7 +366,7 @@ export const t = {
     epkPreviewTitle: 'EPK-preview',
     epkPublishPublic: 'Publiser offentlig EPK-side',
     onboardingEyebrow: 'Kom i gang',
-    onboardingTitle: 'Sett opp Songcraft på noen minutter',
+    onboardingTitle: 'Sett opp ViaTone på noen minutter',
     onboardingSubtitle: 'Lag din første artist, første låt, offentlige side og delbare lenker uten å åpne hele editoren.',
     onboardingStepLanguage: 'Språk',
     onboardingStepArtist: 'Artist',
@@ -381,7 +381,7 @@ export const t = {
     onboardingArtistTitle: 'Opprett din første artist',
     onboardingArtistDesc: 'Start med navnet. Resten kan forbedres i artist-editoren etterpå.',
     onboardingGenreTitle: 'Velg sjanger eller stil',
-    onboardingGenreDesc: 'Dette hjelper Songcraft å skrive et første tekst- og promptutkast.',
+    onboardingGenreDesc: 'Dette hjelper ViaTone å skrive et første tekst- og promptutkast.',
     onboardingSongTitle: 'Gi første låt en tittel',
     onboardingSongDesc: 'Du trenger bare en arbeidstittel nå.',
     onboardingDraftTitle: 'Generer et første utkast',
@@ -430,7 +430,7 @@ export const t = {
     studioFavicon: 'Favicon (nettleserikon)',
     studioFaviconUpload: 'Last opp favicon',
     studioFaviconRemove: 'Fjern',
-    studioFaviconHint: 'Vises i nettleserfanen — både på /studio/{slug} og når du selv er logget inn i Songcraft. Anbefalt: 32×32 eller 64×64 PNG.',
+    studioFaviconHint: 'Vises i nettleserfanen — både på /studio/{slug} og når du selv er logget inn i ViaTone. Anbefalt: 32×32 eller 64×64 PNG.',
     studioSectionHero: 'Hero',
     studioSectionBio: 'Om oss',
     studioBioHint: 'Markdown støttes: **fet**, *kursiv*, # header, [lenke](url), - liste',
@@ -758,7 +758,7 @@ export const t = {
     referralsSourceRedemption: 'Innløsning',
     referralsUplineTitle: 'Din verver',
     referralsUplineDesc: 'Verver-kode',
-    referralsNoUpline: 'Du har ingen verver — du fant Songcraft på egen hånd.',
+    referralsNoUpline: 'Du har ingen verver — du fant ViaTone på egen hånd.',
 
     // Login page — referral banner
     loginReferredByTitle: 'Du er invitert',
@@ -902,7 +902,7 @@ export const t = {
 
     // Spotify claim collision (when verifying ownership)
     spotifyClaimConflictTitle: 'Denne artisten er allerede claimet',
-    spotifyClaimConflictBody: 'Artisten "{name}" er allerede knyttet til Songcraft-brukeren {claimant}. Du kan ikke claime samme Spotify-artist to ganger. Hvis dette er feil, må du be om at eierskapet overføres til riktig bruker.',
+    spotifyClaimConflictBody: 'Artisten "{name}" er allerede knyttet til ViaTone-brukeren {claimant}. Du kan ikke claime samme Spotify-artist to ganger. Hvis dette er feil, må du be om at eierskapet overføres til riktig bruker.',
     spotifyClaimArtist: 'Artist',
     spotifyClaimedBy: 'Eid av',
     spotifyClaimedAt: 'Claimet dato',
@@ -910,7 +910,7 @@ export const t = {
 
     // Creator profile (Nordic catalog) — profile page section
     profileSectionCreator: 'Skaper-profil',
-    profileCreatorIntro: 'Synes på Songcraft sin oppdagelse-side så andre i miljøet kan finne deg. Alt er valgfritt.',
+    profileCreatorIntro: 'Bli synlig i ViaTone slik at andre i miljøet kan finne deg. Alt er valgfritt.',
     profileFieldRoles: 'Hva gjør du? (flere kan velges)',
     profileFieldLocation: 'Sted',
     profilePlaceholderLocation: 'F.eks. Bergen, Oslo, Stockholm',
@@ -946,7 +946,7 @@ export const t = {
     // Discover page
     discoverNavLink: 'Oppdag',
     discoverTitle: 'Finn skapere i Norden',
-    discoverSubtitle: 'Bla gjennom artister, produsenter og låtskrivere på Songcraft. Filtrer etter rolle, språk eller sted.',
+    discoverSubtitle: 'Bla gjennom artister, produsenter og låtskrivere på ViaTone. Filtrer etter rolle, språk eller sted.',
     discoverSearchPlaceholder: 'Søk navn, bio eller sted...',
     discoverFilterRoles: 'Rolle',
     discoverFilterLangs: 'Språk',
@@ -962,7 +962,7 @@ export const t = {
     feedNavLink: 'Feed',
     feedTitle: 'Aktivitet',
     feedTabFollowing: 'Personer jeg følger',
-    feedTabEveryone: 'Hele Songcraft',
+    feedTabEveryone: 'Hele ViaTone',
     feedEmpty: 'Ingen aktivitet ennå.',
     feedEmptyFollowingTitle: 'Følg noen for å fylle feeden din',
     feedEmptyFollowingDesc: 'Når du følger andre skapere ser du her hva de slipper og publiserer.',
@@ -998,7 +998,7 @@ export const t = {
 
     // Charts page
     chartsNavLink: 'Topplister',
-    chartsTitle: 'Topp-listene på Songcraft',
+    chartsTitle: 'Topp-listene på ViaTone',
     chartsSubtitle: 'De mest spilte sangene i nettverket. Klikk for å lytte og opptjene poeng.',
     chartsThisWeek: 'Denne uka',
     chartsAllTime: 'Tidenes',
@@ -1132,7 +1132,7 @@ export const t = {
 
     // Distribution / publish to streaming
     distributePublishTitle: 'Publiser til Spotify, Apple Music, YouTube Music + 100+ plattformer',
-    distributePublishDesc: 'Songcraft har samlet sangmetadata. Vi sender deg videre til DistroKid for selve opplastningen.',
+    distributePublishDesc: 'ViaTone har samlet sangmetadata. Vi sender deg videre til DistroKid for selve opplastningen.',
     distributePublishCta: 'Publiser',
     distributeAlreadyExported: 'Allerede eksportert til',
     distributionTab: 'Distribusjon',
@@ -1141,7 +1141,7 @@ export const t = {
     distributionReadiness: 'Distribusjonsscore',
     distributionMetadata: 'Release-metadata',
     distributionDistributorPanel: 'Distributør',
-    distributionDistributorHint: 'Dette er bare en forberedelsesliste. Songcraft sender ikke noe direkte til distributøren.',
+    distributionDistributorHint: 'Dette er bare en forberedelsesliste. ViaTone sender ikke noe direkte til distributøren.',
     distributionDistributor: 'Distributør',
     distributionStatus: 'Status',
     distributionStatusSetup: 'Må settes opp',
@@ -1199,7 +1199,7 @@ export const t = {
 
     // Admin affiliate analytics
     adminAffiliateTitle: 'Affiliate-statistikk',
-    adminAffiliateDesc: 'Klikk gjennom Songcraft til DistroKid. Estimat baseres på $7 per signup-konvertering.',
+    adminAffiliateDesc: 'Klikk gjennom ViaTone til DistroKid. Estimat baseres på $7 per signup-konvertering.',
     adminAffiliateTotal: 'Klikk totalt',
     adminAffiliateLast30d: 'Siste 30 dager',
     adminAffiliateUnique: 'Unike brukere',
@@ -1211,7 +1211,7 @@ export const t = {
 
     // Salesy login page
     loginHeroTitle: 'Lag musikk. Bygg publikum. Publiser overalt.',
-    loginHeroSubtitle: 'Songcraft samler AI-musikkproduksjon, distribusjon og det nordiske kreatør-miljøet i én plattform.',
+    loginHeroSubtitle: 'ViaTone er en online artist-plattform for musikkproduksjon, release, promoter, fan growth og analytics.',
     loginLoginSubtitle: 'Velkommen tilbake — logg inn for å fortsette.',
     loginSignupSubtitle: 'Bli en del av det nordiske skaper-miljøet.',
     loginFeatLyricsTitle: 'AI-drevet sangtekst + Suno',
@@ -1274,7 +1274,7 @@ export const t = {
     newUser: 'New user?',
     hasAccount: 'Already have an account?',
     confirmEmail: 'Check your email to confirm your account!',
-    loginSubtitle: 'AI MUSIC STUDIO',
+    loginSubtitle: 'ONLINE ARTIST PLATFORM',
 
     // Dashboard
     dashboard: 'Dashboard',
@@ -1378,7 +1378,7 @@ export const t = {
     mobileCopyShareLink: 'Copy share link',
     mobileCreateArtist: 'New artist',
     betaBannerTitle: 'Beta/test mode',
-    betaBannerDesc: 'Songcraft is in beta. Test safely and send feedback as you go.',
+    betaBannerDesc: 'ViaTone is in beta. Test safely and send feedback as you go.',
     betaChecklistTitle: 'Beta checklist',
     betaChecklistArtist: 'Create artist',
     betaChecklistSong: 'Create song',
@@ -1558,7 +1558,7 @@ export const t = {
     billingFeatureAdvancedTemplates: 'Advanced public templates',
     billingFeatureEmbedWidget: 'Embed widget',
     billingFeatureCustomBranding: 'Custom branding',
-    billingFeatureRemoveBranding: 'Remove Songcraft branding',
+    billingFeatureRemoveBranding: 'Remove ViaTone branding',
     upgradeSoftTitle: 'Pro feature',
     upgradeSoftDesc: 'You can keep testing, but Pro unlocks higher limits and advanced growth tools.',
     upgradeSoftCta: 'See Pro',
@@ -1576,7 +1576,7 @@ export const t = {
     embedThemeLight: 'Light style',
     embedWidth: 'Width',
     embedHeight: 'Height',
-    embedRemoveBranding: 'Remove Songcraft branding',
+    embedRemoveBranding: 'Remove ViaTone branding',
     embedCopyCode: 'Copy embed code',
     embedPreview: 'Preview embed',
     embedViews: 'Embed views',
@@ -1605,7 +1605,7 @@ export const t = {
     epkPreviewTitle: 'EPK preview',
     epkPublishPublic: 'Publish public EPK page',
     onboardingEyebrow: 'Get started',
-    onboardingTitle: 'Set up Songcraft in a few minutes',
+    onboardingTitle: 'Set up ViaTone in a few minutes',
     onboardingSubtitle: 'Create your first artist, first song, public page, and shareable links without opening the full editor.',
     onboardingStepLanguage: 'Language',
     onboardingStepArtist: 'Artist',
@@ -1620,7 +1620,7 @@ export const t = {
     onboardingArtistTitle: 'Create your first artist',
     onboardingArtistDesc: 'Start with the name. You can improve everything in the artist editor later.',
     onboardingGenreTitle: 'Choose genre or style',
-    onboardingGenreDesc: 'This helps Songcraft write a first lyric and prompt draft.',
+    onboardingGenreDesc: 'This helps ViaTone write a first lyric and prompt draft.',
     onboardingSongTitle: 'Give your first song a title',
     onboardingSongDesc: 'You only need a working title for now.',
     onboardingDraftTitle: 'Generate a first draft',
@@ -1669,7 +1669,7 @@ export const t = {
     studioFavicon: 'Favicon (browser icon)',
     studioFaviconUpload: 'Upload favicon',
     studioFaviconRemove: 'Remove',
-    studioFaviconHint: 'Shows in the browser tab — both on /studio/{slug} and when you yourself are logged into Songcraft. Recommended: 32×32 or 64×64 PNG.',
+    studioFaviconHint: 'Shows in the browser tab — both on /studio/{slug} and when you yourself are logged into ViaTone. Recommended: 32×32 or 64×64 PNG.',
     studioSectionHero: 'Hero',
     studioSectionBio: 'About',
     studioBioHint: 'Markdown supported: **bold**, *italic*, # header, [link](url), - list',
@@ -1997,7 +1997,7 @@ export const t = {
     referralsSourceRedemption: 'Redemption',
     referralsUplineTitle: 'Your referrer',
     referralsUplineDesc: 'Referrer code',
-    referralsNoUpline: 'You have no referrer — you found Songcraft on your own.',
+    referralsNoUpline: 'You have no referrer — you found ViaTone on your own.',
 
     // Login page — referral banner
     loginReferredByTitle: 'You were invited',
@@ -2141,7 +2141,7 @@ export const t = {
 
     // Spotify claim collision (when verifying ownership)
     spotifyClaimConflictTitle: 'This artist is already claimed',
-    spotifyClaimConflictBody: 'The artist "{name}" is already linked to Songcraft user {claimant}. The same Spotify artist cannot be claimed twice. If this is an error, the ownership must be transferred to the correct user.',
+    spotifyClaimConflictBody: 'The artist "{name}" is already linked to ViaTone user {claimant}. The same Spotify artist cannot be claimed twice. If this is an error, the ownership must be transferred to the correct user.',
     spotifyClaimArtist: 'Artist',
     spotifyClaimedBy: 'Owned by',
     spotifyClaimedAt: 'Claimed on',
@@ -2149,7 +2149,7 @@ export const t = {
 
     // Creator profile (Nordic catalog) — profile page section
     profileSectionCreator: 'Creator profile',
-    profileCreatorIntro: 'Show up on the Songcraft discovery page so others in the community can find you. Everything is optional.',
+    profileCreatorIntro: 'Show up on the ViaTone discovery page so others in the community can find you. Everything is optional.',
     profileFieldRoles: 'What do you do? (multi-select)',
     profileFieldLocation: 'Location',
     profilePlaceholderLocation: 'E.g. Bergen, Oslo, Stockholm',
@@ -2185,7 +2185,7 @@ export const t = {
     // Discover page
     discoverNavLink: 'Discover',
     discoverTitle: 'Find creators in the Nordics',
-    discoverSubtitle: 'Browse artists, producers and songwriters on Songcraft. Filter by role, language or location.',
+    discoverSubtitle: 'Browse artists, producers and songwriters on ViaTone. Filter by role, language or location.',
     discoverSearchPlaceholder: 'Search name, bio or location...',
     discoverFilterRoles: 'Role',
     discoverFilterLangs: 'Languages',
@@ -2201,7 +2201,7 @@ export const t = {
     feedNavLink: 'Feed',
     feedTitle: 'Activity',
     feedTabFollowing: 'People you follow',
-    feedTabEveryone: 'All of Songcraft',
+    feedTabEveryone: 'All of ViaTone',
     feedEmpty: 'No activity yet.',
     feedEmptyFollowingTitle: 'Follow someone to fill your feed',
     feedEmptyFollowingDesc: "Once you follow other creators, you'll see what they release and publish here.",
@@ -2237,7 +2237,7 @@ export const t = {
 
     // Charts page
     chartsNavLink: 'Charts',
-    chartsTitle: 'The Songcraft charts',
+    chartsTitle: 'The ViaTone charts',
     chartsSubtitle: 'The most-played songs in the network. Click to listen and earn points.',
     chartsThisWeek: 'This week',
     chartsAllTime: 'All time',
@@ -2371,7 +2371,7 @@ export const t = {
 
     // Distribution / publish to streaming
     distributePublishTitle: 'Publish to Spotify, Apple Music, YouTube Music + 100+ platforms',
-    distributePublishDesc: "Songcraft has gathered the song metadata. We'll send you to DistroKid for the actual upload.",
+    distributePublishDesc: "ViaTone has gathered the song metadata. We'll send you to DistroKid for the actual upload.",
     distributePublishCta: 'Publish',
     distributeAlreadyExported: 'Already exported to',
     distributionTab: 'Distribution',
@@ -2380,7 +2380,7 @@ export const t = {
     distributionReadiness: 'Distribution score',
     distributionMetadata: 'Release metadata',
     distributionDistributorPanel: 'Distributor',
-    distributionDistributorHint: 'This is preparation only. Songcraft does not submit anything directly to distributors.',
+    distributionDistributorHint: 'This is preparation only. ViaTone does not submit anything directly to distributors.',
     distributionDistributor: 'Distributor',
     distributionStatus: 'Status',
     distributionStatusSetup: 'Needs setup',
@@ -2438,7 +2438,7 @@ export const t = {
 
     // Admin affiliate analytics
     adminAffiliateTitle: 'Affiliate stats',
-    adminAffiliateDesc: 'Clicks through from Songcraft to DistroKid. Estimate is based on $7 per signup conversion.',
+    adminAffiliateDesc: 'Clicks through from ViaTone to DistroKid. Estimate is based on $7 per signup conversion.',
     adminAffiliateTotal: 'Total clicks',
     adminAffiliateLast30d: 'Last 30 days',
     adminAffiliateUnique: 'Unique users',
@@ -2450,7 +2450,7 @@ export const t = {
 
     // Salesy login page
     loginHeroTitle: 'Make music. Build an audience. Publish everywhere.',
-    loginHeroSubtitle: 'Songcraft brings AI music production, distribution, and the Nordic creator community into one platform.',
+    loginHeroSubtitle: 'Create, release, promote and grow your music. ViaTone is an online artist platform for creation, releases, fan pages, campaigns and analytics.',
     loginLoginSubtitle: 'Welcome back — sign in to continue.',
     loginSignupSubtitle: 'Join the Nordic creator community.',
     loginFeatLyricsTitle: 'AI-powered lyrics + Suno',

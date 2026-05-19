@@ -4,7 +4,7 @@
 import { createClient } from '@supabase/supabase-js'
 
 const RESEND_KEY = process.env.RESEND_API_KEY || ''
-const FROM = process.env.RESEND_FROM || 'Songcraft <onboarding@resend.dev>'
+const FROM = process.env.RESEND_FROM || 'ViaTone <onboarding@resend.dev>'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://songcraft-lilac.vercel.app'
 
 export type NotificationKind =
@@ -45,7 +45,7 @@ function shell(title: string, bodyHtml: string, ctaUrl: string, ctaText: string,
     <tr><td align="center">
       <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="background:#14101a;border:1px solid rgba(212,168,67,0.25);border-radius:8px;max-width:560px;width:100%;">
         <tr><td style="padding:24px 28px 14px;border-bottom:1px solid rgba(212,168,67,0.15);">
-          <a href="${APP_URL}" style="text-decoration:none;color:${ACCENT};font-size:18px;letter-spacing:3px;font-weight:300;">🎼 SONGCRAFT</a>
+          <a href="${APP_URL}" style="text-decoration:none;color:${ACCENT};font-size:18px;letter-spacing:3px;font-weight:300;">🎼 VIATONE</a>
         </td></tr>
         <tr><td style="padding:26px 28px 12px;">
           <h1 style="margin:0 0 14px;color:${TEXT_BRIGHT};font-size:20px;font-weight:600;">${escapeHtml(title)}</h1>
@@ -55,7 +55,7 @@ function shell(title: string, bodyHtml: string, ctaUrl: string, ctaText: string,
           <a href="${ctaUrl}" style="display:inline-block;background:${ACCENT};color:#0a0a0f;text-decoration:none;padding:10px 22px;border-radius:6px;font-weight:600;font-size:14px;">${escapeHtml(ctaText)}</a>
         </td></tr>
         <tr><td style="padding:18px 28px 24px;border-top:1px solid rgba(180,140,80,0.12);color:${TEXT_MUTED};font-size:11px;">
-          You are receiving this because your notification settings on Songcraft allow it.
+          You are receiving this because your notification settings on ViaTone allow it.
           <a href="${unsubscribeUrl}" style="color:${TEXT_MUTED};">Update preferences</a>.
         </td></tr>
       </table>
@@ -91,7 +91,7 @@ function buildEmail({ kind, payload, recipientName }: BuildArgs): { subject: str
       const convId = payload?.conversation_id
       const ctaUrl = convId ? `${APP_URL}/messages/${convId}` : `${APP_URL}/messages`
       return {
-        subject: `New message from ${senderName} on Songcraft`,
+        subject: `New message from ${senderName} on ViaTone`,
         ctaText: 'Open conversation',
         ctaUrl,
         html: shell(
@@ -108,13 +108,13 @@ function buildEmail({ kind, payload, recipientName }: BuildArgs): { subject: str
       const followerCode = payload?.follower_code || ''
       const ctaUrl = followerCode ? `${APP_URL}/u/${followerCode}` : `${APP_URL}/discover`
       return {
-        subject: `${followerName} started following you on Songcraft`,
+        subject: `${followerName} started following you on ViaTone`,
         ctaText: 'View their profile',
         ctaUrl,
         html: shell(
           `${followerName} is now following you`,
           `<p style="color:${TEXT_MUTED};font-size:14px;line-height:1.5;">${greeting}</p>
-           <p style="color:${TEXT_BRIGHT};font-size:14px;line-height:1.5;"><strong>${escapeHtml(followerName)}</strong> just started following your work on Songcraft.</p>`,
+           <p style="color:${TEXT_BRIGHT};font-size:14px;line-height:1.5;"><strong>${escapeHtml(followerName)}</strong> just started following your work on ViaTone.</p>`,
           ctaUrl, 'View their profile', prefsUrl
         ),
       }
@@ -125,7 +125,7 @@ function buildEmail({ kind, payload, recipientName }: BuildArgs): { subject: str
       const level = payload?.level || 1
       const ctaUrl = `${APP_URL}/referrals`
       return {
-        subject: `${newUserName} joined Songcraft via your link · +${points} pts`,
+        subject: `${newUserName} joined ViaTone via your link · +${points} pts`,
         ctaText: 'See your referrals',
         ctaUrl,
         html: shell(
@@ -161,7 +161,7 @@ function buildEmail({ kind, payload, recipientName }: BuildArgs): { subject: str
       const tierEmoji = ({ bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎' } as any)[tier] || '🏆'
       const ctaUrl = `${APP_URL}/referrals`
       return {
-        subject: `${tierEmoji} You reached ${tierLabel} on Songcraft`,
+        subject: `${tierEmoji} You reached ${tierLabel} on ViaTone`,
         ctaText: 'See your badges',
         ctaUrl,
         html: shell(

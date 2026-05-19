@@ -212,7 +212,7 @@ export default function StudioPageMagazine({
         letterSpacing: 4,
         fontFamily: 'system-ui',
       }}>
-        <Link href="/" style={{ color: '#8a7a60', textDecoration: 'none' }}>PUBLISHED BY SONGCRAFT</Link>
+        <Link href="/" style={{ color: '#8a7a60', textDecoration: 'none' }}>PUBLISHED BY VIATONE</Link>
       </footer>
     </div>
   )

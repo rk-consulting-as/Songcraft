@@ -1,4 +1,4 @@
-# Songcraft local deploy script.
+# ViaTone local deploy script.
 # Usage from project root: ./deploy.ps1
 #
 # What it does:
@@ -26,7 +26,7 @@ function Test-Command($name) {
 }
 
 Write-Host ""
-Write-Host "🚀 Songcraft deploy" -ForegroundColor Yellow
+Write-Host "🚀 ViaTone deploy" -ForegroundColor Yellow
 Write-Host ""
 
 $hasGit = Test-Command 'git'
@@ -87,7 +87,7 @@ if ($hasGit) {
   Write-Host ""
   $msg = Read-Host "Commit message (Enter for default)"
   if ([string]::IsNullOrWhiteSpace($msg)) {
-    $msg = "Songcraft session updates"
+    $msg = "ViaTone session updates"
   }
 
   git add .

@@ -62,7 +62,7 @@ export default function DistributionModal({
 
   const downloadMetadata = () => {
     const lines = [
-      `Songcraft — Release metadata`,
+      `ViaTone — Release metadata`,
       `Generated: ${new Date().toLocaleString()}`,
       ``,
       `TITLE:        ${song.title || '—'}`,
@@ -113,7 +113,7 @@ export default function DistributionModal({
       }
     } catch (e) { console.warn('[DistributionModal] click log failed:', e) }
     setBusy(false)
-    // Open in new tab so user keeps Songcraft open
+    // Open in new tab so user keeps ViaTone open
     window.open(affiliateUrl, '_blank', 'noopener,noreferrer')
   }
 
@@ -202,7 +202,7 @@ export default function DistributionModal({
             <li>Live on Spotify in 1–2 days, others in 3–7 days</li>
             <li>You keep 100% of your royalties</li>
             <li>Includes ISRC + UPC generation</li>
-            <li>Songcraft is a DistroKid affiliate — using this link helps support the platform</li>
+            <li>ViaTone is a DistroKid affiliate — using this link helps support the platform</li>
           </ul>
         </div>
 
@@ -226,7 +226,7 @@ export default function DistributionModal({
         </div>
 
         <p style={{ color: '#5a4a30', fontSize: 11, marginTop: 14, lineHeight: 1.5 }}>
-          DistroKid is an external service. Songcraft only forwards you — your contract and royalties are between you and DistroKid.
+          DistroKid is an external service. ViaTone only forwards you — your contract and royalties are between you and DistroKid.
         </p>
       </div>
     </div>

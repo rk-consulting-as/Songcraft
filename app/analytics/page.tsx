@@ -101,7 +101,7 @@ export default function AnalyticsPage() {
         <Link href="/dashboard" style={{ color: '#6a5a40', textDecoration: 'none', fontSize: 13 }}>
           ← {lang === 'no' ? 'Tilbake til dashbord' : 'Back to dashboard'}
         </Link>
-        <Link href="/" style={{ color: accent, textDecoration: 'none', fontSize: 14, letterSpacing: 2 }}>SONGCRAFT</Link>
+        <Link href="/" style={{ color: accent, textDecoration: 'none', fontSize: 14, letterSpacing: 2 }}>VIATONE</Link>
         <span style={{ width: 80 }} />
       </div>
 
@@ -111,8 +111,8 @@ export default function AnalyticsPage() {
         </h1>
         <p style={{ color: '#8a7a60', fontSize: 14, marginTop: 6 }}>
           {lang === 'no'
-            ? 'Hvordan musikken din presterer på Songcraft.'
-            : 'How your music is performing on Songcraft.'}
+            ? 'Hvordan musikken din presterer på ViaTone.'
+            : 'How your music is performing on ViaTone.'}
         </p>
 
         {/* Filters */}

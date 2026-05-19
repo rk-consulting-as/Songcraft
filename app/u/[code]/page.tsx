@@ -92,14 +92,14 @@ async function fetchProfile(code: string): Promise<ProfileData | null> {
 export async function generateMetadata({ params }: { params: { code: string } }): Promise<Metadata> {
   try {
     const data = await fetchProfile(params.code)
-    if (!data) return { title: 'Songcraft — Profile not found' }
+    if (!data) return { title: 'ViaTone — Profile not found' }
     const name = data.profile.display_name || data.profile.referral_code
     return {
-      title: `${name} · Songcraft`,
-      description: data.profile.bio || `Creator profile on Songcraft`,
+      title: `${name} · ViaTone`,
+      description: data.profile.bio || `Creator profile on ViaTone`,
     }
   } catch {
-    return { title: 'Songcraft' }
+    return { title: 'ViaTone' }
   }
 }
 
@@ -142,7 +142,7 @@ export default async function PublicProfilePage({ params }: { params: { code: st
           ← Discover
         </Link>
         <Link href="/" style={{ color: accent, textDecoration: 'none', fontSize: 14, letterSpacing: 2 }}>
-          SONGCRAFT
+          VIATONE
         </Link>
         <Link href="/login" style={{ color: '#8a7a60', textDecoration: 'none', fontSize: 13 }}>
           Sign in

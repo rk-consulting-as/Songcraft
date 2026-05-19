@@ -96,7 +96,7 @@ export default function DistributionWorkflow({
   const missing = checks.filter(check => !check.done)
 
   const summary = useMemo(() => [
-    'Songcraft distribution prep',
+    'ViaTone distribution prep',
     '',
     `${tx.artistName}: ${artist?.name || '-'}`,
     `${tx.song}: ${title || '-'}`,

@@ -31,7 +31,7 @@ export default function EmbedCodeGenerator({
     return `${window.location.origin}${path}`
   }, [canRemoveBranding, showBranding, songId, theme])
 
-  const code = `<iframe src="${embedUrl}" title="${title.replace(/"/g, '&quot;')} - Songcraft" width="${width}" height="${height}" style="border:0;border-radius:14px;max-width:100%;" loading="lazy" allow="clipboard-write"></iframe>`
+  const code = `<iframe src="${embedUrl}" title="${title.replace(/"/g, '&quot;')} - ViaTone" width="${width}" height="${height}" style="border:0;border-radius:14px;max-width:100%;" loading="lazy" allow="clipboard-write"></iframe>`
 
   const copy = async () => {
     try {

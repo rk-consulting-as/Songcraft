@@ -44,7 +44,7 @@ function deriveSources(song: PlayableSong): Source[] {
   const sources: Source[] = []
 
   if (song.suno_audio_url) {
-    sources.push({ kind: 'internal', url: song.suno_audio_url, label: 'Songcraft', emoji: '🎼' })
+    sources.push({ kind: 'internal', url: song.suno_audio_url, label: 'ViaTone', emoji: '🎼' })
   }
 
   if (song.spotify_url) {

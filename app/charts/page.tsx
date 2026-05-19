@@ -113,7 +113,7 @@ export default function ChartsPage() {
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       }}>
         <Link href="/" style={{ color: accent, textDecoration: 'none', fontSize: 14, letterSpacing: 2 }}>
-          SONGCRAFT
+          VIATONE
         </Link>
         <div style={{ display: 'flex', gap: 14 }}>
           <Link href="/discover" style={{ color: '#8a7a60', textDecoration: 'none', fontSize: 13 }}>{tx.discoverNavLink}</Link>

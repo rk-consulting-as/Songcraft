@@ -5,15 +5,28 @@ import ChatDock from '@/components/ChatDock'
 import MobileBottomNav from '@/components/MobileBottomNav'
 import PWARegister from '@/components/PWARegister'
 import BetaLaunchKit from '@/components/BetaLaunchKit'
+import { BRAND_DESCRIPTION_SHORT, BRAND_NAME, BRAND_TAGLINE } from '@/lib/brand'
 
 export const metadata: Metadata = {
-  title: 'Songcraft',
-  description: 'AI Music Creation Studio',
+  title: { default: BRAND_NAME, template: `%s · ${BRAND_NAME}` },
+  description: BRAND_DESCRIPTION_SHORT,
+  applicationName: BRAND_NAME,
   manifest: '/manifest.webmanifest',
+  openGraph: {
+    siteName: BRAND_NAME,
+    title: BRAND_NAME,
+    description: BRAND_DESCRIPTION_SHORT,
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: BRAND_NAME,
+    description: BRAND_DESCRIPTION_SHORT,
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Songcraft',
+    title: BRAND_NAME,
   },
   icons: {
     icon: [

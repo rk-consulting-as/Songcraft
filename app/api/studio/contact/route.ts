@@ -30,7 +30,7 @@ async function sendResend(args: { to: string; replyTo: string; subject: string; 
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
       body: JSON.stringify({
-        from: process.env.RESEND_FROM || 'Songcraft <onboarding@resend.dev>',
+        from: process.env.RESEND_FROM || 'ViaTone <onboarding@resend.dev>',
         to: args.to,
         reply_to: args.replyTo,
         subject: args.subject,
@@ -85,14 +85,14 @@ export async function POST(req: NextRequest) {
     .eq('id', studio_page_id).maybeSingle()
   let emailNote: string | null = null
   if (page?.contact_email) {
-    const subject = `New message from ${from_name} via your Songcraft studio page`
+    const subject = `New message from ${from_name} via your ViaTone studio page`
     const text = [
       `From: ${from_name} <${from_email}>`,
       ``,
       message,
       ``,
       `---`,
-      `Sent via your Songcraft studio page: /studio/${page.slug}`,
+      `Sent via your ViaTone studio page: /studio/${page.slug}`,
     ].join('\n')
     emailNote = await sendResend({ to: page.contact_email, replyTo: from_email, subject, text })
   }

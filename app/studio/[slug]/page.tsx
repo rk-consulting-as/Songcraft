@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { BRAND_NAME } from '@/lib/brand'
 import { markdownToHtml } from '@/lib/markdown'
 import ContactForm from './ContactForm'
 import StudioPageMinimal from '@/components/studio-templates/StudioPageMinimal'
@@ -69,10 +70,11 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const { page } = data
   const favicon = page.favicon_url || page.hero_image_url
   return {
-    title: `${page.name} — Songcraft`,
+    title: `${page.name} — ViaTone`,
     description: page.tagline || page.name,
     icons: favicon ? { icon: favicon, shortcut: favicon, apple: favicon } : undefined,
     openGraph: {
+      siteName: BRAND_NAME,
       title: page.name,
       description: page.tagline || undefined,
       images: page.hero_image_url ? [page.hero_image_url] : [],
@@ -311,7 +313,7 @@ export default async function StudioPublicPage({ params }: { params: { slug: str
         {/* Footer */}
         <footer style={{ marginTop: 60, paddingTop: 24, borderTop: '1px solid rgba(255,255,255,0.08)', textAlign: 'center', color: '#5a4a30', fontSize: 12 }}>
           <Link href="/" style={{ color: '#5a4a30', textDecoration: 'none' }}>
-            Powered by <span style={{ color: accent, fontWeight: 600 }}>Songcraft</span>
+            Powered by <span style={{ color: accent, fontWeight: 600 }}>ViaTone</span>
           </Link>
         </footer>
       </div>

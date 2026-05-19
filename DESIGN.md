@@ -1,4 +1,4 @@
-# Songcraft Design System
+# ViaTone Design System
 
 A self-contained design system you can reuse in other projects. The aesthetic is **dark, warm, vintage-cinematic** — gold accent on near-black background with beige/brown text. Inspired by music studio interiors and album cover typography.
 
@@ -12,7 +12,7 @@ This doc tells you what's where, how to copy it out, and gives ready-to-use snip
 |-----------------------------------|-------------|
 | [`design/songcraft-design.css`](design/songcraft-design.css) | Vanilla HTML/CSS, any framework. Drop in and use `sc-*` classes. |
 | [`lib/tokens.ts`](lib/tokens.ts)  | React/TypeScript projects. Import for inline styles, or generate a Tailwind config from it. |
-| [`app/globals.css`](app/globals.css) | This is the production CSS Songcraft uses. Slightly different class names (`btn-gold`, `card`) — but same look. |
+| [`app/globals.css`](app/globals.css) | This is the production CSS ViaTone uses. Slightly different class names (`btn-gold`, `card`) — but same look. |
 
 ---
 
@@ -38,7 +38,7 @@ This doc tells you what's where, how to copy it out, and gives ready-to-use snip
 
 ### Text — a warm beige/brown scale (NOT pure grey)
 
-This is what gives Songcraft its distinctive "vintage" feel. Instead of cool greys (#666, #888, #aaa), text uses warm tones:
+This is what gives ViaTone its distinctive "vintage" feel. Instead of cool greys (#666, #888, #aaa), text uses warm tones:
 
 | Token                | Value      | Use              |
 |----------------------|------------|------------------|
@@ -178,7 +178,7 @@ Small clickable circles for external links (Spotify, YouTube, etc.):
 ```html
 <div class="sc-app">
   <div class="sc-header">
-    <h1 class="sc-h1">SONGCRAFT</h1>
+    <h1 class="sc-h1">VIATONE</h1>
     <button class="sc-btn-outline">Logout</button>
   </div>
 
@@ -284,9 +284,9 @@ Then use `bg-ink text-body border-gold` etc.
 
 ## Design decisions worth keeping
 
-These are the small choices that make Songcraft feel coherent. Worth keeping if you reuse this:
+These are the small choices that make ViaTone feel coherent. Worth keeping if you reuse this:
 
-1. **Warm text scale, not cold grey**. Pure greys (`#888`) make UIs feel cold and "tech-y". Songcraft uses beige/brown gradients (`#e8e0d0`, `#a09080`, `#6a5a40`) that feel analog and warm — fits the music/creative domain.
+1. **Warm text scale, not cold grey**. Pure greys (`#888`) make UIs feel cold and "tech-y". ViaTone uses beige/brown gradients (`#e8e0d0`, `#a09080`, `#6a5a40`) that feel analog and warm — fits the music/creative domain.
 
 2. **Single accent color (gold)** for primary actions. No secondary "blue" or "green". This makes the UI quieter and more sophisticated. Use external brand colors (Spotify green, YouTube red) only as small circular badges, never as primary UI elements.
 

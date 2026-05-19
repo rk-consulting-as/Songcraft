@@ -146,7 +146,7 @@ export default function MessagesPage() {
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             {rows.map((row, i) => {
               const isSupport = row.type === 'support'
-              const name = isSupport ? '🛟 Songcraft Support' : (row.other?.display_name || row.title || tx.referralsAnonymous)
+              const name = isSupport ? '🛟 ViaTone Support' : (row.other?.display_name || row.title || tx.referralsAnonymous)
               const preview = row.latest?.content || tx.messagesNoMessagesYet
               const isFromMe = row.latest?.sender_id === me
               return (

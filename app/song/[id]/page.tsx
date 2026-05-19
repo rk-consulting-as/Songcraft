@@ -2264,7 +2264,7 @@ export default function SongPage() {
             </div>
 
             <div style={{ marginBottom: 18 }}>
-              <EmbedCodeGenerator songId={songId} title={title || song?.title || 'Songcraft'} canRemoveBranding={planId === 'pro'} />
+              <EmbedCodeGenerator songId={songId} title={title || song?.title || 'ViaTone'} canRemoveBranding={planId === 'pro'} />
               {planId === 'free' && (
                 <UpgradePrompt compact title={tx.upgradeEmbedTitle} description={tx.upgradeEmbedDesc} />
               )}
@@ -2320,7 +2320,7 @@ export default function SongPage() {
             </div>
 
             <div style={{ marginBottom: 24 }}>
-              <EmbedCodeGenerator songId={songId} title={title || song?.title || 'Songcraft'} canRemoveBranding={planId === 'pro'} />
+              <EmbedCodeGenerator songId={songId} title={title || song?.title || 'ViaTone'} canRemoveBranding={planId === 'pro'} />
               {planId === 'free' && (
                 <UpgradePrompt compact title={tx.upgradeEmbedTitle} description={tx.upgradeEmbedDesc} />
               )}

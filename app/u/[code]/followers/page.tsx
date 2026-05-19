@@ -123,7 +123,7 @@ function FollowList({ profile, rows, title, emptyText }: {
           ← {profile.display_name || profile.referral_code}
         </Link>
         <Link href="/" style={{ color: accent, textDecoration: 'none', fontSize: 14, letterSpacing: 2 }}>
-          SONGCRAFT
+          VIATONE
         </Link>
         <div />
       </div>

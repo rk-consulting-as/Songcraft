@@ -259,7 +259,7 @@ export default function ConversationPage() {
   const accent = '#d4a843'
   const other = otherParticipants[0]
   const isSupport = conv?.type === 'support'
-  const displayName = isSupport ? '🛟 Songcraft Support' : (other?.display_name || other?.referral_code || conv?.title || '—')
+  const displayName = isSupport ? '🛟 ViaTone Support' : (other?.display_name || other?.referral_code || conv?.title || '—')
 
   return (
     <div style={pageBg}>

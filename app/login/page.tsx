@@ -107,7 +107,7 @@ export default function LoginPage() {
         padding: '18px 28px', borderBottom: '1px solid rgba(180,140,80,0.15)',
       }}>
         <Link href="/" style={{ color: accent, textDecoration: 'none', fontSize: 14, letterSpacing: 3, fontWeight: 300 }}>
-          🎼 SONGCRAFT
+          🎼 VIATONE
         </Link>
         <div style={{ display: 'flex', gap: 6 }}>
           {(['no', 'en'] as Lang[]).map(l => (

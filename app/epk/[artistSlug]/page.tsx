@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import { BRAND_NAME } from '@/lib/brand'
 import PrintButton from '@/components/PrintButton'
 import { getUserPlan } from '@/lib/subscription'
 
@@ -113,6 +114,7 @@ export async function generateMetadata({ params }: { params: { artistSlug: strin
     description,
     alternates: { canonical: url },
     openGraph: {
+      siteName: BRAND_NAME,
       title,
       description,
       url,
@@ -173,7 +175,7 @@ export default async function EpkPage({ params }: { params: { artistSlug: string
       `}</style>
       <div className="epk-shell" style={{ maxWidth: 980, margin: '0 auto', background: '#fffaf2', border: '1px solid rgba(80,55,20,0.16)', borderRadius: 18, boxShadow: '0 24px 80px rgba(80,55,20,0.12)', overflow: 'hidden' }}>
         <div className="print-hide epk-topbar">
-          <a href={`/p/${artist.page_slug}`} style={{ color: '#8a6a20', textDecoration: 'none', fontSize: 13 }}>Songcraft EPK</a>
+          <a href={`/p/${artist.page_slug}`} style={{ color: '#8a6a20', textDecoration: 'none', fontSize: 13 }}>ViaTone EPK</a>
           <span className="print-button-wrap"><PrintButton /></span>
         </div>
 
@@ -259,7 +261,7 @@ export default async function EpkPage({ params }: { params: { artistSlug: string
             )}
 
             <div className="print-hide" style={{ color: '#755f3c', fontSize: 11, lineHeight: 1.5 }}>
-              Powered by Songcraft
+              Powered by ViaTone
             </div>
           </aside>
         </section>

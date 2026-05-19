@@ -102,7 +102,7 @@ export default async function FollowingPage({ params }: { params: { code: string
         <Link href={`/u/${profile.referral_code}`} style={{ color: '#6a5a40', textDecoration: 'none', fontSize: 13 }}>
           ← {profile.display_name || profile.referral_code}
         </Link>
-        <Link href="/" style={{ color: accent, textDecoration: 'none', fontSize: 14, letterSpacing: 2 }}>SONGCRAFT</Link>
+        <Link href="/" style={{ color: accent, textDecoration: 'none', fontSize: 14, letterSpacing: 2 }}>VIATONE</Link>
         <div />
       </div>
 

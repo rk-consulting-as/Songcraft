@@ -20,7 +20,7 @@ export default function Error({
         <div style={{ fontSize: 42, marginBottom: 12 }}>!</div>
         <h1 style={{ color: '#d4a843', fontWeight: 'normal', margin: '0 0 8px' }}>Noe gikk galt</h1>
         <p style={{ color: '#8a7a60', lineHeight: 1.55, margin: '0 0 18px' }}>
-          Songcraft traff en feil. Prøv igjen, eller send feedback hvis dette skjer flere ganger.
+          ViaTone traff en feil. Prøv igjen, eller send feedback hvis dette skjer flere ganger.
         </p>
         <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
           <button className="btn-gold" onClick={reset}>Prøv igjen</button>

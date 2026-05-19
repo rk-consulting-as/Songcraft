@@ -98,7 +98,7 @@ export async function GET(req: NextRequest) {
   try {
     const res = await fetch(sunoUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; Songcraft/1.0; +https://songcraft-lilac.vercel.app)',
+        'User-Agent': 'Mozilla/5.0 (compatible; ViaTone/1.0; +https://songcraft-lilac.vercel.app)',
         Accept: 'text/html,application/xhtml+xml',
       },
       redirect: 'follow',

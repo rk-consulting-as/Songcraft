@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { BRAND_NAME } from '@/lib/brand'
 import ClientEmbedPlayer from '@/components/ClientEmbedPlayer'
 import ArtistPageMinimal from '@/components/artist-templates/ArtistPageMinimal'
 import ArtistPageCinematic from '@/components/artist-templates/ArtistPageCinematic'
@@ -76,10 +77,11 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   // Prefer a custom favicon, then Spotify image as fallback (most album-cover-like).
   const favicon = data.artist.favicon_url || data.artist.spotify_image_url || data.artist.avatar_url
   return {
-    title: `${data.artist.name} — Songcraft`,
+    title: `${data.artist.name} — ViaTone`,
     description: data.artist.description || `${data.artist.name} — official artist page`,
     icons: favicon ? { icon: favicon, shortcut: favicon, apple: favicon } : undefined,
     openGraph: {
+      siteName: BRAND_NAME,
       title: data.artist.name,
       description: data.artist.description || undefined,
       images: cover ? [cover] : [],
@@ -336,8 +338,8 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
           <h2 style={{ margin: '0 0 14px', fontSize: 13, letterSpacing: 2, color: accent, textTransform: 'uppercase' }}>Share this artist</h2>
           <ShareButtons
             url={`/p/${artist.page_slug}`}
-            title={`${artist.name} — Songcraft`}
-            text={`Check out ${artist.name} on Songcraft`}
+            title={`${artist.name} — ViaTone`}
+            text={`Check out ${artist.name} on ViaTone`}
             accent={accent}
           />
         </section>
@@ -345,7 +347,7 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
         {/* Footer */}
         <footer style={{ marginTop: 60, paddingTop: 24, borderTop: '1px solid rgba(255,255,255,0.08)', textAlign: 'center', color: '#5a4a30', fontSize: 12 }}>
           <Link href="/" style={{ color: '#5a4a30', textDecoration: 'none' }}>
-            Powered by <span style={{ color: accent, fontWeight: 600 }}>Songcraft</span>
+            Powered by <span style={{ color: accent, fontWeight: 600 }}>ViaTone</span>
           </Link>
         </footer>
       </div>

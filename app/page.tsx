@@ -10,13 +10,13 @@ const i18n = {
     navLogin: 'Log in',
     navGetStarted: 'Get started',
     navOpenDashboard: 'Open dashboard →',
-    heroBadge: 'AI MUSIC STUDIO · FOR ARTISTS, PRODUCERS & MANAGERS',
+    heroBadge: 'ONLINE ARTIST PLATFORM · FOR ARTISTS, PRODUCERS & MANAGERS',
     heroTitleA: 'From ',
     heroTitleHighlight1: 'idea',
     heroTitleB: ' to ',
     heroTitleHighlight2: 'released track',
     heroTitleC: 'in one place.',
-    heroSubtitle: 'Songcraft brings the entire creative production flow into one tool. Write lyrics with AI, generate Suno prompts, create cover art and Spotify Canvas videos, and publish to every platform — from one catalogue.',
+    heroSubtitle: 'Create, release, promote and grow your music. ViaTone brings lyrics, prompts, cover art, campaigns, fan pages and analytics into one artist operating system.',
     heroCtaPrimary: 'Get started free →',
     heroCtaPrimaryLoggedIn: 'Open dashboard →',
     heroCtaSecondary: 'See what you get',
@@ -24,7 +24,7 @@ const i18n = {
     flowHeader: 'THE CREATIVE FLOW',
     flow: ['Lyrics', 'Suno prompt', 'Cover', 'Canvas video', 'Captions', 'Publish'],
     featuresTitle: 'Everything you need behind the login',
-    featuresSubtitle: 'Songcraft is built for artists who want the whole production in one place — from the first word to the released track.',
+    featuresSubtitle: 'ViaTone is built for artists who want creation, release planning, promotion and growth in one place — from the first word to the released track.',
     features: [
       { icon: '✍️', title: 'AI-powered lyrics', body: 'Describe theme and mood — Claude or GPT writes the lyrics. Version history, refine mode, and clean text ready for publishing.' },
       { icon: '🤖', title: 'Suno prompt + import', body: 'Auto-generate detailed Suno prompts from your lyrics. Paste a finished Suno link — we fetch audio, cover and tags automatically.' },
@@ -39,7 +39,7 @@ const i18n = {
     communityBadge: 'BUILT-IN COMMUNITY',
     communityTitle: 'Connect with creators —',
     communityTitle2: 'not just upload to streaming.',
-    communitySubtitle: 'Songcraft is also a Nordic creator community. Find collaborators, get feedback on your songs, climb the charts, and reach paying fans.',
+    communitySubtitle: 'ViaTone is also a creator community. Find collaborators, get feedback on your songs, climb the charts, and reach paying fans.',
     communityFeatures: [
       { icon: '🌍', title: 'Discover Nordic creators',     body: 'Search by role (vocalist, producer, songwriter), language, location. See who is open for collaboration.' },
       { icon: '💬', title: 'Chat, groups & support',      body: 'Real-time direct messages, group rooms for bands/labels, and structured support tickets. Slide-in dock works on any page.' },
@@ -65,19 +65,19 @@ const i18n = {
     ctaBody: 'Free to start. Bring your own AI key (Anthropic + optional OpenAI) — we handle the rest.',
     ctaButton: 'Get started →',
     ctaButtonLoggedIn: 'Open dashboard →',
-    footerTag: 'AI Music Studio',
+    footerTag: 'Online Artist Platform',
   },
   no: {
     navLogin: 'Logg inn',
     navGetStarted: 'Kom i gang',
     navOpenDashboard: 'Åpne dashboard →',
-    heroBadge: 'AI-MUSIKKSTUDIO · FOR ARTISTER, PRODUSENTER & MANAGERE',
+    heroBadge: 'ONLINE ARTIST PLATFORM · FOR ARTISTER, PRODUSENTER & MANAGERE',
     heroTitleA: 'Fra ',
     heroTitleHighlight1: 'idé',
     heroTitleB: ' til ',
     heroTitleHighlight2: 'utgitt låt',
     heroTitleC: 'på samme sted.',
-    heroSubtitle: 'Songcraft samler hele den kreative produksjonsflyten i ett verktøy. Skriv sangtekst med AI, lag Suno-prompter, generer cover-bilder og Spotify Canvas-videoer, og publiser til alle plattformer — fra én katalog.',
+    heroSubtitle: 'Skap, release, promoter og voks med musikken din. ViaTone samler tekst, prompter, cover, kampanjer, fan-sider og analytics i ett artist-operativsystem.',
     heroCtaPrimary: 'Kom i gang gratis →',
     heroCtaPrimaryLoggedIn: 'Åpne dashboard →',
     heroCtaSecondary: 'Se hva du får',
@@ -85,7 +85,7 @@ const i18n = {
     flowHeader: 'DEN KREATIVE FLYTEN',
     flow: ['Sangtekst', 'Suno-prompt', 'Cover', 'Canvas-video', 'Captions', 'Publiser'],
     featuresTitle: 'Alt du trenger bak innloggingen',
-    featuresSubtitle: 'Songcraft er bygget for artister som vil ha hele produksjonen samlet — fra første ord til ferdig publisert spor.',
+    featuresSubtitle: 'ViaTone er bygget for artister som vil ha produksjon, release, promoter og vekst samlet — fra første ord til ferdig publisert spor.',
     features: [
       { icon: '✍️', title: 'AI-drevet sangtekst', body: 'Beskriv tema og stemning — Claude eller GPT skriver tekstene. Versjonshistorikk, refine-mode, og ren tekst klar for publisering.' },
       { icon: '🤖', title: 'Suno-prompt + import', body: 'Auto-generer detaljerte Suno-prompter fra lyricsene dine. Lim inn ferdig Suno-link — vi henter audio, cover og tags automatisk.' },
@@ -100,7 +100,7 @@ const i18n = {
     communityBadge: 'INNEBYGD KREATØR-MILJØ',
     communityTitle: 'Knytt kontakt med skapere —',
     communityTitle2: 'ikke bare strøm til Spotify.',
-    communitySubtitle: 'Songcraft er også et nordisk kreatør-community. Finn samarbeidspartnere, få tilbakemelding på sangene dine, kom på topplistene, og bygg et betalende publikum.',
+    communitySubtitle: 'ViaTone er også et kreatør-community. Finn samarbeidspartnere, få tilbakemelding på sangene dine, kom på topplistene, og bygg et betalende publikum.',
     communityFeatures: [
       { icon: '🌍', title: 'Finn nordiske skapere',      body: 'Søk etter rolle (vokalist, produsent, låtskriver), språk, sted. Se hvem som er åpen for samarbeid.' },
       { icon: '💬', title: 'Chat, grupper & support',   body: 'Direkte meldinger i sanntid, gruppe-rom for band/labels, og strukturerte support-henvendelser. Skyv-inn-panel virker på enhver side.' },
@@ -126,7 +126,7 @@ const i18n = {
     ctaBody: 'Gratis å starte. Bring din egen AI-nøkkel (Anthropic + valgfritt OpenAI) — vi tar hånd om resten.',
     ctaButton: 'Kom i gang →',
     ctaButtonLoggedIn: 'Åpne dashboard →',
-    footerTag: 'AI-musikkstudio',
+    footerTag: 'Online Artist Platform',
   },
 } as const
 
@@ -165,8 +165,8 @@ export default function Home() {
         flexWrap: 'wrap', gap: 10,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 26 }}>🎼</span>
-          <span style={{ color: accent, fontSize: 18, letterSpacing: '2px', fontWeight: 600 }}>SONGCRAFT</span>
+          <img src="/brand/viatone-logo.png" alt="ViaTone — Online Artist Platform" style={{ height: 36, width: 'auto', display: 'block' }} />
+          <span style={{ color: accent, fontSize: 18, letterSpacing: '2px', fontWeight: 600 }}>VIATONE</span>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           {/* Language toggle */}
@@ -469,7 +469,7 @@ export default function Home() {
           <a href="https://fal.ai" target="_blank" rel="noopener noreferrer" style={{ color: '#5a4a30', textDecoration: 'none' }}>fal.ai</a>
         </div>
         <p style={{ margin: 0 }}>
-          🎼 Songcraft — {t.footerTag}
+          🎼 ViaTone — {t.footerTag}
         </p>
       </footer>
     </div>

@@ -88,7 +88,7 @@ export default function FanHubPanel({
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${artist?.name || 'songcraft'}-subscribers.csv`
+    a.download = `${artist?.name || 'viatone'}-subscribers.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
