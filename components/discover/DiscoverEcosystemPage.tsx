@@ -7,6 +7,9 @@ import type { DiscoverCatalog } from '@/lib/discover/types'
 import type { DiscoverCreatorCardData } from '@/lib/creatorIdentity/types'
 import DiscoverCreatorCard from './DiscoverCreatorCard'
 import DiscoverReleaseCard from './DiscoverReleaseCard'
+import DiscoverAcquisitionHero from '@/components/platform/DiscoverAcquisitionHero'
+import CreatorAcquisitionCta from '@/components/platform/CreatorAcquisitionCta'
+import ViaToneBranding from '@/components/platform/ViaToneBranding'
 
 type FilterMode = 'trending' | 'newest' | 'active' | 'genre'
 
@@ -108,12 +111,7 @@ export default function DiscoverEcosystemPage() {
       </header>
 
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '36px 24px 80px' }}>
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <h1 style={{ color: accent, fontSize: 32, fontWeight: 700, margin: 0 }}>{tx.discoverEcosystemTitle}</h1>
-          <p style={{ color: '#a09080', fontSize: 15, marginTop: 10, maxWidth: 560, margin: '10px auto 0', lineHeight: 1.5 }}>
-            {tx.discoverEcosystemSubtitle}
-          </p>
-        </div>
+        <DiscoverAcquisitionHero />
 
         <div className="card" style={{ marginBottom: 24, padding: 16 }}>
           <input
@@ -154,6 +152,18 @@ export default function DiscoverEcosystemPage() {
           </div>
         ) : (
           <>
+            {catalog.spotlight.length > 0 && (
+              <DiscoverSection title={tx.discoverSectionSpotlight}>
+                <div className="discover-grid discover-grid--creators">
+                  {catalog.spotlight.map(c => (
+                    <DiscoverCreatorCard key={`s-${c.id}`} creator={c} levelLabel={levelLabel(c)} tx={tx} accent={accent} />
+                  ))}
+                </div>
+              </DiscoverSection>
+            )}
+
+            <CreatorAcquisitionCta variant="inline" accent={accent} />
+
             {catalog.trending.length > 0 && filter === 'trending' && (
               <DiscoverSection title={tx.discoverSectionTrending}>
                 <div className="discover-grid discover-grid--creators">
@@ -223,6 +233,10 @@ export default function DiscoverEcosystemPage() {
             )}
           </>
         )}
+
+        <CreatorAcquisitionCta variant="card" accent={accent} />
+        <CreatorAcquisitionCta variant="footer" accent={accent} />
+        <ViaToneBranding variant="footer" accent={accent} href="/login" />
       </div>
     </div>
   )

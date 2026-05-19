@@ -7,6 +7,8 @@ export type FeaturedReleaseRef = {
 
 export type CreatorPageSettings = {
   featured_release?: FeaturedReleaseRef | null
+  /** Manual or editorial: show "Featured on ViaTone" badge in discovery. */
+  featured_on_viatone?: boolean
   show_public_achievements?: boolean
   show_member_since?: boolean
   sections?: Record<string, boolean>
@@ -86,4 +88,6 @@ export type DiscoverCreatorCardData = {
   } | null
   memberSince: string | null
   createdAt: string
+  publicCampaignCount: number
+  featuredOnViaTone: boolean
 }

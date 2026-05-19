@@ -14,6 +14,7 @@ import {
 import type { DiscoverCatalog, DiscoverEpk, DiscoverGenreChip, DiscoverRelease } from '@/lib/discover/types'
 import type { DiscoverCreatorCardData } from '@/lib/creatorIdentity/types'
 import { isPublicDiscoverArtist, isPublicDiscoverSong } from '@/lib/discover/publicFilters'
+import { countPublicCampaigns, isArtistFeaturedOnViaTone, isSongFeaturedOnViaTone, parseSpotlightConfig } from '@/lib/platformGrowth/spotlight'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 300
@@ -49,6 +50,13 @@ export async function GET() {
   const sb = serviceClient()
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
+  const { data: spotlightRow } = await sb
+    .from('admin_platform_settings')
+    .select('value')
+    .eq('key', 'discover_spotlight')
+    .maybeSingle()
+  const spotlight = parseSpotlightConfig(spotlightRow?.value)
+
   const { data: artists, error: artistsErr } = await sb
     .from('artists')
     .select('id, name, genre, description, avatar_url, spotify_image_url, social_links, page_enabled, page_slug, page_settings, admin_hidden, created_at')
@@ -69,6 +77,7 @@ export async function GET() {
       trending: [],
       newReleases: [],
       featured: [],
+      spotlight: [],
       recentlyActive: [],
       genres: [],
       epks: [],
@@ -158,8 +167,22 @@ export async function GET() {
       featuredRelease: featured,
       memberSince: settings.show_member_since !== false ? artist.created_at : null,
       createdAt: artist.created_at,
+      publicCampaignCount: countPublicCampaigns(artistSongs),
+      featuredOnViaTone: isArtistFeaturedOnViaTone(artist.id, settings, spotlight),
     }
   })
+
+  const spotlightCreators = [...cards]
+    .filter(c => c.featuredOnViaTone)
+    .sort((a, b) => {
+      const aIdx = (spotlight.artist_ids || []).indexOf(a.id)
+      const bIdx = (spotlight.artist_ids || []).indexOf(b.id)
+      if (aIdx >= 0 && bIdx >= 0) return aIdx - bIdx
+      if (aIdx >= 0) return -1
+      if (bIdx >= 0) return 1
+      return b.trendingScore - a.trendingScore
+    })
+    .slice(0, 8)
 
   const trending = [...cards].sort((a, b) => b.trendingScore - a.trendingScore).slice(0, 12)
   const featured = [...cards]
@@ -187,6 +210,7 @@ export async function GET() {
       createdAt: s.created_at,
       href: `/s/${s.id}`,
       trendingScore: counts ? computeTrendingScore(counts) : 0,
+      featuredOnViaTone: isSongFeaturedOnViaTone(s.id, spotlight),
     })
   }
   newReleases.sort((a, b) => {
@@ -226,6 +250,7 @@ export async function GET() {
     trending,
     newReleases: newReleases.slice(0, 16),
     featured,
+    spotlight: spotlightCreators,
     recentlyActive,
     genres,
     epks,

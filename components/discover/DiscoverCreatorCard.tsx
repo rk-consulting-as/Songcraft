@@ -2,6 +2,8 @@ import Link from 'next/link'
 import type { DiscoverCreatorCardData } from '@/lib/creatorIdentity/types'
 import CreatorLevelBadge from './CreatorLevelBadge'
 import CreatorAchievementBadges from './CreatorAchievementBadges'
+import FeaturedOnViaToneBadge from '@/components/platform/FeaturedOnViaToneBadge'
+import ViaToneBranding from '@/components/platform/ViaToneBranding'
 
 type Props = {
   creator: DiscoverCreatorCardData
@@ -24,6 +26,7 @@ export default function DiscoverCreatorCard({ creator, levelLabel, tx, accent = 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <h3 className="discover-creator-card__name">{creator.name}</h3>
             <CreatorLevelBadge level={creator.level} label={levelLabel} compact />
+            {creator.featuredOnViaTone && <FeaturedOnViaToneBadge compact />}
           </div>
           {creator.genre && (
             <p className="discover-creator-card__genre">{creator.genre}</p>
@@ -48,6 +51,12 @@ export default function DiscoverCreatorCard({ creator, levelLabel, tx, accent = 
 
       <div className="discover-creator-card__stats">
         <span>{creator.publicReleaseCount} {tx.discoverStatReleases}</span>
+        {creator.publicCampaignCount > 0 && (
+          <>
+            <span>·</span>
+            <span>{creator.publicCampaignCount} {tx.discoverStatCampaigns}</span>
+          </>
+        )}
         <span>·</span>
         <span>{creator.profileCompletionPercent}% {tx.discoverStatProfile}</span>
       </div>
@@ -55,6 +64,7 @@ export default function DiscoverCreatorCard({ creator, levelLabel, tx, accent = 
       <span className="discover-creator-card__cta" style={{ color: accent }}>
         {tx.discoverOpenProfile} →
       </span>
+      <ViaToneBranding variant="badge" accent={accent} href="/login" />
     </Link>
   )
 }

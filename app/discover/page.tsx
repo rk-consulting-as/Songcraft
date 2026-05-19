@@ -1,8 +1,8 @@
 import DiscoverEcosystemPage from '@/components/discover/DiscoverEcosystemPage'
+import { discoverPageMetadata } from '@/lib/platformGrowth/seo'
 
-export const metadata = {
-  title: 'Discover — ViaTone',
-  description: 'Explore trending artists, new releases, and featured creators on ViaTone.',
+export function generateMetadata() {
+  return discoverPageMetadata('en')
 }
 
 export default function DiscoverPage() {

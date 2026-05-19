@@ -2,7 +2,9 @@ import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { BRAND_NAME } from '@/lib/brand'
+import { buildPublicMetadata } from '@/lib/platformGrowth/seo'
+import CreatorAcquisitionCta from '@/components/platform/CreatorAcquisitionCta'
+import ViaToneBranding from '@/components/platform/ViaToneBranding'
 import ClientEmbedPlayer from '@/components/ClientEmbedPlayer'
 import ArtistPageMinimal from '@/components/artist-templates/ArtistPageMinimal'
 import ArtistPageCinematic from '@/components/artist-templates/ArtistPageCinematic'
@@ -76,24 +78,19 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const data = await fetchPageData(params.slug)
   if (!data) return { title: 'Not found' }
   const cover = data.artist.spotify_image_url || data.artist.avatar_url
-  // Prefer a custom favicon, then Spotify image as fallback (most album-cover-like).
   const favicon = data.artist.favicon_url || data.artist.spotify_image_url || data.artist.avatar_url
+  const genreKw = data.artist.genre ? data.artist.genre.split(',').map((g: string) => g.trim()) : []
+  const meta = buildPublicMetadata({
+    title: `${data.artist.name} — Official Artist Page`,
+    description: data.artist.description?.slice(0, 160) || `${data.artist.name} — music, releases, and fan page on ViaTone.`,
+    path: `/p/${params.slug}`,
+    image: cover,
+    keywords: [data.artist.name, ...genreKw, 'independent artist'],
+    type: 'profile',
+  })
   return {
-    title: `${data.artist.name} — ViaTone`,
-    description: data.artist.description || `${data.artist.name} — official artist page`,
+    ...meta,
     icons: favicon ? { icon: favicon, shortcut: favicon, apple: favicon } : undefined,
-    openGraph: {
-      siteName: BRAND_NAME,
-      title: data.artist.name,
-      description: data.artist.description || undefined,
-      images: cover ? [cover] : [],
-    },
-    twitter: {
-      card: cover ? 'summary_large_image' : 'summary',
-      title: data.artist.name,
-      description: data.artist.description || undefined,
-      images: cover ? [cover] : [],
-    },
   }
 }
 
@@ -351,11 +348,10 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
           />
         </section>
 
-        {/* Footer */}
-        <footer style={{ marginTop: 60, paddingTop: 24, borderTop: '1px solid rgba(255,255,255,0.08)', textAlign: 'center', color: '#5a4a30', fontSize: 12 }}>
-          <Link href="/" style={{ color: '#5a4a30', textDecoration: 'none' }}>
-            Powered by <span style={{ color: accent, fontWeight: 600 }}>ViaTone</span>
-          </Link>
+        <CreatorAcquisitionCta variant="card" accent={accent} />
+        <footer style={{ marginTop: 48, paddingTop: 24, borderTop: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
+          <CreatorAcquisitionCta variant="footer" accent={accent} />
+          <ViaToneBranding variant="footer" accent={accent} href="/login" />
         </footer>
       </div>
     </div>

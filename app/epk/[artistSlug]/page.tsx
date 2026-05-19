@@ -7,6 +7,7 @@ import PrintButton from '@/components/PrintButton'
 import EpkSelectedSongsList from '@/components/EpkSelectedSongsList'
 import { fetchEpkSelectedSongs, getEpkSongCover } from '@/lib/epkSongs'
 import { getUserPlan } from '@/lib/subscription'
+import ViaToneBranding from '@/components/platform/ViaToneBranding'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -232,8 +233,8 @@ export default async function EpkPage({ params }: { params: { artistSlug: string
               </div>
             )}
 
-            <div className="print-hide" style={{ color: '#755f3c', fontSize: 11, lineHeight: 1.5 }}>
-              Powered by ViaTone
+            <div className="print-hide">
+              <ViaToneBranding variant="minimal" accent="#8a6a20" href="/login" />
             </div>
           </aside>
         </section>

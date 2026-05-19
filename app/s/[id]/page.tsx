@@ -2,7 +2,9 @@ import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { BRAND_NAME } from '@/lib/brand'
+import { buildPublicMetadata } from '@/lib/platformGrowth/seo'
+import CreatorAcquisitionCta from '@/components/platform/CreatorAcquisitionCta'
+import ViaToneBranding from '@/components/platform/ViaToneBranding'
 import ClientEmbedPlayer from '@/components/ClientEmbedPlayer'
 import ReactionBar from '@/components/ReactionBar'
 import CommentsThread from '@/components/CommentsThread'
@@ -44,12 +46,14 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     const song = await fetchSong(params.id)
     if (!song) return { title: 'ViaTone — Song not found' }
     const cover = song.cover_image_url || song.spotify_cover_url
-    return {
-      title: `${song.title} · ${song.artists?.name || 'ViaTone'}`,
-      description: `Listen to ${song.title} by ${song.artists?.name || 'this artist'} on ViaTone.`,
-      openGraph: { siteName: BRAND_NAME, title: song.title, images: cover ? [cover] : [] },
-      twitter: { card: cover ? 'summary_large_image' : 'summary', title: song.title, images: cover ? [cover] : [] },
-    }
+    const artistName = song.artists?.name || 'Artist'
+    return buildPublicMetadata({
+      title: `${song.title} · ${artistName}`,
+      description: `Listen to ${song.title} by ${artistName} — public release on ViaTone.`,
+      path: `/s/${params.id}`,
+      image: cover,
+      keywords: [song.title, artistName, 'music release'],
+    })
   } catch {
     return { title: 'ViaTone' }
   }
@@ -204,6 +208,11 @@ export default async function PublicSongPage({ params }: { params: { id: string 
           <h2 style={sectionH2}>Comments ({song.comment_count || 0})</h2>
           <CommentsThread songId={song.id} songOwnerId={song.user_id} />
         </div>
+
+        <CreatorAcquisitionCta variant="card" accent={accent} />
+        <footer style={{ marginTop: 40, paddingTop: 20, borderTop: '1px solid rgba(180,140,80,0.15)', textAlign: 'center' }}>
+          <ViaToneBranding variant="footer" accent={accent} href="/login" />
+        </footer>
       </div>
     </div>
   )

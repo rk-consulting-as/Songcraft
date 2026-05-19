@@ -5,6 +5,8 @@ import PublicEventsList from '@/components/PublicEventsList'
 import PublicAnalyticsTracker from '@/components/PublicAnalyticsTracker'
 import ExpandableText from '@/components/ExpandableText'
 import PublicCreatorIdentityBlock from '@/components/discover/PublicCreatorIdentityBlock'
+import CreatorAcquisitionCta from '@/components/platform/CreatorAcquisitionCta'
+import ViaToneBranding from '@/components/platform/ViaToneBranding'
 
 /**
  * Cinematic artist template — full-bleed dramatic. Avatar fills viewport as blurred
@@ -222,6 +224,8 @@ export default function ArtistPageCinematic({
         )}
       </div>
 
+      <CreatorAcquisitionCta variant="card" accent={accent} />
+
       <footer style={{
         textAlign: 'center',
         padding: '24px',
@@ -230,7 +234,7 @@ export default function ArtistPageCinematic({
         fontSize: 12,
         letterSpacing: 1,
       }}>
-        <Link href="/" style={{ color: accent, textDecoration: 'none', letterSpacing: 3 }}>VIATONE</Link>
+        <ViaToneBranding variant="footer" accent={accent} href="/login" />
       </footer>
     </div>
   )

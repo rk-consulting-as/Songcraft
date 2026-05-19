@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import MediaLinksGrid from '@/components/MediaLinksGrid'
 import PublicAnalyticsTracker from '@/components/PublicAnalyticsTracker'
 import { getUserPlan } from '@/lib/subscription'
+import ViaToneBranding from '@/components/platform/ViaToneBranding'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -91,9 +92,9 @@ export default async function EmbedSongPage({
             )}
 
             {showBranding && (
-              <a href="/" target="_blank" rel="noopener noreferrer" style={{ display: 'block', color: muted, textDecoration: 'none', fontSize: 11, marginTop: 12, textAlign: 'right' }}>
-                Powered by <span style={{ color: accent }}>ViaTone</span>
-              </a>
+              <div style={{ marginTop: 12, textAlign: 'right' }}>
+                <ViaToneBranding variant="embed" accent={accent} href="/login" />
+              </div>
             )}
           </div>
       </main>

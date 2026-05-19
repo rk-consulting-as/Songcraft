@@ -11,6 +11,7 @@ export type DiscoverRelease = {
   createdAt: string
   href: string
   trendingScore: number
+  featuredOnViaTone: boolean
 }
 
 export type DiscoverEpk = {
@@ -31,6 +32,7 @@ export type DiscoverCatalog = {
   trending: DiscoverCreatorCardData[]
   newReleases: DiscoverRelease[]
   featured: DiscoverCreatorCardData[]
+  spotlight: DiscoverCreatorCardData[]
   recentlyActive: DiscoverCreatorCardData[]
   genres: DiscoverGenreChip[]
   epks: DiscoverEpk[]

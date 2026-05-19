@@ -5,6 +5,8 @@ import PublicEventsList from '@/components/PublicEventsList'
 import PublicAnalyticsTracker from '@/components/PublicAnalyticsTracker'
 import ExpandableText from '@/components/ExpandableText'
 import PublicCreatorIdentityBlock from '@/components/discover/PublicCreatorIdentityBlock'
+import CreatorAcquisitionCta from '@/components/platform/CreatorAcquisitionCta'
+import ViaToneBranding from '@/components/platform/ViaToneBranding'
 
 /**
  * Minimal artist template — typography-first. Centered text hero (no big avatar),
@@ -174,15 +176,9 @@ export default function ArtistPageMinimal({
           </section>
         )}
 
-        <footer style={{
-          textAlign: 'center',
-          paddingTop: 40,
-          borderTop: '1px solid rgba(180,140,80,0.08)',
-          color: '#5a4a30',
-          fontSize: 11,
-          letterSpacing: 2,
-        }}>
-          <Link href="/" style={{ color: '#5a4a30', textDecoration: 'none' }}>VIATONE</Link>
+        <CreatorAcquisitionCta variant="card" accent={accent} />
+        <footer style={{ textAlign: 'center', paddingTop: 32, borderTop: '1px solid rgba(180,140,80,0.08)' }}>
+          <ViaToneBranding variant="footer" accent={accent} href="/login" />
         </footer>
       </div>
     </div>
