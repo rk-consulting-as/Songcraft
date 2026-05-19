@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { clientPublicUrl } from '@/lib/appUrl'
 import { t, useLang } from '@/lib/i18n'
@@ -31,8 +32,22 @@ export default function ArtistWorkspaceOverview({
 }) {
   const lang = useLang()
   const tx = t[lang]
+  const [urlCopied, setUrlCopied] = useState(false)
   const released = songs.filter(s => s.status === 'released').length
   const recent = songs.slice(0, 5)
+  const publicUrl = artist.page_slug ? clientPublicUrl(`/p/${artist.page_slug}`) : ''
+  const canOpenPublic = !!(artist.page_enabled && artist.page_slug)
+
+  const copyPublicUrl = async () => {
+    if (!publicUrl) return
+    try {
+      await navigator.clipboard.writeText(publicUrl)
+      setUrlCopied(true)
+      window.setTimeout(() => setUrlCopied(false), 2000)
+    } catch {
+      /* ignore */
+    }
+  }
 
   const stats = [
     { label: tx.workspaceStatSongs, value: songs.length, tab: 'songs' },
@@ -70,7 +85,7 @@ export default function ArtistWorkspaceOverview({
                 {tx.importFromSpotify}
               </button>
             )}
-            {artist.page_enabled && artist.page_slug && (
+            {canOpenPublic && (
               <a
                 href={`/p/${artist.page_slug}`}
                 target="_blank"
@@ -78,8 +93,13 @@ export default function ArtistWorkspaceOverview({
                 className="btn-outline"
                 style={{ textDecoration: 'none', textAlign: 'center' }}
               >
-                {tx.workspaceActionPublicPage}
+                {tx.workspaceActionPublicPage} ↗
               </a>
+            )}
+            {publicUrl && (
+              <button type="button" className="btn-outline" onClick={copyPublicUrl}>
+                {urlCopied ? tx.copied : tx.workspaceCopyPublicUrl}
+              </button>
             )}
             <button type="button" className="btn-outline" onClick={() => onOpenTab('epk')}>
               {tx.workspaceActionEpk}
@@ -119,9 +139,9 @@ export default function ArtistWorkspaceOverview({
               ))}
             </div>
           )}
-          {artist.page_slug && (
+          {publicUrl && (
             <p style={{ color: '#6a5a40', fontSize: 12, margin: '14px 0 0', wordBreak: 'break-all' }}>
-              {clientPublicUrl(`/p/${artist.page_slug}`)}
+              {publicUrl}
             </p>
           )}
         </div>

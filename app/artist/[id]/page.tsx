@@ -7,8 +7,9 @@ import { type AIProvider, getStoredProvider, setStoredProvider } from '@/lib/aiP
 import AIProviderPicker from '@/components/AIProviderPicker'
 import ZoomableImage from '@/components/ZoomableImage'
 import Link from 'next/link'
-import ClickStats from '@/components/ClickStats'
 import QRCodeCard from '@/components/QRCodeCard'
+import ArtistWorkspaceAnalytics from '@/components/ArtistWorkspaceAnalytics'
+import WorkspaceEmptyState from '@/components/WorkspaceEmptyState'
 import UpgradePrompt from '@/components/UpgradePrompt'
 import FanHubPanel from '@/components/FanHubPanel'
 import MobileQuickActions from '@/components/MobileQuickActions'
@@ -628,51 +629,7 @@ export default function ArtistPage() {
   })
 
   const publicPageViews = analyticsEvents.filter(e => e.event_type === 'artist_page_view' || e.event_type === 'song_page_view')
-  const artistPageViews = analyticsEvents.filter(e => e.event_type === 'artist_page_view').length
-  const songPageViews = analyticsEvents.filter(e => e.event_type === 'song_page_view').length
   const newsletterConversions = analyticsEvents.filter(e => e.event_type === 'newsletter_signup').length
-  const embedViews = analyticsEvents.filter(e => e.event_type === 'embed_view').length
-  const embedClicks = analyticsEvents.filter(e => e.event_type === 'embed_click').length
-  const conversionRate = publicPageViews.length > 0
-    ? Math.round((newsletterConversions / publicPageViews.length) * 1000) / 10
-    : 0
-  const qrTrafficCount = analyticsEvents.filter(e => e.source === 'qr').length
-  const songTitleById = new Map(songs.map(s => [s.id, s.title]))
-  const topSongVisits = Array.from(
-    analyticsEvents
-      .filter(e => e.event_type === 'song_page_view' && e.song_id)
-      .reduce((map, event) => {
-        const songId = event.song_id!
-        const current = map.get(songId) || {
-          songId,
-          title: songTitleById.get(songId) || (event.songs as any)?.title || tx.song,
-          visits: 0,
-        }
-        current.visits += 1
-        map.set(songId, current)
-        return map
-      }, new Map<string, { songId: string; title: string; visits: number }>())
-      .values()
-  ).sort((a, b) => b.visits - a.visits).slice(0, 5)
-  const recentTraffic = analyticsEvents
-    .filter(e => e.event_type === 'artist_page_view' || e.event_type === 'song_page_view' || e.event_type === 'embed_view' || e.event_type === 'embed_click')
-    .slice(0, 8)
-  const topEmbeddedSongs = Array.from(
-    analyticsEvents
-      .filter(e => e.event_type === 'embed_view' && e.song_id)
-      .reduce((map, event) => {
-        const songId = event.song_id!
-        const current = map.get(songId) || {
-          songId,
-          title: songTitleById.get(songId) || (event.songs as any)?.title || tx.song,
-          views: 0,
-        }
-        current.views += 1
-        map.set(songId, current)
-        return map
-      }, new Map<string, { songId: string; title: string; views: number }>())
-      .values()
-  ).sort((a, b) => b.views - a.views).slice(0, 5)
 
   // Reorder: persist new positions to Supabase, optimistically update local state.
   const persistOrder = async (ordered: Song[]) => {
@@ -1055,10 +1012,12 @@ export default function ArtistPage() {
   if (loading) return <div style={{ color: '#6a5a40', padding: '40px' }}>{tx.loading}</div>
 
   const statusLabel = (s: string) => ({ draft: tx.draft, in_progress: tx.inProgress, complete: tx.complete, released: tx.released }[s] || s)
+  const epkIsEmpty = !epk.tagline && !epk.short_bio && !epk.long_bio && !epk.release_highlight && (epk.selected_song_ids?.length || 0) === 0
 
   return (
     <div className="artist-workspace" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0a0f 0%, #12071e 50%, #0a0f0a 100%)' }}>
-      <div className="app-header" data-header="page" style={{ borderBottom: '1px solid rgba(180,140,80,0.2)', padding: '20px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+      <div className="artist-workspace-sticky">
+      <div className="app-header artist-workspace-header" data-header="page" style={{ padding: '20px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <Link href="/dashboard" style={{ color: '#6a5a40', textDecoration: 'none', fontSize: '13px' }}>← {tx.dashboard}</Link>
           <span style={{ color: '#3a3530' }}>|</span>
@@ -1136,6 +1095,7 @@ export default function ArtistPage() {
       </div>
 
       <ArtistWorkspaceNav active={workspaceTab} onChange={changeWorkspaceTab} />
+      </div>
 
       <div className="artist-workspace-body">
         {workspaceTab === 'overview' && artist && (
@@ -1163,16 +1123,6 @@ export default function ArtistPage() {
 
         {workspaceTab === 'songs' && (
           <>
-        <MobileQuickActions
-          title={tx.mobileQuickActions}
-          actions={[
-            { label: tx.mobileCreateSong, icon: '+', onClick: () => { setShowGenerator(true); setGeneratedSongs([]) } },
-            { label: tx.mobileOpenPublicPage, icon: '↗', href: artist?.page_enabled && artist?.page_slug ? `/p/${artist.page_slug}` : undefined, disabled: !artist?.page_enabled || !artist?.page_slug },
-            { label: tx.mobileCopyShareLink, icon: '⧉', onClick: () => {
-              if (artist?.page_slug) navigator.clipboard.writeText(`${window.location.origin}/p/${artist.page_slug}`)
-            }, disabled: !artist?.page_slug },
-          ]}
-        />
         {showGenerator && (
           <div className="card" style={{ marginBottom: '32px', borderColor: 'rgba(212,168,67,0.4)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -1747,10 +1697,17 @@ export default function ArtistPage() {
         )}
 
         {visibleSongs.length === 0 && !showGenerator ? (
-          <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
-            <div style={{ fontSize: '40px', marginBottom: '16px' }}>🎵</div>
-            <p style={{ color: '#8a7a60', marginBottom: '20px' }}>{songs.length === 0 ? tx.noSongs : tx.filterNoMatch}</p>
-            {songs.length === 0 && <button className="btn-gold" onClick={() => setShowGenerator(true)}>{tx.generateWithAI}</button>}
+          <div className="card workspace-card">
+            {songs.length === 0 ? (
+              <WorkspaceEmptyState
+                icon="🎵"
+                title={tx.noSongs}
+                description={tx.workspaceEmptyNoSongsDesc}
+                action={<button type="button" className="btn-gold" onClick={() => setShowGenerator(true)}>{tx.generateWithAI}</button>}
+              />
+            ) : (
+              <WorkspaceEmptyState icon="🔍" title={tx.filterNoMatch} />
+            )}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1949,156 +1906,16 @@ export default function ArtistPage() {
 
         {workspaceTab === 'campaigns' && <ArtistCampaignsSummary songs={songs} />}
 
-        {workspaceTab === 'analytics' && (
-        <>
-        {/* Public growth analytics */}
-        <div className="card workspace-card" style={{ borderColor: 'rgba(112,144,208,0.25)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
-            <div>
-              <h2 style={{ color: '#7090d0', fontWeight: 'normal', fontSize: 16, letterSpacing: 1, textTransform: 'uppercase', margin: 0 }}>
-                {tx.fanAnalyticsTitle}
-              </h2>
-              <p style={{ color: '#8a7a60', fontSize: 12, margin: '4px 0 0' }}>{tx.fanAnalyticsDesc}</p>
-              {planId === 'free' && (
-                <UpgradePrompt compact title={tx.upgradeAnalyticsTitle} description={tx.upgradeAnalyticsDesc} />
-              )}
-            </div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {([
-                ['7d', tx.analyticsRange7d],
-                ['30d', tx.analyticsRange30d],
-                ['all', tx.analyticsRangeAll],
-              ] as const).map(([range, label]) => {
-                const active = analyticsRange === range
-                return (
-                  <button
-                    key={range}
-                    type="button"
-                    onClick={() => setAnalyticsRange(range)}
-                    style={{
-                      padding: '5px 12px',
-                      borderRadius: 14,
-                      border: active ? '1px solid #7090d0' : '1px solid rgba(180,140,80,0.2)',
-                      background: active ? 'rgba(112,144,208,0.14)' : 'transparent',
-                      color: active ? '#a8b8e8' : '#6a5a40',
-                      cursor: 'pointer',
-                      fontSize: 11,
-                    }}
-                  >
-                    {label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="workspace-analytics-grid" style={{ marginBottom: 18 }}>
-            {[
-              [tx.fanAnalyticsTotalViews, publicPageViews.length],
-              [tx.fanAnalyticsArtistViews, artistPageViews],
-              [tx.fanAnalyticsSongViews, songPageViews],
-              [tx.fanAnalyticsSignups, newsletterConversions],
-              [tx.fanAnalyticsConversion, `${conversionRate}%`],
-              [tx.fanAnalyticsQrVisits, qrTrafficCount],
-              [tx.embedViews, embedViews],
-              [tx.embedClicks, embedClicks],
-            ].map(([label, value]) => (
-              <div key={String(label)} style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(112,144,208,0.16)', borderRadius: 6, padding: 12 }}>
-                <div style={{ color: '#8a7a60', fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>{label}</div>
-                <div style={{ color: '#e8e0d0', fontSize: 22, fontWeight: 600 }}>{value}</div>
-              </div>
-            ))}
-          </div>
-
-          {analyticsLoading ? (
-            <p style={{ color: '#6a5a40', fontSize: 13 }}>{tx.loading}</p>
-          ) : analyticsEvents.length === 0 ? (
-            <p style={{ color: '#5a4a30', fontSize: 13, margin: 0 }}>{tx.fanAnalyticsEmpty}</p>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 14 }}>
-              <div>
-                <h3 style={{ color: '#a8b8e8', fontWeight: 'normal', fontSize: 13, letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 10px' }}>
-                  {tx.fanAnalyticsTopSongs}
-                </h3>
-                {topSongVisits.length === 0 ? (
-                  <p style={{ color: '#5a4a30', fontSize: 12, margin: 0 }}>{tx.fanAnalyticsNoSongVisits}</p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                    {topSongVisits.map(song => (
-                      <Link key={song.songId} href={`/song/${song.songId}`} style={{ textDecoration: 'none', display: 'flex', justifyContent: 'space-between', gap: 10, padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(180,140,80,0.1)' }}>
-                        <span style={{ color: '#e8e0d0', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{song.title}</span>
-                        <span style={{ color: '#7090d0', fontSize: 12 }}>{song.visits}</span>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <h3 style={{ color: '#a8b8e8', fontWeight: 'normal', fontSize: 13, letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 10px' }}>
-                  {tx.fanAnalyticsRecentTraffic}
-                </h3>
-                {recentTraffic.length === 0 ? (
-                  <p style={{ color: '#5a4a30', fontSize: 12, margin: 0 }}>{tx.fanAnalyticsNoTraffic}</p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                    {recentTraffic.map(event => (
-                      <div key={event.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '8px 10px', borderRadius: 6, background: event.source === 'qr' ? 'rgba(112,144,208,0.08)' : 'rgba(255,255,255,0.025)', border: '1px solid rgba(180,140,80,0.1)' }}>
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ color: '#e8e0d0', fontSize: 12 }}>
-                            {event.event_type === 'artist_page_view'
-                              ? tx.fanAnalyticsArtistPage
-                              : event.event_type === 'embed_view'
-                                ? tx.embedView
-                                : event.event_type === 'embed_click'
-                                  ? tx.embedClick
-                                  : tx.fanAnalyticsSongPage}
-                            {event.source === 'qr' ? ' · QR' : ''}
-                          </div>
-                          {event.song_id && <div style={{ color: '#6a5a40', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{songTitleById.get(event.song_id) || (event.songs as any)?.title}</div>}
-                        </div>
-                        <div style={{ color: '#5a4a30', fontSize: 11, textAlign: 'right', flexShrink: 0 }}>
-                          {new Date(event.created_at).toLocaleDateString(lang === 'no' ? 'nb-NO' : 'en-US')}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {topEmbeddedSongs.length > 0 && (
-            <div style={{ marginTop: 16 }}>
-              <h3 style={{ color: '#a8b8e8', fontWeight: 'normal', fontSize: 13, letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 10px' }}>
-                {tx.embedTopSongs}
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                {topEmbeddedSongs.map(song => (
-                  <Link key={song.songId} href={`/song/${song.songId}`} style={{ textDecoration: 'none', display: 'flex', justifyContent: 'space-between', gap: 10, padding: '8px 10px', borderRadius: 6, background: 'rgba(112,144,208,0.06)', border: '1px solid rgba(112,144,208,0.16)' }}>
-                    <span style={{ color: '#e8e0d0', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{song.title}</span>
-                    <span style={{ color: '#7090d0', fontSize: 12 }}>{song.views}</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {artist?.id && (
-          <div className="card workspace-card" style={{ marginTop: 14 }}>
-            <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: 16, letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 6px' }}>
-              📊 {lang === 'no' ? 'Klikkstatistikk for artist' : 'Click stats for artist'}
-            </h2>
-            <p style={{ color: '#8a7a60', fontSize: 12, margin: '0 0 16px' }}>
-              {lang === 'no'
-                ? 'Hvor mange klikker på lenker fra denne artistens offentlige sider.'
-                : 'How many people click through links on this artist\'s public pages.'}
-            </p>
-            <ClickStats artistId={artist.id} />
-          </div>
-        )}
-        </>
+        {workspaceTab === 'analytics' && artist?.id && (
+          <ArtistWorkspaceAnalytics
+            artistId={artist.id}
+            planId={planId}
+            analyticsRange={analyticsRange}
+            onRangeChange={setAnalyticsRange}
+            analyticsLoading={analyticsLoading}
+            analyticsEvents={analyticsEvents}
+            songs={songs.map(s => ({ id: s.id, title: s.title }))}
+          />
         )}
 
         {workspaceTab === 'epk' && (
@@ -2127,6 +1944,21 @@ export default function ArtistPage() {
 
           {planId === 'free' && (
             <UpgradePrompt compact title={tx.epkProTitle} description={tx.epkProDesc} />
+          )}
+
+          {epkIsEmpty && (
+            <div style={{ marginBottom: 16 }}>
+              <WorkspaceEmptyState
+                icon="📰"
+                title={tx.workspaceEmptyNoEpk}
+                description={tx.workspaceEmptyNoEpkDesc}
+                action={
+                  <button type="button" className="btn-gold" onClick={generateEpk} disabled={epkGenerating}>
+                    {epkGenerating ? tx.generating : tx.epkGenerate}
+                  </button>
+                }
+              />
+            </div>
           )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, marginBottom: 16 }}>
@@ -2220,14 +2052,30 @@ export default function ArtistPage() {
         )}
 
         {workspaceTab === 'fanhub' && artist && (
-          <FanHubPanel
-            artist={artist}
-            songs={songs}
-            subscribers={subscribers}
-            newsletterSources={newsletterSources}
-            planId={planId}
-            aiProvider={aiProvider}
-          />
+          <div className="workspace-section">
+            {subscribers.length === 0 && (
+              <div className="card workspace-card">
+                <WorkspaceEmptyState
+                  icon="✉"
+                  title={tx.workspaceEmptyNoSubscribers}
+                  description={tx.workspaceEmptyNoSubscribersDesc}
+                  action={
+                    <button type="button" className="btn-outline" onClick={() => changeWorkspaceTab('public')}>
+                      {tx.workspaceTabPublic}
+                    </button>
+                  }
+                />
+              </div>
+            )}
+            <FanHubPanel
+              artist={artist}
+              songs={songs}
+              subscribers={subscribers}
+              newsletterSources={newsletterSources}
+              planId={planId}
+              aiProvider={aiProvider}
+            />
+          </div>
         )}
 
         {workspaceTab === 'events' && (
@@ -2281,9 +2129,18 @@ export default function ArtistPage() {
             </div>
           )}
 
-          {events.length === 0 ? (
-            <p style={{ color: '#5a4a30', fontSize: 13, margin: 0 }}>{tx.eventsEmpty}</p>
-          ) : (
+          {events.length === 0 && !showEventForm ? (
+            <WorkspaceEmptyState
+              icon="📅"
+              title={tx.eventsEmpty}
+              description={tx.workspaceEmptyNoEventsDesc}
+              action={
+                <button type="button" className="btn-gold" onClick={openEventCreate}>
+                  {tx.eventNew}
+                </button>
+              }
+            />
+          ) : events.length === 0 ? null : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {events.map(event => {
                 const location = [event.venue, event.city, event.country].filter(Boolean).join(' · ')
