@@ -25,6 +25,7 @@ import CampaignQualityChecklist from '@/components/playlistCommunities/CampaignQ
 import CampaignInvitePanel from '@/components/playlistCommunities/CampaignInvitePanel'
 import PlaylistReputationBadges from '@/components/playlistCommunities/PlaylistReputationBadges'
 import CommunityQualityBlurb from '@/components/playlistCommunities/CommunityQualityBlurb'
+import CampaignParticipationSection from '@/components/playlistCommunities/CampaignParticipationSection'
 
 type MemberRow = {
   id: string
@@ -282,6 +283,14 @@ export default function PlaylistCampaignPage() {
                 </ul>
               )}
             </section>
+
+            <CampaignParticipationSection
+              campaignId={id}
+              isOwner={isOwner}
+              isApprovedMember={myMembership?.status === 'approved'}
+              activeDaysPerWeek={campaign.active_days_per_week}
+              campaignActive={['open', 'active'].includes(campaign.status)}
+            />
 
             {isOwner && pendingRequests.length > 0 && (
               <section className="public-section">

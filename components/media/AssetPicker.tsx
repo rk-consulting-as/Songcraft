@@ -20,6 +20,7 @@ const TYPE_LABEL_KEYS: Record<MediaAssetType, keyof (typeof t)['en']> = {
   qr_export: 'mediaTypeQr',
   promo_image: 'mediaTypePromo',
   social_graphic: 'mediaTypeSocial',
+  activity_proof: 'mediaTypeActivityProof',
 }
 
 export default function AssetPicker({

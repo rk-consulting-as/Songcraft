@@ -4,13 +4,29 @@ import { computePlaylistReputation, type PlaylistReputationBadge } from './reput
 export async function fetchUserPlaylistReputation(userId: string): Promise<PlaylistReputationBadge[]> {
   const sb = createClient()
 
-  const [{ count: playlistCount }, { count: ownedCampaignCount }, { data: memberships }, { data: ownedCampaigns }] =
-    await Promise.all([
-      sb.from('creator_playlists').select('id', { count: 'exact', head: true }).eq('user_id', userId),
-      sb.from('playlist_campaigns').select('id', { count: 'exact', head: true }).eq('user_id', userId),
-      sb.from('playlist_campaign_members').select('id, status, campaign_id').eq('user_id', userId),
-      sb.from('playlist_campaigns').select('id').eq('user_id', userId),
-    ])
+  const [
+    { count: playlistCount },
+    { count: ownedCampaignCount },
+    { data: memberships },
+    { data: ownedCampaigns },
+    { count: approvedActivityCount },
+    { count: participationSubmitCount },
+  ] = await Promise.all([
+    sb.from('creator_playlists').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+    sb.from('playlist_campaigns').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+    sb.from('playlist_campaign_members').select('id, status, campaign_id').eq('user_id', userId),
+    sb.from('playlist_campaigns').select('id').eq('user_id', userId),
+    sb
+      .from('campaign_activity_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('status', 'approved'),
+    sb
+      .from('campaign_activity_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .in('status', ['submitted', 'approved', 'pending']),
+  ])
 
   const approvedMembershipCount = (memberships || []).filter(m => m.status === 'approved').length
   const joinedCampaignCount = (memberships || []).filter(m =>
@@ -34,5 +50,7 @@ export async function fetchUserPlaylistReputation(userId: string): Promise<Playl
     joinedCampaignCount,
     approvedMembershipCount,
     hostedApprovedMemberCount,
+    approvedActivityCount: approvedActivityCount || 0,
+    participationSubmitCount: participationSubmitCount || 0,
   })
 }

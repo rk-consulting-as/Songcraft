@@ -4,6 +4,7 @@ export type PlaylistReputationBadgeId =
   | 'playlist_starter'
   | 'campaign_host'
   | 'growth_partner'
+  | 'campaign_contributor'
 
 export type PlaylistReputationBadge = {
   id: PlaylistReputationBadgeId
@@ -19,6 +20,8 @@ export type PlaylistReputationInput = {
   joinedCampaignCount: number
   approvedMembershipCount: number
   hostedApprovedMemberCount: number
+  approvedActivityCount: number
+  participationSubmitCount: number
 }
 
 export function computePlaylistReputation(input: PlaylistReputationInput): PlaylistReputationBadge[] {
@@ -28,6 +31,8 @@ export function computePlaylistReputation(input: PlaylistReputationInput): Playl
     joinedCampaignCount,
     approvedMembershipCount,
     hostedApprovedMemberCount,
+    approvedActivityCount,
+    participationSubmitCount,
   } = input
 
   return [
@@ -56,11 +61,17 @@ export function computePlaylistReputation(input: PlaylistReputationInput): Playl
       earned: ownedCampaignCount >= 1 && joinedCampaignCount >= 1,
     },
     {
+      id: 'campaign_contributor',
+      labelKey: 'playlistBadgeContributor',
+      icon: '📋',
+      earned: approvedActivityCount >= 3 || participationSubmitCount >= 5,
+    },
+    {
       id: 'reliable_collaborator',
       labelKey: 'playlistBadgeReliable',
       icon: '✓',
-      earned: approvedMembershipCount >= 2,
-      placeholder: true,
+      earned: approvedActivityCount >= 7,
+      placeholder: approvedActivityCount < 7,
     },
   ]
 }

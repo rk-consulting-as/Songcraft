@@ -1,11 +1,14 @@
 import { createClient } from '@/lib/supabase'
+import type { ParticipationPayload } from './activityTypes'
 import type {
   CampaignCardData,
   CreatorPlaylist,
   PlaylistCampaign,
   PlaylistCampaignMember,
 } from './types'
+import type { ActivityProofLimits } from './activityLimits'
 import type { PlaylistCommunityLimits } from './limits'
+import type { CampaignActivityLog } from './activityTypes'
 
 export async function getPlaylistAuthHeaders(): Promise<Record<string, string>> {
   const sb = createClient()
@@ -109,5 +112,48 @@ export async function updateCampaignMember(
   return apiFetch<{ member: PlaylistCampaignMember }>(
     `/api/playlist-communities/campaigns/${campaignId}/members/${memberId}`,
     { method: 'PATCH', body: JSON.stringify(body) }
+  )
+}
+
+export async function fetchCampaignParticipation(campaignId: string) {
+  return apiFetch<
+    ParticipationPayload & {
+      limits: ActivityProofLimits & { canUseAiReview: boolean }
+      planId: string
+      role: 'owner' | 'member'
+    }
+  >(`/api/playlist-communities/campaigns/${campaignId}/participation`)
+}
+
+export async function submitCampaignActivityProof(campaignId: string, form: FormData) {
+  const headers = await getPlaylistAuthHeaders()
+  if (!headers.Authorization) return null
+  const res = await fetch(`/api/playlist-communities/campaigns/${campaignId}/activity`, {
+    method: 'POST',
+    headers,
+    body: form,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { error?: string }).error || res.statusText)
+  }
+  return res.json() as Promise<{ log: CampaignActivityLog }>
+}
+
+export async function reviewCampaignActivityLog(
+  campaignId: string,
+  logId: string,
+  body: { status?: string; owner_note?: string; proof_text?: string; proof_type?: string }
+) {
+  return apiFetch<{ log: CampaignActivityLog }>(
+    `/api/playlist-communities/campaigns/${campaignId}/activity/${logId}`,
+    { method: 'PATCH', body: JSON.stringify(body) }
+  )
+}
+
+export async function runCampaignActivityAiReview(campaignId: string, logId: string) {
+  return apiFetch<{ log: CampaignActivityLog; disclaimer: string }>(
+    `/api/playlist-communities/campaigns/${campaignId}/activity/${logId}/ai-review`,
+    { method: 'POST' }
   )
 }

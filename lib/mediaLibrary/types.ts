@@ -8,6 +8,7 @@ export const MEDIA_ASSET_TYPES = [
   'qr_export',
   'promo_image',
   'social_graphic',
+  'activity_proof',
 ] as const
 
 export type MediaAssetType = (typeof MEDIA_ASSET_TYPES)[number]
@@ -25,6 +26,7 @@ export type MediaAssetUsage = {
   used_in_public_page?: boolean
   used_as_cover?: boolean
   used_as_brand_kit?: boolean
+  activity_proof?: boolean
 }
 
 export type MediaAsset = {
