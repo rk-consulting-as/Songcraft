@@ -24,6 +24,8 @@ import ArtistWorkspaceOverview from '@/components/ArtistWorkspaceOverview'
 import ArtistCampaignsSummary from '@/components/ArtistCampaignsSummary'
 import ArtistWorkspaceGrowth from '@/components/ArtistWorkspaceGrowth'
 import ArtistWorkspaceMedia from '@/components/ArtistWorkspaceMedia'
+import EpkMediaSection from '@/components/media/EpkMediaSection'
+import type { EpkSettings } from '@/lib/mediaLibrary/epkSettings'
 import ArtistFeaturedReleasePicker from '@/components/ArtistFeaturedReleasePicker'
 import ArtistSettingsPanel from '@/components/ArtistSettingsPanel'
 import SongPublicPageActions from '@/components/SongPublicPageActions'
@@ -70,7 +72,7 @@ type Artist = {
   admin_hidden?: boolean | null
 }
 
-type EpkContent = {
+type EpkContent = EpkSettings & {
   short_bio: string
   long_bio: string
   release_highlight: string
@@ -2007,6 +2009,15 @@ export default function ArtistPage() {
             ))}
           </div>
 
+          {artist && (
+            <EpkMediaSection
+              artistId={artist.id}
+              epk={epk}
+              songs={songs}
+              onSave={patch => saveEpk(patch)}
+            />
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14, marginBottom: 16 }}>
             <div className="card" style={{ borderColor: 'rgba(112,144,208,0.18)' }}>
               <h3 style={{ color: '#7090d0', fontWeight: 'normal', fontSize: 14, margin: '0 0 10px' }}>{tx.epkSelectedSongs}</h3>
@@ -2046,7 +2057,7 @@ export default function ArtistPage() {
             {epk.short_bio && <p style={{ color: '#c8c0b0', fontSize: 14, lineHeight: 1.6 }}>{epk.short_bio}</p>}
             {epk.release_highlight && <p style={{ color: '#8a7a60', fontSize: 13, lineHeight: 1.6, marginBottom: 12 }}>{epk.release_highlight}</p>}
             {epkPreviewSongs.songs.length > 0 && (
-              <EpkSelectedSongsList songs={epkPreviewSongs.songs} variant="dark" heading={tx.epkSelectedSongs} />
+              <EpkSelectedSongsList songs={epkPreviewSongs.songs} variant="dark" heading={tx.epkSelectedSongs} epk={epk} />
             )}
           </div>
 
@@ -2215,7 +2226,7 @@ export default function ArtistPage() {
                     {tx.workspaceActionPublicPage} ↗
                   </a>
                 </div>
-                <QRCodeCard path={`/p/${artist.page_slug}`} title={tx.qrArtistHint} />
+                <QRCodeCard path={`/p/${artist.page_slug}`} title={tx.qrArtistHint} artistId={artist.id} saveLabel={artist.name} />
                 <ArtistFeaturedReleasePicker
                   artistId={artist.id}
                   pageSettings={artist.page_settings}

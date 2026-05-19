@@ -14,6 +14,8 @@ import PublicEventsList from '@/components/PublicEventsList'
 import PublicAnalyticsTracker from '@/components/PublicAnalyticsTracker'
 import ExpandableText from '@/components/ExpandableText'
 import PublicCreatorIdentityBlock from '@/components/discover/PublicCreatorIdentityBlock'
+import { getFeaturedRelease } from '@/lib/creatorIdentity'
+import { resolveArtistOgImage, resolvePublicArtistImages } from '@/lib/mediaLibrary/resolveImages'
 
 // Public artist landing page. Server-rendered, anonymous Supabase client (RLS gates by page_enabled).
 // URL: /p/{slug}
@@ -71,20 +73,32 @@ async function fetchPageData(slug: string) {
     .in('status', ['scheduled', 'sold_out'])
     .order('date', { ascending: true })
   if (eventsErr) console.error('[public-page] events query error:', eventsErr)
-  return { artist, songs: songs || [], albums: albums || [], events: events || [] }
+  const { data: featuredAsset } = await sb
+    .from('media_assets')
+    .select('file_url, thumbnail_url, visibility, is_featured')
+    .eq('artist_id', artist.id)
+    .eq('visibility', 'public')
+    .eq('is_featured', true)
+    .maybeSingle()
+  return { artist, songs: songs || [], albums: albums || [], events: events || [], featuredAsset: featuredAsset || null }
 }
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const data = await fetchPageData(params.slug)
   if (!data) return { title: 'Not found' }
-  const cover = data.artist.spotify_image_url || data.artist.avatar_url
+  const featured = getFeaturedRelease(data.artist.page_settings, data.songs, data.albums)
+  const ogImage = resolveArtistOgImage({
+    artist: data.artist,
+    featuredSongCover: featured?.coverUrl || null,
+    featuredMediaAsset: data.featuredAsset,
+  })
   const favicon = data.artist.favicon_url || data.artist.spotify_image_url || data.artist.avatar_url
   const genreKw = data.artist.genre ? data.artist.genre.split(',').map((g: string) => g.trim()) : []
   const meta = buildPublicMetadata({
     title: `${data.artist.name} — Official Artist Page`,
     description: data.artist.description?.slice(0, 160) || `${data.artist.name} — music, releases, and fan page on ViaTone.`,
     path: `/p/${params.slug}`,
-    image: cover,
+    image: ogImage,
     keywords: [data.artist.name, ...genreKw, 'independent artist'],
     type: 'profile',
   })
@@ -113,6 +127,7 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
   const data = await fetchPageData(params.slug)
   if (!data) notFound()
   const { artist, songs, albums, events } = data
+  const publicImages = resolvePublicArtistImages(artist)
 
   // Route to the selected template
   const template = (artist as any).page_template || 'default'
@@ -132,7 +147,9 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
   const accent = settings.accent_color || '#d4a843'
   const ytIds = (settings.youtube_videos || []).map(youtubeId).filter(Boolean) as string[]
   const releasedSongs = songs.filter((sg: any) => sg.status === 'released' || sg.suno_url)
-  const cover = artist.spotify_image_url || artist.avatar_url
+  const heroImage = publicImages.hero
+  const profileImage = publicImages.profile
+  const logoUrl = publicImages.logo
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#e8e0d0', fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif' }}>
@@ -141,17 +158,21 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
       <section style={{
         position: 'relative',
         minHeight: 480,
-        background: cover
-          ? `linear-gradient(180deg, rgba(10,10,15,0.55) 0%, rgba(10,10,15,0.85) 70%, #0a0a0f 100%), url(${cover}) center/cover no-repeat`
+        background: heroImage
+          ? `linear-gradient(180deg, rgba(10,10,15,0.55) 0%, rgba(10,10,15,0.85) 70%, #0a0a0f 100%), url(${heroImage}) center/cover no-repeat`
           : `linear-gradient(135deg, ${accent}22 0%, #0a0a0f 100%)`,
         padding: '60px 24px 48px',
         textAlign: 'center',
         borderBottom: `1px solid ${accent}33`,
       }}>
         <div style={{ maxWidth: 980, margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 }}>
-          {cover && (
+          {logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={cover} alt={artist.name} style={{ width: 180, height: 180, borderRadius: '50%', objectFit: 'cover', border: `3px solid ${accent}`, boxShadow: '0 12px 40px rgba(0,0,0,0.6)' }} />
+            <img src={logoUrl} alt="" style={{ height: 48, maxWidth: 200, objectFit: 'contain', marginBottom: 4 }} />
+          )}
+          {profileImage && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={profileImage} alt={artist.name} style={{ width: 180, height: 180, borderRadius: '50%', objectFit: 'cover', border: `3px solid ${accent}`, boxShadow: '0 12px 40px rgba(0,0,0,0.6)' }} />
           )}
           <h1 style={{ margin: 0, fontSize: 'clamp(36px, 6vw, 64px)', fontWeight: 800, letterSpacing: '-0.02em', color: '#fff' }}>
             {artist.name}

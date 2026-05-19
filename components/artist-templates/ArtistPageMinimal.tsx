@@ -7,6 +7,7 @@ import ExpandableText from '@/components/ExpandableText'
 import PublicCreatorIdentityBlock from '@/components/discover/PublicCreatorIdentityBlock'
 import CreatorAcquisitionCta from '@/components/platform/CreatorAcquisitionCta'
 import ViaToneBranding from '@/components/platform/ViaToneBranding'
+import { resolvePublicArtistImages } from '@/lib/mediaLibrary/resolveImages'
 
 /**
  * Minimal artist template — typography-first. Centered text hero (no big avatar),
@@ -27,6 +28,7 @@ export default function ArtistPageMinimal({
   const accent = artist.page_settings?.accent_color || '#d4a843'
   const releasedSongs = songs.filter(s => s.status === 'released')
   const sections = { newsletter: true, events: true, ...(artist.page_settings?.sections || {}) }
+  const { logo: logoUrl, profile: profileImage } = resolvePublicArtistImages(artist)
 
   return (
     <div style={{
@@ -39,6 +41,12 @@ export default function ArtistPageMinimal({
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '80px 24px' }}>
         {/* Centered hero — name only */}
         <header style={{ textAlign: 'center', marginBottom: 80 }}>
+          {logoUrl && (
+            <img src={logoUrl} alt="" style={{ height: 44, maxWidth: 200, objectFit: 'contain', marginBottom: 20 }} />
+          )}
+          {profileImage && (
+            <img src={profileImage} alt={artist.name} style={{ width: 96, height: 96, borderRadius: '50%', objectFit: 'cover', marginBottom: 20, border: `2px solid ${accent}55` }} />
+          )}
           <h1 style={{
             fontSize: 'clamp(40px, 8vw, 72px)',
             fontWeight: 200,

@@ -6,6 +6,7 @@ import { t, useLang } from '@/lib/i18n'
 import type { PlanId } from '@/lib/subscription'
 import type { MediaAsset } from '@/lib/mediaLibrary/types'
 import { getBrandKit, mergeBrandKit } from '@/lib/mediaLibrary/brandKit'
+import { trackMediaUsage } from '@/lib/mediaLibrary/usage'
 import UpgradePrompt from '@/components/UpgradePrompt'
 import ZoomableImage from '@/components/ZoomableImage'
 
@@ -81,6 +82,12 @@ export default function BrandKitPanel({
     if (profileUrl) updates.avatar_url = profileUrl
 
     await sb.from('artists').update(updates).eq('id', artistId)
+    const assetIds = [logoId, heroId, profileId].filter(Boolean) as string[]
+    await Promise.all(
+      assetIds.map(id =>
+        trackMediaUsage(id, ['used_as_brand_kit', 'used_in_public_page'], { makePublic: true, artistId })
+      )
+    )
     setSaving(false)
     onSaved?.()
   }

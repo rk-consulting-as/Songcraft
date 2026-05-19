@@ -5,7 +5,8 @@ import { BRAND_NAME } from '@/lib/brand'
 import { absoluteAppUrl } from '@/lib/appUrl'
 import PrintButton from '@/components/PrintButton'
 import EpkSelectedSongsList from '@/components/EpkSelectedSongsList'
-import { fetchEpkSelectedSongs, getEpkSongCover } from '@/lib/epkSongs'
+import { fetchEpkSelectedSongs } from '@/lib/epkSongs'
+import { resolveEpkHeroImage } from '@/lib/mediaLibrary/resolveImages'
 import { getUserPlan } from '@/lib/subscription'
 import ViaToneBranding from '@/components/platform/ViaToneBranding'
 
@@ -68,16 +69,8 @@ function trimText(value: unknown, max: number) {
 }
 
 function epkImage(artist: any, epk: any, songs: any[]) {
-  const selectedSongCover = songs.map(song => getEpkSongCover(song)).find(Boolean)
-  return absoluteAppUrl(
-    epk.image_url ||
-    epk.cover_image_url ||
-    epk.press_image_url ||
-    artist.spotify_image_url ||
-    artist.avatar_url ||
-    selectedSongCover ||
-    FALLBACK_OG_IMAGE
-  )
+  const resolved = resolveEpkHeroImage(artist, epk, songs)
+  return absoluteAppUrl(resolved || FALLBACK_OG_IMAGE)
 }
 
 function epkDescription(artist: any, epk: any) {
@@ -128,7 +121,7 @@ export default async function EpkPage({ params }: { params: { artistSlug: string
   const data = await fetchEpk(params.artistSlug)
   if (!data) notFound()
   const { artist, epk, songs } = data
-  const cover = epk.image_url || epk.cover_image_url || epk.press_image_url || artist.spotify_image_url || artist.avatar_url
+  const cover = resolveEpkHeroImage(artist, epk, songs)
   const socialLinks = Object.entries(epk.social_links || {}).filter(([, url]) => !!url) as [string, string][]
 
   return (
@@ -208,7 +201,7 @@ export default async function EpkPage({ params }: { params: { artistSlug: string
               </div>
             )}
 
-            {songs.length > 0 && <EpkSelectedSongsList songs={songs} variant="print" heading="Selected Songs" />}
+            {songs.length > 0 && <EpkSelectedSongsList songs={songs} variant="print" heading="Selected Songs" epk={epk} />}
           </div>
 
           <aside>

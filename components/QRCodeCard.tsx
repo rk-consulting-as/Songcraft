@@ -3,20 +3,30 @@
 import { useEffect, useMemo, useState } from 'react'
 import QRCode from 'qrcode'
 import { t, useLang, type Lang } from '@/lib/i18n'
+import { saveDataUrlToMediaLibrary } from '@/lib/mediaLibrary/saveToLibrary'
+import { trackMediaUsage } from '@/lib/mediaLibrary/usage'
 
 export default function QRCodeCard({
   path,
   title,
   accent = '#d4a843',
+  artistId,
+  songId,
+  saveLabel,
 }: {
   path: string
   title: string
   accent?: string
+  artistId?: string
+  songId?: string
+  saveLabel?: string
 }) {
   const [lang] = useState<Lang>(() => useLang())
   const tx = t[lang]
   const [dataUrl, setDataUrl] = useState('')
   const [copied, setCopied] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
 
   const fullUrl = useMemo(() => {
     const base = typeof window === 'undefined'
@@ -46,6 +56,25 @@ export default function QRCodeCard({
       setCopied(true)
       setTimeout(() => setCopied(false), 1600)
     } catch {}
+  }
+
+  const saveToLibrary = async () => {
+    if (!dataUrl || !artistId) return
+    setSaving(true)
+    const { asset, error } = await saveDataUrlToMediaLibrary(dataUrl, {
+      type: 'qr_export',
+      title: saveLabel || title || 'QR export',
+      artistId,
+      songId,
+      visibility: 'private',
+    })
+    if (asset) {
+      await trackMediaUsage(asset.id, ['used_in_campaign'], { artistId })
+      setSaved(true)
+    } else if (error) {
+      setSaved(false)
+    }
+    setSaving(false)
   }
 
   return (
@@ -79,12 +108,17 @@ export default function QRCodeCard({
         {dataUrl && (
           <a
             href={dataUrl}
-            download="songcraft-qr.png"
+            download="viatone-qr.png"
             className="btn-outline"
             style={{ padding: '7px 14px', fontSize: 12, textDecoration: 'none' }}
           >
             {tx.qrDownload}
           </a>
+        )}
+        {dataUrl && artistId && (
+          <button type="button" className="btn-outline" disabled={saving || saved} onClick={saveToLibrary} style={{ padding: '7px 14px', fontSize: 12 }}>
+            {saved ? tx.mediaQrSaved : saving ? tx.saving : tx.mediaQrSaveToLibrary}
+          </button>
         )}
       </div>
     </div>

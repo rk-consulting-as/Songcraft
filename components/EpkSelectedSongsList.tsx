@@ -1,13 +1,17 @@
-import { getEpkSongBlurb, getEpkSongCover, type EpkSong } from '@/lib/epkSongs'
+import { getEpkSongBlurb, type EpkSong } from '@/lib/epkSongs'
+import { resolveEpkSongCoverWithOverrides } from '@/lib/mediaLibrary/resolveImages'
+import type { EpkSettings } from '@/lib/mediaLibrary/epkSettings'
 
 export default function EpkSelectedSongsList({
   songs,
   variant = 'print',
   heading = 'Selected songs',
+  epk,
 }: {
   songs: EpkSong[]
   variant?: 'print' | 'dark'
   heading?: string
+  epk?: EpkSettings | null
 }) {
   if (!songs.length) return null
 
@@ -34,7 +38,7 @@ export default function EpkSelectedSongsList({
       </h4>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {songs.map(song => {
-          const cover = getEpkSongCover(song)
+          const cover = resolveEpkSongCoverWithOverrides(song, epk)
           const blurb = getEpkSongBlurb(song, 180)
           return (
             <div

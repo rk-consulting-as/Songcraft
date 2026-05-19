@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { MEDIA_ASSET_TYPES, type MediaAssetType } from '@/lib/mediaLibrary/types'
 import { MEDIA_STORAGE_BUCKET } from '@/lib/mediaLibrary'
+import { mergeUsageFlags, type MediaUsageFlag } from '@/lib/mediaLibrary/usage'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -53,6 +54,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (Array.isArray(body.tags)) updates.tags = body.tags.map(String).slice(0, 20)
   if (body.type && MEDIA_ASSET_TYPES.includes(body.type as MediaAssetType)) updates.type = body.type
   if (body.usage && typeof body.usage === 'object') updates.usage = body.usage
+
+  if (Array.isArray(body.merge_usage_flags) && body.merge_usage_flags.length) {
+    const { data: existing } = await sb
+      .from('media_assets')
+      .select('usage')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .maybeSingle()
+    const flags = body.merge_usage_flags.filter((f: string) =>
+      ['used_in_epk', 'used_in_campaign', 'used_in_public_page', 'used_as_cover', 'used_as_brand_kit'].includes(f)
+    ) as MediaUsageFlag[]
+    updates.usage = mergeUsageFlags((existing?.usage as Record<string, boolean>) || {}, flags)
+  }
 
   if (body.is_featured === true && body.artist_id) {
     await sb

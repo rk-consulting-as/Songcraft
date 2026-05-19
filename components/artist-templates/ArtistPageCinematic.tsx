@@ -7,6 +7,7 @@ import ExpandableText from '@/components/ExpandableText'
 import PublicCreatorIdentityBlock from '@/components/discover/PublicCreatorIdentityBlock'
 import CreatorAcquisitionCta from '@/components/platform/CreatorAcquisitionCta'
 import ViaToneBranding from '@/components/platform/ViaToneBranding'
+import { resolvePublicArtistImages } from '@/lib/mediaLibrary/resolveImages'
 
 /**
  * Cinematic artist template — full-bleed dramatic. Avatar fills viewport as blurred
@@ -26,7 +27,8 @@ export default function ArtistPageCinematic({
 }) {
   const accent = artist.page_settings?.accent_color || '#d4a843'
   const releasedSongs = songs.filter(s => s.status === 'released')
-  const heroImage = artist.spotify_image_url || artist.avatar_url
+  const { hero: heroImage, profile: profileImage, logo: logoUrl } = resolvePublicArtistImages(artist)
+  const avatarImage = profileImage || heroImage
   const sections = { newsletter: true, events: true, ...(artist.page_settings?.sections || {}) }
 
   return (
@@ -70,9 +72,12 @@ export default function ArtistPageCinematic({
 
         <div style={{ position: 'relative', zIndex: 2, maxWidth: 1100, margin: '0 auto', width: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 32, flexWrap: 'wrap' }}>
-            {heroImage && (
+            {logoUrl && (
+              <img src={logoUrl} alt="" style={{ height: 40, maxWidth: 160, objectFit: 'contain', marginBottom: 12 }} />
+            )}
+            {avatarImage && (
               <img
-                src={heroImage}
+                src={avatarImage}
                 alt={artist.name}
                 style={{
                   width: 240, height: 240,

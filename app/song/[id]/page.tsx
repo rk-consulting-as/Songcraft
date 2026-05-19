@@ -12,6 +12,12 @@ import DistributionModal from '@/components/DistributionModal'
 import DistributionWorkflow from '@/components/DistributionWorkflow'
 import ClickStats from '@/components/ClickStats'
 import QRCodeCard from '@/components/QRCodeCard'
+import CampaignMediaSection from '@/components/media/CampaignMediaSection'
+import AssetPicker from '@/components/media/AssetPicker'
+import { getCampaignMedia } from '@/lib/mediaLibrary/epkSettings'
+import { saveUrlToMediaLibrary } from '@/lib/mediaLibrary/saveToLibrary'
+import { trackMediaUsage } from '@/lib/mediaLibrary/usage'
+import type { MediaAsset } from '@/lib/mediaLibrary/types'
 import UpgradePrompt from '@/components/UpgradePrompt'
 import EmbedCodeGenerator from '@/components/EmbedCodeGenerator'
 import MobileQuickActions from '@/components/MobileQuickActions'
@@ -85,6 +91,8 @@ export default function SongPage() {
   // AI image generation state
   const [imageGenerating, setImageGenerating] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
+  const [coverPickerOpen, setCoverPickerOpen] = useState(false)
+  const [saveCoverToLibrary, setSaveCoverToLibrary] = useState(true)
 
   // Lyrics history viewer
   const [showHistory, setShowHistory] = useState(false)
@@ -279,6 +287,7 @@ export default function SongPage() {
       const { data: urlData } = supabase.storage.from('covers').getPublicUrl(path)
       setCoverImageUrl(urlData.publicUrl)
       await save({ cover_image_url: urlData.publicUrl })
+      await maybeSaveCoverToLibrary(urlData.publicUrl)
     } catch (e: any) {
       setImageError(e?.message || 'Image generation failed')
     }
@@ -753,6 +762,25 @@ export default function SongPage() {
     await save({ cover_style: coverStyle, cover_prompt: result })
   }
 
+  const maybeSaveCoverToLibrary = async (url: string) => {
+    if (!saveCoverToLibrary || !artist?.id) return
+    const { asset } = await saveUrlToMediaLibrary(url, {
+      type: 'cover',
+      title: title || 'Cover',
+      artistId: artist.id,
+      songId,
+    })
+    if (asset) await trackMediaUsage(asset.id, ['used_as_cover'], { artistId: artist.id })
+  }
+
+  const applyCoverFromLibrary = async (asset: MediaAsset) => {
+    if (!artist?.id) return
+    await trackMediaUsage(asset.id, ['used_as_cover'], { makePublic: true, artistId: artist.id })
+    setCoverImageUrl(asset.file_url)
+    await save({ cover_image_url: asset.file_url })
+    setCoverPickerOpen(false)
+  }
+
   const uploadCover = async (file: File) => {
     setUploadingCover(true)
     const supabase = createClient()
@@ -763,6 +791,7 @@ export default function SongPage() {
       const { data } = supabase.storage.from('covers').getPublicUrl(path)
       setCoverImageUrl(data.publicUrl)
       await save({ cover_image_url: data.publicUrl })
+      await maybeSaveCoverToLibrary(data.publicUrl)
     }
     setUploadingCover(false)
   }
@@ -1574,10 +1603,36 @@ export default function SongPage() {
                 />
               )}
               <input type="file" ref={fileRef} accept="image/*" style={{ display: 'none' }} onChange={e => e.target.files?.[0] && uploadCover(e.target.files[0])} />
-              <button className="btn-outline" onClick={() => fileRef.current?.click()} disabled={uploadingCover}>
-                {uploadingCover ? tx.saving : coverImageUrl ? '↻ ' + tx.edit : '📁 ' + (lang === 'no' ? 'Velg bilde' : 'Choose image')}
-              </button>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <button className="btn-outline" onClick={() => fileRef.current?.click()} disabled={uploadingCover}>
+                  {uploadingCover ? tx.saving : coverImageUrl ? '↻ ' + tx.edit : '📁 ' + (lang === 'no' ? 'Velg bilde' : 'Choose image')}
+                </button>
+                {artist?.id && (
+                  <button type="button" className="btn-outline" onClick={() => setCoverPickerOpen(true)}>
+                    {tx.mediaCoverFromLibrary}
+                  </button>
+                )}
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, color: '#8a7a60', fontSize: 12, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={saveCoverToLibrary}
+                  onChange={e => setSaveCoverToLibrary(e.target.checked)}
+                  style={{ accentColor: '#d4a843' }}
+                />
+                {tx.mediaSaveCoverToLibrary}
+              </label>
             </div>
+            {artist?.id && (
+              <AssetPicker
+                open={coverPickerOpen}
+                onClose={() => setCoverPickerOpen(false)}
+                artistId={artist.id}
+                types={['cover', 'promo_image', 'campaign_graphic']}
+                onSelect={applyCoverFromLibrary}
+                title={tx.mediaCoverFromLibrary}
+              />
+            )}
             {/* Style preset chips */}
             <div style={{ marginBottom: 14 }}>
               <label style={{ display: 'block', color: '#8a7a60', fontSize: 11, letterSpacing: 1, marginBottom: 6 }}>{tx.coverStyleChips}</label>
@@ -2046,6 +2101,15 @@ export default function SongPage() {
               <UpgradePrompt compact title={tx.upgradeAiTitle} description={tx.upgradeAiDesc} />
             )}
 
+            {artist?.id && (
+              <CampaignMediaSection
+                artistId={artist.id}
+                songId={songId}
+                media={getCampaignMedia(publishContent)}
+                onUpdate={media => updatePublishContent({ campaign_media: media })}
+              />
+            )}
+
             <div className="card" style={{ marginBottom: 20, borderColor: 'rgba(112,144,208,0.22)' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(180px, 240px)', gap: 14 }}>
                 <div>
@@ -2277,7 +2341,7 @@ export default function SongPage() {
             </div>
 
             <div style={{ marginBottom: 18 }}>
-              <QRCodeCard path={`/s/${songId}`} title={tx.qrSongHint} />
+              <QRCodeCard path={`/s/${songId}`} title={tx.qrSongHint} artistId={artist?.id} songId={songId} saveLabel={title} />
             </div>
 
             <div style={{ marginBottom: 18 }}>
@@ -2330,7 +2394,7 @@ export default function SongPage() {
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>{tx.publishTitle}</h2>
 
             <div style={{ marginBottom: 24 }}>
-              <QRCodeCard path={`/s/${songId}`} title={tx.qrSongHint} />
+              <QRCodeCard path={`/s/${songId}`} title={tx.qrSongHint} artistId={artist?.id} songId={songId} saveLabel={title} />
               {planId === 'free' && (
                 <UpgradePrompt compact title={tx.upgradeQrTitle} description={tx.upgradeQrDesc} />
               )}

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { buildPublicMetadata } from '@/lib/platformGrowth/seo'
+import { resolveSongOgImage } from '@/lib/mediaLibrary/resolveImages'
 import CreatorAcquisitionCta from '@/components/platform/CreatorAcquisitionCta'
 import ViaToneBranding from '@/components/platform/ViaToneBranding'
 import ClientEmbedPlayer from '@/components/ClientEmbedPlayer'
@@ -28,7 +29,7 @@ async function fetchSong(songId: string) {
   try {
     const { data: song, error } = await sb
       .from('songs')
-      .select('id, title, lyrics_text, suno_audio_url, spotify_url, suno_url, media_links, backstory, cover_image_url, spotify_cover_url, spotify_album, spotify_release_date, internal_play_count, embed_click_count, comment_count, reaction_count, artist_id, user_id, public_hidden, artists(id, name, page_enabled, page_slug, avatar_url, spotify_image_url, admin_hidden)')
+      .select('id, title, lyrics_text, suno_audio_url, spotify_url, suno_url, media_links, backstory, cover_image_url, spotify_cover_url, spotify_album, spotify_release_date, internal_play_count, embed_click_count, comment_count, reaction_count, artist_id, user_id, public_hidden, artists(id, name, page_enabled, page_slug, avatar_url, spotify_image_url, admin_hidden, page_settings)')
       .eq('id', songId)
       .maybeSingle()
     if (error || !song) return null
@@ -45,13 +46,29 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   try {
     const song = await fetchSong(params.id)
     if (!song) return { title: 'ViaTone — Song not found' }
-    const cover = song.cover_image_url || song.spotify_cover_url
-    const artistName = song.artists?.name || 'Artist'
+    const artist = song.artists
+    let featuredAsset = null
+    if (artist?.id) {
+      const { data } = await sb
+        .from('media_assets')
+        .select('file_url, thumbnail_url, visibility, is_featured')
+        .eq('artist_id', artist.id)
+        .eq('visibility', 'public')
+        .eq('is_featured', true)
+        .maybeSingle()
+      featuredAsset = data
+    }
+    const ogImage = resolveSongOgImage({
+      songCover: song.cover_image_url || song.spotify_cover_url,
+      artist: artist || {},
+      featuredMediaAsset: featuredAsset,
+    })
+    const artistName = artist?.name || 'Artist'
     return buildPublicMetadata({
       title: `${song.title} · ${artistName}`,
       description: `Listen to ${song.title} by ${artistName} — public release on ViaTone.`,
       path: `/s/${params.id}`,
-      image: cover,
+      image: ogImage,
       keywords: [song.title, artistName, 'music release'],
     })
   } catch {

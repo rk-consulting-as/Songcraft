@@ -20,6 +20,11 @@ export type MediaAssetUsage = {
   campaign?: boolean
   embed?: boolean
   brand_kit?: boolean
+  used_in_epk?: boolean
+  used_in_campaign?: boolean
+  used_in_public_page?: boolean
+  used_as_cover?: boolean
+  used_as_brand_kit?: boolean
 }
 
 export type MediaAsset = {

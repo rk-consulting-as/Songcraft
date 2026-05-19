@@ -3,5 +3,8 @@ export * from './limits'
 export * from './brandKit'
 export * from './publicAssets'
 export * from './client'
+export * from './usage'
+export * from './resolveImages'
+export * from './epkSettings'
 
 export const MEDIA_STORAGE_BUCKET = 'media-library'
