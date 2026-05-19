@@ -5,7 +5,9 @@ import { createClient } from '@supabase/supabase-js'
 
 const RESEND_KEY = process.env.RESEND_API_KEY || ''
 const FROM = process.env.RESEND_FROM || 'ViaTone <onboarding@resend.dev>'
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://songcraft-lilac.vercel.app'
+import { resolveServerAppUrl } from '@/lib/appUrl'
+
+const APP_URL = resolveServerAppUrl() || 'http://localhost:3000'
 
 export type NotificationKind =
   | 'new_message'

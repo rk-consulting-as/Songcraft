@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { t, useLang, type Lang } from '@/lib/i18n'
@@ -14,6 +14,10 @@ import FanHubPanel from '@/components/FanHubPanel'
 import MobileQuickActions from '@/components/MobileQuickActions'
 import { getUserPlan } from '@/lib/subscription'
 import { AI_OUTPUT_LANGUAGES, aiOutputLanguageDirective, aiOutputLanguageName, normalizeAIOutputLang, type AIOutputLang } from '@/lib/aiOutputLanguage'
+import EpkSongSelector from '@/components/EpkSongSelector'
+import EpkSelectedSongsList from '@/components/EpkSelectedSongsList'
+import { resolveEpkSongsFromCatalog } from '@/lib/epkSongs'
+import { clientPublicUrl } from '@/lib/appUrl'
 
 import type { SocialLinksMap } from '@/lib/socialLinks'
 
@@ -761,11 +765,21 @@ export default function ArtistPage() {
   }
 
   const toggleEpkSong = (songId: string, checked: boolean) => {
-    const current = new Set(epk.selected_song_ids || [])
-    if (checked) current.add(songId)
-    else current.delete(songId)
-    saveEpk({ selected_song_ids: Array.from(current) })
+    let next = [...(epk.selected_song_ids || [])]
+    if (checked) {
+      if (!next.includes(songId)) next.push(songId)
+    } else {
+      next = next.filter(id => id !== songId)
+    }
+    saveEpk({ selected_song_ids: next })
   }
+
+  const clearEpkSelectedSongs = () => saveEpk({ selected_song_ids: [] })
+
+  const epkPreviewSongs = useMemo(
+    () => resolveEpkSongsFromCatalog(songs, epk.selected_song_ids || [], 4),
+    [songs, epk.selected_song_ids]
+  )
 
   const generateEpk = async () => {
     if (!artist) return
@@ -2069,21 +2083,17 @@ export default function ArtistPage() {
             ))}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 14, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14, marginBottom: 16 }}>
             <div className="card" style={{ borderColor: 'rgba(112,144,208,0.18)' }}>
               <h3 style={{ color: '#7090d0', fontWeight: 'normal', fontSize: 14, margin: '0 0 10px' }}>{tx.epkSelectedSongs}</h3>
-              {songs.length === 0 ? (
-                <p style={{ color: '#6a5a40', fontSize: 13, margin: 0 }}>{tx.noSongs}</p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 7, maxHeight: 260, overflowY: 'auto' }}>
-                  {songs.map(song => (
-                    <label key={song.id} style={{ display: 'flex', alignItems: 'center', gap: 9, color: '#c8c0b0', fontSize: 13, background: epk.selected_song_ids.includes(song.id) ? 'rgba(112,144,208,0.08)' : 'rgba(255,255,255,0.02)', border: '1px solid rgba(112,144,208,0.14)', borderRadius: 6, padding: '8px 10px', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={epk.selected_song_ids.includes(song.id)} onChange={e => toggleEpkSong(song.id, e.target.checked)} style={{ accentColor: '#7090d0' }} />
-                      <span style={{ flex: 1 }}>{song.title}</span>
-                      <span style={{ color: '#6a5a40', fontSize: 11 }}>{song.status}</span>
-                    </label>
-                  ))}
-                </div>
+              <EpkSongSelector
+                songs={songs}
+                selectedIds={epk.selected_song_ids || []}
+                onToggle={toggleEpkSong}
+                onClearSelected={clearEpkSelectedSongs}
+              />
+              {epkPreviewSongs.missingIds.length > 0 && (
+                <p style={{ color: '#c08060', fontSize: 12, margin: '12px 0 0', lineHeight: 1.5 }}>{tx.epkMissingSongs}</p>
               )}
             </div>
 
@@ -2101,12 +2111,19 @@ export default function ArtistPage() {
           <div style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(112,144,208,0.14)', borderRadius: 8, padding: 16, marginBottom: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
               <h3 style={{ color: '#a8b8e8', fontWeight: 'normal', fontSize: 14, margin: 0 }}>{tx.epkPreviewTitle}</h3>
-              {artist?.page_slug && <span style={{ color: '#6a5a40', fontSize: 12 }}>/epk/{artist.page_slug}</span>}
+              {artist?.page_slug && (
+                <span style={{ color: '#6a5a40', fontSize: 12, wordBreak: 'break-all' }}>
+                  {clientPublicUrl(`/epk/${artist.page_slug}`)}
+                </span>
+              )}
             </div>
             <h1 style={{ color: '#e8e0d0', margin: '0 0 6px', fontSize: 26 }}>{artist?.name}</h1>
             {epk.tagline && <p style={{ color: '#d4a843', fontSize: 16, margin: '0 0 12px' }}>"{epk.tagline}"</p>}
             {epk.short_bio && <p style={{ color: '#c8c0b0', fontSize: 14, lineHeight: 1.6 }}>{epk.short_bio}</p>}
-            {epk.release_highlight && <p style={{ color: '#8a7a60', fontSize: 13, lineHeight: 1.6 }}>{epk.release_highlight}</p>}
+            {epk.release_highlight && <p style={{ color: '#8a7a60', fontSize: 13, lineHeight: 1.6, marginBottom: 12 }}>{epk.release_highlight}</p>}
+            {epkPreviewSongs.songs.length > 0 && (
+              <EpkSelectedSongsList songs={epkPreviewSongs.songs} variant="dark" heading={tx.epkSelectedSongs} />
+            )}
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -2121,8 +2138,8 @@ export default function ArtistPage() {
               {tx.epkPublishPublic}
             </label>
             {artist?.page_slug && planId === 'pro' && epk.public_enabled && (
-              <a href={`/epk/${artist.page_slug}`} target="_blank" rel="noopener noreferrer" style={{ color: '#d4a843', fontSize: 13 }}>
-                {typeof window !== 'undefined' ? window.location.origin : ''}/epk/{artist.page_slug}
+              <a href={`/epk/${artist.page_slug}`} target="_blank" rel="noopener noreferrer" style={{ color: '#d4a843', fontSize: 13, wordBreak: 'break-all' }}>
+                {clientPublicUrl(`/epk/${artist.page_slug}`)}
               </a>
             )}
           </div>

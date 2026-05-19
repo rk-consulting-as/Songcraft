@@ -2,13 +2,15 @@ import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { BRAND_NAME } from '@/lib/brand'
+import { absoluteAppUrl } from '@/lib/appUrl'
 import PrintButton from '@/components/PrintButton'
+import EpkSelectedSongsList from '@/components/EpkSelectedSongsList'
+import { fetchEpkSelectedSongs, getEpkSongCover } from '@/lib/epkSongs'
 import { getUserPlan } from '@/lib/subscription'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://songcraft-lilac.vercel.app').replace(/\/$/, '')
 const FALLBACK_OG_IMAGE = '/icons/icon-512.svg'
 
 const sb = createClient(
@@ -38,17 +40,14 @@ async function fetchEpk(slug: string) {
   if (!epk?.public_enabled) return null
   if (!(await userHasPro(artist.user_id))) return null
   const selectedIds = Array.isArray(epk.selected_song_ids) ? epk.selected_song_ids : []
-  const { data: songs } = await sb
-    .from('songs')
-    .select('id, title, status, backstory, lyrics_instructions, spotify_url, suno_url, media_links, cover_image_url, spotify_cover_url, spotify_release_date')
-    .eq('artist_id', artist.id)
-    .eq('public_hidden', false)
-    .order('position', { ascending: true, nullsFirst: false })
-    .order('created_at', { ascending: false })
-  const selectedSongs = selectedIds.length
-    ? (songs || []).filter((song: any) => selectedIds.includes(song.id))
-    : (songs || []).slice(0, 4)
-  return { artist, epk, songs: selectedSongs }
+  const { songs } = await fetchEpkSelectedSongs(sb, {
+    artistId: artist.id,
+    userId: artist.user_id,
+    selectedIds,
+    publicOnly: true,
+    fallbackLimit: 4,
+  })
+  return { artist, epk, songs }
 }
 
 function stripMarkup(value: unknown) {
@@ -67,22 +66,16 @@ function trimText(value: unknown, max: number) {
   return `${text.slice(0, max - 1).replace(/\s+\S*$/, '')}…`
 }
 
-function absoluteUrl(value?: string | null) {
-  if (!value) return `${APP_URL}${FALLBACK_OG_IMAGE}`
-  if (/^https?:\/\//i.test(value)) return value
-  return `${APP_URL}${value.startsWith('/') ? value : `/${value}`}`
-}
-
 function epkImage(artist: any, epk: any, songs: any[]) {
-  const selectedSongCover = songs.find(song => song.cover_image_url || song.spotify_cover_url)
-  return absoluteUrl(
+  const selectedSongCover = songs.map(song => getEpkSongCover(song)).find(Boolean)
+  return absoluteAppUrl(
     epk.image_url ||
     epk.cover_image_url ||
     epk.press_image_url ||
     artist.spotify_image_url ||
     artist.avatar_url ||
-    selectedSongCover?.cover_image_url ||
-    selectedSongCover?.spotify_cover_url
+    selectedSongCover ||
+    FALLBACK_OG_IMAGE
   )
 }
 
@@ -108,16 +101,16 @@ export async function generateMetadata({ params }: { params: { artistSlug: strin
   const title = trimText(`${artist.name} Electronic Press Kit`, 70)
   const description = epkDescription(artist, epk)
   const image = epkImage(artist, epk, songs)
-  const url = `${APP_URL}/epk/${params.artistSlug}`
+  const url = absoluteAppUrl(`/epk/${params.artistSlug}`)
   return {
     title,
     description,
-    alternates: { canonical: url },
+    alternates: url.startsWith('http') ? { canonical: url } : undefined,
     openGraph: {
       siteName: BRAND_NAME,
       title,
       description,
-      url,
+      url: url.startsWith('http') ? url : undefined,
       type: 'website',
       images: [{ url: image, width: 1200, height: 630, alt: artist.name }],
     },
@@ -214,28 +207,7 @@ export default async function EpkPage({ params }: { params: { artistSlug: string
               </div>
             )}
 
-            {songs.length > 0 && (
-              <div>
-                <h2 style={{ color: '#8a6a20', fontSize: 15, letterSpacing: 1.5, textTransform: 'uppercase' }}>Selected Songs</h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {songs.map((song: any) => (
-                    <div key={song.id} className="epk-song-card">
-                      {(song.cover_image_url || song.spotify_cover_url) && <img className="epk-song-cover" src={song.cover_image_url || song.spotify_cover_url} alt="" />}
-                      <div style={{ minWidth: 0 }}>
-                        <h3 style={{ margin: 0, color: '#18130c', fontSize: 16 }}>{song.title}</h3>
-                        {(song.backstory || song.lyrics_instructions) && (
-                          <p style={{ color: '#5f5138', fontSize: 13, lineHeight: 1.45, margin: '5px 0 0' }}>
-                            {String(song.backstory || song.lyrics_instructions).slice(0, 180)}
-                            {String(song.backstory || song.lyrics_instructions).length > 180 ? '...' : ''}
-                          </p>
-                        )}
-                        {song.spotify_url && <a href={song.spotify_url} target="_blank" rel="noopener noreferrer" style={{ color: '#1a7f3c', fontSize: 12 }}>Spotify</a>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {songs.length > 0 && <EpkSelectedSongsList songs={songs} variant="print" heading="Selected Songs" />}
           </div>
 
           <aside>

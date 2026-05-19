@@ -23,7 +23,7 @@ export default function QRCodeCard({
       ? path
       : path.startsWith('http') ? path : `${window.location.origin}${path}`
     try {
-      const url = new URL(base, typeof window === 'undefined' ? 'https://songcraft.local' : window.location.origin)
+      const url = new URL(base, typeof window === 'undefined' ? 'http://localhost:3000' : window.location.origin)
       url.searchParams.set('src', 'qr')
       if (typeof window === 'undefined' && !path.startsWith('http')) return `${url.pathname}${url.search}`
       return url.toString()
