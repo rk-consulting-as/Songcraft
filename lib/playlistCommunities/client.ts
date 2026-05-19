@@ -9,6 +9,7 @@ import type {
 import type { ActivityProofLimits } from './activityLimits'
 import type { PlaylistCommunityLimits } from './limits'
 import type { CampaignActivityLog } from './activityTypes'
+import { classifyError } from '@/lib/errors/userFacing'
 
 export async function getPlaylistAuthHeaders(): Promise<Record<string, string>> {
   const sb = createClient()
@@ -27,7 +28,8 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T | null> 
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error((err as { error?: string }).error || res.statusText)
+    const raw = (err as { error?: string }).error || res.statusText
+    throw new Error(classifyError(raw) !== 'unknown' ? raw : raw)
   }
   return res.json() as Promise<T>
 }

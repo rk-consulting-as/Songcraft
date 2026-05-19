@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { getUserPlan } from '@/lib/subscription'
+import { safeGetUserPlan } from '@/lib/subscription/safePlan'
 import { requireUser } from '@/lib/playlistCommunities/apiAuth'
 import { canAccessParticipation } from '@/lib/playlistCommunities/campaignAccess'
 import { getActivityProofLimits, canUseAiReview } from '@/lib/playlistCommunities/activityLimits'
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const access = await canAccessParticipation(sb, params.id, userId)
   if (!access.ok) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
 
-  const plan = await getUserPlan(sb, userId)
+  const plan = await safeGetUserPlan(sb, userId)
   const limits = getActivityProofLimits(plan.id)
 
   const { data: members } = await sb

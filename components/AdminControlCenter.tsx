@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useLang, type Lang } from '@/lib/i18n'
+import AdminSystemHealthPanel from '@/components/admin/AdminSystemHealthPanel'
 
 const labels = {
   no: {
@@ -73,6 +74,26 @@ const labels = {
     sanityDesc: 'Rask sjekk av miljøvariabler og integrasjoner før beta-testing.',
     ok: 'OK',
     missing: 'Mangler',
+    system: 'System / Beta',
+    adminBetaReadinessTitle: 'Beta-klarhetssjekk',
+    adminBetaReadinessDesc: 'Miljø, migrasjoner og integrasjoner før kontrollert beta.',
+    adminBetaReady: 'Klar',
+    adminBetaMissing: 'mangler',
+    adminMigrationHealthTitle: 'Migrasjonshelse',
+    adminMigrationMissing: 'Manglende tabeller',
+    adminMigrationTable: 'Tabell',
+    adminMigrationStatus: 'Status',
+    adminMigrationHint: 'Migrasjon',
+    adminOk: 'OK',
+    adminVisibilityAuditTitle: 'Offentlig synlighet',
+    adminVisibilityAuditDesc: 'Skjult innhold skal ikke vises på discover, offentlige sider eller sitemap.',
+    adminPlanGatingTitle: 'Plan-gating',
+    adminSafetyWarningsTitle: 'Advarsler',
+    adminFailedApiWarnings: 'Nylige feilede AI/API-kall',
+    adminRecentActions: 'Nylige admin-handlinger',
+    adminSystemNoData: 'Ingen systemdata.',
+    adminHiddenEpks: 'EPK ikke publisert',
+    adminRlsDoc: 'Se docs/RLS_TEST_CHECKLIST.md',
   },
   en: {
     title: 'SaaS Control Center',
@@ -142,10 +163,30 @@ const labels = {
     sanityDesc: 'Quick check of environment variables and integrations before beta testing.',
     ok: 'OK',
     missing: 'Missing',
+    system: 'System / Beta',
+    adminBetaReadinessTitle: 'Beta readiness checklist',
+    adminBetaReadinessDesc: 'Environment, migrations, and integrations before controlled beta.',
+    adminBetaReady: 'Ready',
+    adminBetaMissing: 'missing',
+    adminMigrationHealthTitle: 'Migration health',
+    adminMigrationMissing: 'Missing tables',
+    adminMigrationTable: 'Table',
+    adminMigrationStatus: 'Status',
+    adminMigrationHint: 'Migration',
+    adminOk: 'OK',
+    adminVisibilityAuditTitle: 'Public visibility audit',
+    adminVisibilityAuditDesc: 'Hidden content must not appear on discover, public pages, or sitemap.',
+    adminPlanGatingTitle: 'Plan gating audit',
+    adminSafetyWarningsTitle: 'Warnings',
+    adminFailedApiWarnings: 'Recent failed AI/API calls',
+    adminRecentActions: 'Recent admin actions',
+    adminSystemNoData: 'No system data loaded.',
+    adminHiddenEpks: 'EPK not published',
+    adminRlsDoc: 'See docs/RLS_TEST_CHECKLIST.md',
   },
 }
 
-type Section = 'users' | 'ai' | 'settings' | 'billing' | 'newsletter' | 'moderation' | 'feedback' | 'sanity' | 'audit'
+type Section = 'users' | 'ai' | 'settings' | 'billing' | 'newsletter' | 'moderation' | 'feedback' | 'sanity' | 'system' | 'audit'
 
 export default function AdminControlCenter() {
   const [lang, setLang] = useState<Lang>('en')
@@ -283,7 +324,7 @@ export default function AdminControlCenter() {
       </div>
 
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
-        {(['users', 'ai', 'settings', 'billing', 'newsletter', 'moderation', 'feedback', 'sanity', 'audit'] as Section[]).map(s => (
+        {(['users', 'ai', 'settings', 'billing', 'newsletter', 'moderation', 'feedback', 'sanity', 'system', 'audit'] as Section[]).map(s => (
           <button key={s} onClick={() => setSection(s)} style={tabStyle(section === s)}>{(tx as any)[s]}</button>
         ))}
       </div>
@@ -377,8 +418,12 @@ export default function AdminControlCenter() {
           <Panel title={tx.reportedPlaceholder}><p style={{ color: '#8a7a60', fontSize: 13 }}>{tx.reportedPlaceholder}</p></Panel>
           <Panel title={tx.hiddenArtists}><Rows rows={(data.moderation.hidden_artists || []).map((a: any) => [a.name, a.page_slug || a.id.slice(0, 8)])} /></Panel>
           <Panel title={tx.hiddenSongs}><Rows rows={(data.moderation.hidden_songs || []).map((s: any) => [s.title, s.status])} /></Panel>
-          <Panel title="Quick hide">
-            <p style={{ color: '#8a7a60', fontSize: 12 }}>Use the user list and public page records below for targeted moderation. API actions are audit logged.</p>
+          <Panel title={tx.adminHiddenEpks}>
+            <Rows rows={(data.moderation.hidden_epks || []).map((a: any) => [a.name, a.slug || a.id?.slice(0, 8)])} />
+          </Panel>
+          <Panel title="Campaign safety">
+            <p style={{ color: '#8a7a60', fontSize: 12 }}>{data.moderation.suspicious_proof_placeholder}</p>
+            <p style={{ color: '#6a5a40', fontSize: 11, marginTop: 8 }}>{tx.adminRlsDoc}</p>
           </Panel>
         </Grid>
       )}
@@ -420,6 +465,10 @@ export default function AdminControlCenter() {
             typeof value === 'boolean' ? (value ? tx.ok : tx.missing) : String(value),
           ])} />
         </Panel>
+      )}
+
+      {section === 'system' && (
+        <AdminSystemHealthPanel system={data.system} tx={tx as Record<string, string>} />
       )}
 
       {section === 'audit' && (

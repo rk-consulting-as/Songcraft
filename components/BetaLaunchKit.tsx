@@ -27,6 +27,7 @@ export default function BetaLaunchKit() {
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
 
   const hidden = !pathname ||
     pathname === '/' ||
@@ -74,9 +75,12 @@ export default function BetaLaunchKit() {
     localStorage.setItem(CHECK_KEY, JSON.stringify(next))
   }
 
+  const pageLabel = pathname || '/'
+
   const sendFeedback = async () => {
     if (!message.trim() || sending) return
     setSending(true)
+    setSendError(null)
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
@@ -91,6 +95,9 @@ export default function BetaLaunchKit() {
       setMessage('')
       setSent(true)
       setTimeout(() => { setSent(false); setFeedbackOpen(false) }, 1600)
+    } else {
+      const err = await res.json().catch(() => ({}))
+      setSendError((err as { error?: string }).error || 'Failed to send')
     }
   }
 
@@ -148,6 +155,9 @@ export default function BetaLaunchKit() {
               </div>
               <button type="button" onClick={() => setFeedbackOpen(false)} style={{ background: 'none', border: 'none', color: '#6a5a40', fontSize: 22, cursor: 'pointer' }}>×</button>
             </div>
+            <p style={{ color: '#6a5a40', fontSize: 11, margin: '0 0 10px' }}>
+              {tx.feedbackPageContext}: <code style={{ color: '#8a7a60' }}>{pageLabel}</code>
+            </p>
             <select value={feedbackType} onChange={e => setFeedbackType(e.target.value as any)} style={{ marginBottom: 10 }}>
               <option value="feedback">{tx.feedbackTypeFeedback}</option>
               <option value="bug">{tx.feedbackTypeBug}</option>
@@ -156,6 +166,8 @@ export default function BetaLaunchKit() {
               <option value="ux">{tx.feedbackTypeUx}</option>
             </select>
             <textarea value={message} onChange={e => setMessage(e.target.value)} rows={6} placeholder={tx.feedbackPlaceholder} />
+            <p style={{ color: '#5a4a30', fontSize: 11, margin: '8px 0 0', fontStyle: 'italic' }}>{tx.feedbackScreenshotPlaceholder}</p>
+            {sendError && <p style={{ color: '#c05050', fontSize: 12, marginTop: 8 }}>{sendError}</p>}
             <button className="btn-gold" onClick={sendFeedback} disabled={sending || message.trim().length < 3} style={{ marginTop: 12 }}>
               {sent ? tx.feedbackSent : sending ? tx.saving : tx.feedbackSend}
             </button>

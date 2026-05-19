@@ -3396,3 +3396,52 @@ body.artist-workspace-page button[title="Open chat"] {
   font-style: italic;
   line-height: 1.5;
 }
+
+/* Phase 48: Mobile QA pass */
+@media (max-width: 640px) {
+  .artist-workspace-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    max-width: 100%;
+  }
+  .playlist-campaign-detail__grid {
+    grid-template-columns: 1fr !important;
+  }
+  .playlist-campaign-page .public-body {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .participation-board-wrap {
+    margin-left: -4px;
+    margin-right: -4px;
+  }
+  .proof-type-tabs {
+    width: 100%;
+  }
+  .owner-review-card__actions {
+    flex-direction: column;
+  }
+  .owner-review-card__actions .btn-gold,
+  .owner-review-card__actions .btn-outline {
+    width: 100%;
+    text-align: center;
+  }
+  .public-surface .public-song-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .epk-hero {
+    grid-template-columns: 1fr !important;
+  }
+  .media-library-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .campaign-activity-dashboard-card__actions {
+    flex-direction: column;
+  }
+  .campaign-activity-dashboard-card__actions a {
+    width: 100%;
+    text-align: center;
+  }
+}

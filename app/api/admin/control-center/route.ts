@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { checkMigrationTables } from '@/lib/admin/migrationHealth'
+import { buildBetaReadinessReport } from '@/lib/admin/betaReadiness'
+import { PUBLIC_VISIBILITY_AUDIT } from '@/lib/admin/publicVisibilityRules'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -122,7 +125,7 @@ export async function GET(req: NextRequest) {
       safeQuery<any[]>('ai_usage_events', sb.from('ai_usage_events').select('id, user_id, provider, model, status, feature_key, created_at').order('created_at', { ascending: false }).limit(1000), []),
       safeQuery<any[]>('analytics_events', sb.from('analytics_events').select('event_type, source, song_id, artist_id, created_at').gte('created_at', since30).limit(2500), []),
       safeQuery<any[]>('newsletter_subscribers', sb.from('newsletter_subscribers').select('id, artist_id, user_id, source, source_page, created_at, artists(name)').order('created_at', { ascending: false }).limit(1000), []),
-      safeQuery<any[]>('artists', sb.from('artists').select('id, user_id, name, page_slug, page_enabled, admin_hidden, created_at').order('created_at', { ascending: false }).limit(500), []),
+      safeQuery<any[]>('artists', sb.from('artists').select('id, user_id, name, page_slug, page_enabled, admin_hidden, page_settings, created_at').order('created_at', { ascending: false }).limit(500), []),
       safeQuery<any[]>('songs', sb.from('songs').select('id, user_id, artist_id, title, status, public_hidden, created_at').order('created_at', { ascending: false }).limit(500), []),
       safeQuery<any[]>('admin_platform_settings', sb.from('admin_platform_settings').select('*').order('key'), []),
       safeQuery<any[]>('admin_audit_log', sb.from('admin_audit_log').select('*').order('created_at', { ascending: false }).limit(80), []),
@@ -206,6 +209,26 @@ export async function GET(req: NextRequest) {
       songs: songs.filter((s: any) => s.user_id === p.id).length,
     })).sort((a: any, b: any) => String(b.created_at).localeCompare(String(a.created_at)))
 
+    const [migrations, readiness] = await Promise.all([
+      checkMigrationTables(sb),
+      buildBetaReadinessReport(sb),
+    ])
+
+    const hiddenEpks = (artists || []).filter((a: any) => {
+      const epk = (a.page_settings as { epk?: { public_enabled?: boolean } })?.epk
+      return a.page_enabled && !a.admin_hidden && !epk?.public_enabled
+    })
+
+    const planGatingAudit = {
+      free_limits_defined: true,
+      pro_limits_defined: true,
+      manual_override_table: migrations.checks.find(c => c.table === 'manual_plan_overrides')?.exists ?? true,
+      subscriptions_table: migrations.checks.find(c => c.table === 'subscriptions')?.exists ?? false,
+      active_manual_pro_count: manualOverrides.filter((o: any) => !o.revoked_at).length,
+      stripe_pro_count: proSubscribers,
+      safe_fallback: 'safeGetUserPlan returns Free on error',
+    }
+
     return NextResponse.json({
       overview: {
         total_users: totalUsers,
@@ -236,7 +259,25 @@ export async function GET(req: NextRequest) {
       moderation: {
         hidden_artists: artists.filter((a: any) => a.admin_hidden || !a.page_enabled).slice(0, 30),
         hidden_songs: songs.filter((s: any) => s.public_hidden).slice(0, 30),
+        hidden_epks: hiddenEpks.slice(0, 20).map((a: any) => ({ id: a.id, name: a.name, slug: a.page_slug })),
+        reported_campaigns_placeholder: [],
+        suspicious_proof_placeholder: 'Repeated identical activity proof flagging — coming soon',
         reported_placeholder: [],
+      },
+      system: {
+        migrations,
+        readiness,
+        visibility_audit: PUBLIC_VISIBILITY_AUDIT,
+        plan_gating: planGatingAudit,
+        recent_admin_actions: auditLog.slice(0, 25),
+        failed_api_warnings: aiUsage
+          .filter((e: any) => e.status === 'error')
+          .slice(0, 10)
+          .map((e: any) => ({
+            provider: e.provider,
+            feature: e.feature_key,
+            at: e.created_at,
+          })),
       },
       audit_log: auditLog,
       feedback,
