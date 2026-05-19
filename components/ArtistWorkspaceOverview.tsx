@@ -107,6 +107,9 @@ export default function ArtistWorkspaceOverview({
             <button type="button" className="btn-outline" onClick={() => onOpenTab('analytics')}>
               {tx.workspaceActionAnalytics}
             </button>
+            <Link href={`/playbook?artist=${artist.id}`} className="btn-outline" style={{ textDecoration: 'none', textAlign: 'center' }}>
+              🧭 {tx.playbookNavLink}
+            </Link>
           </div>
         </div>
 

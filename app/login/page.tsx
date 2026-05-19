@@ -62,7 +62,10 @@ export default function LoginPage() {
       if (error) setError(error.message)
       else {
         try { localStorage.removeItem(REF_STORAGE_KEY) } catch {}
-        if (data?.session) router.push('/onboarding')
+        if (data?.session) {
+          const { resolvePostAuthPath } = await import('@/lib/playbook/fetchContext')
+          router.push(await resolvePostAuthPath())
+        }
         else setMessage(tx.confirmEmail)
       }
     } else {
@@ -70,7 +73,8 @@ export default function LoginPage() {
       if (error) setError(error.message)
       else {
         await attributeReferralIfNeeded()
-        router.push('/onboarding')
+        const { resolvePostAuthPath } = await import('@/lib/playbook/fetchContext')
+        router.push(await resolvePostAuthPath())
       }
     }
     setLoading(false)

@@ -384,6 +384,7 @@ export default function OnboardingPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 24, flexWrap: 'wrap' }}>
           <Link href="/dashboard" style={{ color: '#d4a843', textDecoration: 'none', letterSpacing: 3, fontSize: 13 }}>VIATONE</Link>
           <div style={{ display: 'flex', gap: 8 }}>
+            <Link href="/playbook" className="btn-outline" style={{ textDecoration: 'none' }}>{tx.onboardingGoPlaybook}</Link>
             <button className="btn-outline" onClick={skipOnboarding}>{tx.onboardingSkip}</button>
             <button className="btn-outline" onClick={restart}>{tx.onboardingRestart}</button>
           </div>
@@ -394,7 +395,7 @@ export default function OnboardingPage() {
             <div>
               <p style={{ color: '#d4a843', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', margin: '0 0 8px' }}>{tx.onboardingEyebrow}</p>
               <h1 style={{ margin: 0, color: '#e8e0d0', fontSize: 30, fontWeight: 700 }}>{tx.onboardingTitle}</h1>
-              <p style={{ color: '#a09080', margin: '10px 0 0', maxWidth: 620, lineHeight: 1.55 }}>{tx.onboardingSubtitle}</p>
+              <p style={{ color: '#a09080', margin: '10px 0 0', maxWidth: 620, lineHeight: 1.55 }}>{tx.onboardingLightSubtitle}</p>
             </div>
             <div style={{ color: '#8a7a60', fontSize: 12 }}>{tx.billingCurrentPlan}: {planId === 'pro' ? 'Pro' : 'Free'}</div>
           </div>

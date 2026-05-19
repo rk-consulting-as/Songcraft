@@ -1023,6 +1023,7 @@ export default function ArtistPage() {
       <div className="app-header artist-workspace-header" data-header="page" style={{ padding: '20px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <Link href="/dashboard" style={{ color: '#6a5a40', textDecoration: 'none', fontSize: '13px' }}>← {tx.dashboard}</Link>
+          <Link href={`/playbook?artist=${artistId}`} style={{ color: '#6a5a40', textDecoration: 'none', fontSize: '13px' }}>🧭 {tx.playbookNavLink}</Link>
           <span style={{ color: '#3a3530' }}>|</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {artist?.avatar_url ? (

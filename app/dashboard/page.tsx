@@ -734,6 +734,7 @@ export default function Dashboard() {
           <Link href="/discover" className="btn-outline" style={navLinkStyle}>🌍 {tx.discoverNavLink}</Link>
           <Link href="/charts" className="btn-outline" style={navLinkStyle}>📈 {tx.chartsNavLink}</Link>
           <Link href="/analytics" className="btn-outline" style={navLinkStyle}>📊 {tx.analyticsNavLink}</Link>
+          <Link href="/playbook" className="btn-outline" style={navLinkStyle}>🧭 {tx.playbookNavLink}</Link>
           <button
             onClick={() => { try { window.dispatchEvent(new CustomEvent('songcraft:open-chat')) } catch {} }}
             className="btn-outline"
@@ -1007,15 +1008,15 @@ export default function Dashboard() {
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
               <div>
                 <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: 16, margin: '0 0 6px' }}>
-                  {tx.onboardingDashboardTitle}
+                  {tx.playbookDashboardTitle}
                 </h2>
                 <p style={{ color: '#a09080', fontSize: 13, margin: 0, lineHeight: 1.5 }}>
-                  {onboardingStatus.skipped ? tx.onboardingDashboardSkippedDesc : tx.onboardingDashboardDesc}
+                  {tx.playbookDashboardDesc}
                 </p>
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <Link href="/onboarding" className="btn-gold" style={{ textDecoration: 'none' }}>{tx.onboardingFinishSetup}</Link>
-                <Link href="/onboarding?restart=1" className="btn-outline" style={{ textDecoration: 'none' }}>{tx.onboardingRestart}</Link>
+                <Link href="/playbook" className="btn-gold" style={{ textDecoration: 'none' }}>{tx.playbookDashboardCta}</Link>
+                <Link href="/onboarding" className="btn-outline" style={{ textDecoration: 'none' }}>{tx.playbookQuickSetup}</Link>
               </div>
             </div>
           </div>
