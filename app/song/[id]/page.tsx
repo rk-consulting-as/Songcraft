@@ -15,6 +15,8 @@ import QRCodeCard from '@/components/QRCodeCard'
 import UpgradePrompt from '@/components/UpgradePrompt'
 import EmbedCodeGenerator from '@/components/EmbedCodeGenerator'
 import MobileQuickActions from '@/components/MobileQuickActions'
+import SongPublicPageActions, { isSongPublicPageAvailable } from '@/components/SongPublicPageActions'
+import { clientPublicUrl } from '@/lib/appUrl'
 import { canUseFeature, getMonthlyAiUsage, getUserPlan } from '@/lib/subscription'
 import { AI_OUTPUT_LANGUAGES, aiOutputLanguageDirective, aiOutputLanguageName, normalizeAIOutputLang, type AIOutputLang } from '@/lib/aiOutputLanguage'
 
@@ -823,6 +825,11 @@ export default function SongPage() {
   const campaignChecklistState = (publishContent.campaign_checklist || {}) as Record<string, boolean>
   const campaignReleaseDate = String(publishContent.campaign_release_date || song?.spotify_release_date || '').slice(0, 10)
   const publicArtistPath = artist?.page_enabled && artist?.page_slug ? `/p/${artist.page_slug}` : ''
+  const songPublicPageAvailable = isSongPublicPageAvailable({
+    artistPageEnabled: !!artist?.page_enabled,
+    artistAdminHidden: !!artist?.admin_hidden,
+    songPublicHidden: !!song?.public_hidden,
+  })
   const audioReady = !!song?.suno_audio_url || !!song?.audio_url || mediaLinks.some(l => ['suno', 'soundcloud'].includes((l.platform || '').toLowerCase()))
   const coverReady = !!coverImageUrl || !!song?.spotify_cover_url
   const campaignTimeline = Array.isArray(publishContent.campaign_timeline) ? publishContent.campaign_timeline : []
@@ -1032,11 +1039,21 @@ export default function SongPage() {
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0a0f 0%, #12071e 50%, #0a0f0a 100%)' }}>
       {/* Header */}
       <div className="app-header" data-header="page" style={{ borderBottom: '1px solid rgba(180,140,80,0.2)', padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Link href={`/artist/${artist?.id}`} style={{ color: '#6a5a40', textDecoration: 'none', fontSize: '13px' }}>← {artist?.name}</Link>
-          <span style={{ color: '#3a3530' }}>|</span>
-          <input value={title} onChange={e => updateTitle(e.target.value)}
-            style={{ background: 'none', border: 'none', color: '#e8e0d0', fontSize: '16px', outline: 'none', width: '220px', padding: '4px 0' }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <Link href={`/artist/${artist?.id}`} style={{ color: '#6a5a40', textDecoration: 'none', fontSize: '13px' }}>← {artist?.name}</Link>
+            <span style={{ color: '#3a3530' }}>|</span>
+            <input value={title} onChange={e => updateTitle(e.target.value)}
+              style={{ background: 'none', border: 'none', color: '#e8e0d0', fontSize: '16px', outline: 'none', width: '220px', maxWidth: '100%', padding: '4px 0' }} />
+          </div>
+          <div className="song-page-public-bar">
+            <SongPublicPageActions
+              songId={songId}
+              artistPageEnabled={!!artist?.page_enabled}
+              artistAdminHidden={!!artist?.admin_hidden}
+              songPublicHidden={!!song?.public_hidden}
+            />
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <span style={{ color: '#5a4a30', fontSize: 11, letterSpacing: 1 }}>{tx.aiProviderLabel}</span>
@@ -1081,7 +1098,7 @@ export default function SongPage() {
             { label: tx.mobileGenerateCaption, icon: '✦', onClick: () => { setTab('captions'); generateCaption('TikTok') }, disabled: aiLoading || !lyrics },
             { label: tx.mobileCopyCampaign, icon: '⧉', onClick: copyAllCampaign },
             { label: tx.mobileOpenPublicPage, icon: '↗', href: publicArtistPath || undefined, disabled: !publicArtistPath },
-            { label: tx.mobileCopyShareLink, icon: '⌁', onClick: () => copy(`${window.location.origin}/s/${songId}`) },
+            { label: tx.mobileCopyShareLink, icon: '⌁', onClick: () => copy(clientPublicUrl(`/s/${songId}`)), disabled: !songPublicPageAvailable },
           ]}
         />
 

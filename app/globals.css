@@ -74,6 +74,33 @@ select option:checked {
   color: #0a0a0f;
 }
 
+.song-public-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.song-public-actions-hint {
+  color: #6a5a40;
+  font-size: 11px;
+  line-height: 1.45;
+  max-width: 280px;
+}
+
+.song-row .song-public-actions--mobile {
+  display: none;
+}
+
+.song-page-public-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+}
+
 /* ============================================================
    Mobile responsiveness — applied automatically on narrow viewports.
    The app uses lots of inline styles, so we override with classes
@@ -157,6 +184,14 @@ select option:checked {
     flex: 1 1 auto;
     min-width: 110px;
     max-width: 200px !important;
+  }
+
+  .song-row .song-public-actions--desktop {
+    display: none !important;
+  }
+
+  .song-row .song-public-actions--mobile {
+    display: flex !important;
   }
 
   /* Stats grid: stack on mobile */

@@ -23,6 +23,7 @@ import ArtistWorkspaceNav from '@/components/ArtistWorkspaceNav'
 import ArtistWorkspaceOverview from '@/components/ArtistWorkspaceOverview'
 import ArtistCampaignsSummary from '@/components/ArtistCampaignsSummary'
 import ArtistSettingsPanel from '@/components/ArtistSettingsPanel'
+import SongPublicPageActions from '@/components/SongPublicPageActions'
 import { tabFromHash, type ArtistWorkspaceTab } from '@/lib/artistWorkspaceTabs'
 
 import type { SocialLinksMap } from '@/lib/socialLinks'
@@ -43,6 +44,7 @@ type Song = {
   suno_url?: string | null
   media_links?: { platform: string; url: string; label?: string }[] | null
   featured_on_studio_page?: boolean
+  public_hidden?: boolean | null
 }
 type Album = {
   id: string
@@ -62,6 +64,7 @@ type Artist = {
   page_enabled?: boolean
   page_slug?: string | null
   page_settings?: any
+  admin_hidden?: boolean | null
 }
 
 type EpkContent = {
@@ -1724,6 +1727,12 @@ export default function ArtistPage() {
                 ? `${song.title} — ${song.spotify_album}`
                 : song.title
               const isDragOver = dragOverIndex === i && dragIndex !== null && dragIndex !== i
+              const songPublicProps = {
+                songId: song.id,
+                artistPageEnabled: !!artist?.page_enabled,
+                artistAdminHidden: !!artist?.admin_hidden,
+                songPublicHidden: !!song.public_hidden,
+              }
               return (
                 <div key={song.id} className="song-row card"
                   onDragOver={reorderEnabled ? (e => onDragOver(e, i)) : undefined}
@@ -1832,6 +1841,9 @@ export default function ArtistPage() {
                           </a>
                         )}
                       </div>
+                      <div className="song-public-actions--mobile">
+                        <SongPublicPageActions {...songPublicProps} layout="compact" />
+                      </div>
                       {isReleased ? (
                         <div style={{ color: '#5a7a5a', fontSize: '12px', lineHeight: '1.4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {song.spotify_album}
@@ -1856,6 +1868,9 @@ export default function ArtistPage() {
                     </div>
                   </Link>
                   <div className="song-row-right" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <div className="song-public-actions--desktop">
+                      <SongPublicPageActions {...songPublicProps} layout="compact" />
+                    </div>
                     {/* Star toggle — feature this song under the artist on the studio page. */}
                     <button
                       type="button"
