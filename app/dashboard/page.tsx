@@ -737,6 +737,7 @@ export default function Dashboard() {
           <Link href="/charts" className="btn-outline" style={navLinkStyle}>📈 {tx.chartsNavLink}</Link>
           <Link href="/analytics" className="btn-outline" style={navLinkStyle}>📊 {tx.analyticsNavLink}</Link>
           <Link href="/playbook" className="btn-outline" style={navLinkStyle}>🧭 {tx.playbookNavLink}</Link>
+          <Link href="/library" className="btn-outline" style={navLinkStyle}>🖼 {tx.mediaLibraryNavLink}</Link>
           <button
             onClick={() => { try { window.dispatchEvent(new CustomEvent('songcraft:open-chat')) } catch {} }}
             className="btn-outline"
