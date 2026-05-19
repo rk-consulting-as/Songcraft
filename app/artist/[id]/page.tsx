@@ -23,6 +23,7 @@ import ArtistWorkspaceNav from '@/components/ArtistWorkspaceNav'
 import ArtistWorkspaceOverview from '@/components/ArtistWorkspaceOverview'
 import ArtistCampaignsSummary from '@/components/ArtistCampaignsSummary'
 import ArtistWorkspaceGrowth from '@/components/ArtistWorkspaceGrowth'
+import ArtistFeaturedReleasePicker from '@/components/ArtistFeaturedReleasePicker'
 import ArtistSettingsPanel from '@/components/ArtistSettingsPanel'
 import SongPublicPageActions from '@/components/SongPublicPageActions'
 import { tabFromHash, type ArtistWorkspaceTab } from '@/lib/artistWorkspaceTabs'
@@ -2208,6 +2209,13 @@ export default function ArtistPage() {
                   </a>
                 </div>
                 <QRCodeCard path={`/p/${artist.page_slug}`} title={tx.qrArtistHint} />
+                <ArtistFeaturedReleasePicker
+                  artistId={artist.id}
+                  pageSettings={artist.page_settings}
+                  songs={songs}
+                  albums={albums}
+                  onSaved={settings => setArtist({ ...artist, page_settings: settings })}
+                />
                 {planId === 'free' && (
                   <UpgradePrompt compact title={tx.upgradeQrTitle} description={tx.upgradeQrDesc} />
                 )}

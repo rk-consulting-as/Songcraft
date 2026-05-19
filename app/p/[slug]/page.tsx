@@ -11,6 +11,7 @@ import NewsletterSignup from '@/components/NewsletterSignup'
 import PublicEventsList from '@/components/PublicEventsList'
 import PublicAnalyticsTracker from '@/components/PublicAnalyticsTracker'
 import ExpandableText from '@/components/ExpandableText'
+import PublicCreatorIdentityBlock from '@/components/discover/PublicCreatorIdentityBlock'
 
 // Public artist landing page. Server-rendered, anonymous Supabase client (RLS gates by page_enabled).
 // URL: /p/{slug}
@@ -214,7 +215,8 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
       </section>
 
       <div style={{ maxWidth: 980, margin: '0 auto', padding: '40px 24px 80px' }}>
-        {/* Spotify artist embed */}
+        <PublicCreatorIdentityBlock artist={artist} songs={songs} albums={albums} accent={accent} />
+
         {s.newsletter !== false && (
           <section style={{ marginBottom: 48 }}>
             <NewsletterSignup artistId={artist.id} sourcePage={`/p/${artist.page_slug}`} accent={accent} />

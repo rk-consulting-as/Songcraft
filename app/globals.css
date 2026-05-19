@@ -396,6 +396,183 @@ select option:checked {
   font-size: 28px;
 }
 
+.discover-section-title {
+  margin: 0 0 16px;
+  color: #d4a843;
+  font-weight: normal;
+  font-size: 14px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.discover-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.discover-grid--creators {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.discover-grid--releases {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.discover-grid--epks {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+.discover-creator-card__img {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.discover-creator-card__img--placeholder {
+  background: rgba(212, 168, 67, 0.12);
+}
+
+.discover-creator-card__name {
+  margin: 0;
+  color: #e8e0d0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.discover-creator-card__genre {
+  margin: 4px 0 0;
+  color: #8a7a60;
+  font-size: 12px;
+}
+
+.discover-creator-card__stats {
+  display: flex;
+  gap: 6px;
+  color: #6a5a40;
+  font-size: 11px;
+}
+
+.discover-creator-card__cta {
+  font-size: 12px;
+  margin-top: auto;
+}
+
+.creator-level-badge {
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(138, 122, 96, 0.35);
+  color: #8a7a60;
+}
+
+.creator-level-badge--emerging {
+  border-color: rgba(126, 184, 160, 0.35);
+  color: #7eb8a0;
+}
+
+.creator-level-badge--active {
+  border-color: rgba(212, 168, 67, 0.35);
+  color: #d4a843;
+}
+
+.creator-level-badge--advanced {
+  border-color: rgba(200, 160, 255, 0.35);
+  color: #c8a0ff;
+}
+
+.creator-achievement-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.creator-achievement-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(180, 140, 80, 0.2);
+  color: #a09080;
+}
+
+.discover-release-card__cover {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.discover-release-card__cover--placeholder {
+  background: rgba(212, 168, 67, 0.1);
+}
+
+.discover-release-card__title {
+  margin: 0 0 6px;
+  color: #e8e0d0;
+  font-size: 14px;
+}
+
+.discover-release-card__artist {
+  font-size: 12px;
+  text-decoration: none;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.discover-release-card__cta {
+  font-size: 11px;
+  color: #8a7a60;
+}
+
+.public-creator-identity__since {
+  font-size: 11px;
+  color: #6a5a40;
+}
+
+.public-creator-identity__metrics {
+  font-size: 12px;
+  color: #8a7a60;
+}
+
+.public-creator-identity__metric-sep {
+  opacity: 0.5;
+}
+
+.featured-release-hero__cover {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.featured-release-hero__label {
+  margin: 0 0 4px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.featured-release-hero__title {
+  margin: 0;
+  font-size: 18px;
+  color: #e8e0d0;
+}
+
+.discover-epk-card__img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
 .expandable-text__toggle {
   margin-top: 10px;
   padding: 0;

@@ -43,11 +43,14 @@ export default function ChartsPage() {
       // All-time chart: ordered by internal_play_count desc.
       const { data } = await supabase
         .from('songs')
-        .select('id, title, cover_image_url, spotify_cover_url, suno_audio_url, spotify_url, suno_url, media_links, internal_play_count, embed_click_count, artist_id, user_id, artists(name, page_enabled, page_slug)')
+        .select('id, title, cover_image_url, spotify_cover_url, suno_audio_url, spotify_url, suno_url, media_links, internal_play_count, embed_click_count, public_hidden, admin_hidden, artist_id, user_id, artists(name, page_enabled, page_slug, admin_hidden)')
         .order('internal_play_count', { ascending: false })
         .order('embed_click_count', { ascending: false })
         .limit(100)
-      const filtered = (data as any[] || []).filter(r => r.artists?.page_enabled && (r.internal_play_count > 0 || r.embed_click_count > 0))
+      const filtered = (data as any[] || []).filter(r =>
+        r.artists?.page_enabled && !r.artists?.admin_hidden && !r.public_hidden && !r.admin_hidden &&
+        (r.internal_play_count > 0 || r.embed_click_count > 0)
+      )
       await enrichWithProfiles(filtered)
       setRows(filtered as ChartRow[])
     } else {
@@ -70,11 +73,13 @@ export default function ChartsPage() {
       if (sortedIds.length === 0) { setRows([]); setLoading(false); return }
       const { data: songs } = await supabase
         .from('songs')
-        .select('id, title, cover_image_url, spotify_cover_url, suno_audio_url, spotify_url, suno_url, media_links, internal_play_count, embed_click_count, artist_id, user_id, artists(name, page_enabled, page_slug)')
+        .select('id, title, cover_image_url, spotify_cover_url, suno_audio_url, spotify_url, suno_url, media_links, internal_play_count, embed_click_count, public_hidden, admin_hidden, artist_id, user_id, artists(name, page_enabled, page_slug, admin_hidden)')
         .in('id', sortedIds)
       const map: Record<string, any> = {}
       for (const s of (songs as any[]) || []) map[s.id] = s
-      const ordered = sortedIds.map(id => map[id]).filter(Boolean).filter(r => r.artists?.page_enabled) as any[]
+      const ordered = sortedIds.map(id => map[id]).filter(Boolean).filter(r =>
+        r.artists?.page_enabled && !r.artists?.admin_hidden && !r.public_hidden && !r.admin_hidden
+      ) as any[]
       await enrichWithProfiles(ordered)
       setRows(ordered as ChartRow[])
     }

@@ -4,6 +4,7 @@ import NewsletterSignup from '@/components/NewsletterSignup'
 import PublicEventsList from '@/components/PublicEventsList'
 import PublicAnalyticsTracker from '@/components/PublicAnalyticsTracker'
 import ExpandableText from '@/components/ExpandableText'
+import PublicCreatorIdentityBlock from '@/components/discover/PublicCreatorIdentityBlock'
 
 /**
  * Minimal artist template — typography-first. Centered text hero (no big avatar),
@@ -74,6 +75,8 @@ export default function ArtistPageMinimal({
             </p>
           )}
         </header>
+
+        <PublicCreatorIdentityBlock artist={artist} songs={songs} albums={albums} accent={accent} />
 
         {sections.newsletter !== false && (
           <section style={{ marginBottom: 64 }}>

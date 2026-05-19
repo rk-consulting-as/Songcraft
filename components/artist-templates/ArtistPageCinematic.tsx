@@ -4,6 +4,7 @@ import NewsletterSignup from '@/components/NewsletterSignup'
 import PublicEventsList from '@/components/PublicEventsList'
 import PublicAnalyticsTracker from '@/components/PublicAnalyticsTracker'
 import ExpandableText from '@/components/ExpandableText'
+import PublicCreatorIdentityBlock from '@/components/discover/PublicCreatorIdentityBlock'
 
 /**
  * Cinematic artist template — full-bleed dramatic. Avatar fills viewport as blurred
@@ -143,6 +144,7 @@ export default function ArtistPageCinematic({
 
       {/* Content sections — glass-morphism cards */}
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 80px' }}>
+        <PublicCreatorIdentityBlock artist={artist} songs={songs} albums={albums} accent={accent} />
         {sections.newsletter !== false && (
           <section style={{ marginBottom: 40 }}>
             <NewsletterSignup artistId={artist.id} sourcePage={`/p/${artist.page_slug}`} accent={accent} />
