@@ -51,6 +51,10 @@ export type PlaybookContext = {
   linkClickCount: number
   selectedArtistId?: string | null
   planId?: 'free' | 'pro'
+  creatorPlaylistCount: number
+  playlistCampaignCount: number
+  joinedPlaylistCampaignCount: number
+  hasPlaylistSpotifyUrl: boolean
 }
 
 export type PlaybookTaskDef = {

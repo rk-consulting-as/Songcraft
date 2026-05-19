@@ -114,6 +114,19 @@ export const PLAYBOOK_CHECKS: Record<string, PlaybookCheckFn> = {
     PLAYBOOK_CHECKS.has_song_metadata(ctx) &&
     PLAYBOOK_CHECKS.has_release_date(ctx) &&
     PLAYBOOK_CHECKS.has_campaign(ctx),
+  has_creator_playlist: ctx => ctx.creatorPlaylistCount > 0,
+  has_playlist_campaign: ctx => ctx.playlistCampaignCount > 0,
+  has_joined_playlist_campaign: ctx => ctx.joinedPlaylistCampaignCount > 0,
+  has_playlist_with_spotify_url: ctx => ctx.hasPlaylistSpotifyUrl,
+  has_invited_playlist_creator: () => {
+    if (typeof window === 'undefined') return false
+    try {
+      const raw = localStorage.getItem('viatone_campaign_invite_copied')
+      return !!(raw && JSON.parse(raw).length > 0)
+    } catch {
+      return false
+    }
+  },
 }
 
 export function runPlaybookCheck(checkId: string, ctx: PlaybookContext): boolean {

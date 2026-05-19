@@ -9,17 +9,39 @@ export async function fetchPlaybookContext(selectedArtistId?: string | null): Pr
 
   const plan = await getUserPlan(supabase, user.id)
 
-  const [{ data: artists }, { data: songs }, { count: albumCount }, { count: subscriberCount }] = await Promise.all([
+  const [
+    { data: artists },
+    { data: songs },
+    { count: albumCount },
+    { count: subscriberCount },
+    { count: creatorPlaylistCount },
+    { count: playlistCampaignCount },
+    { count: joinedPlaylistCampaignCount },
+  ] = await Promise.all([
     supabase.from('artists').select('id, name, genre, description, avatar_url, spotify_image_url, social_links, page_enabled, page_slug, page_settings').eq('user_id', user.id).order('created_at', { ascending: true }),
     supabase.from('songs').select('id, artist_id, title, status, lyrics_text, lyrics_instructions, cover_image_url, spotify_cover_url, spotify_url, media_links, publish_content, album_id, spotify_release_date, public_hidden').eq('user_id', user.id),
     supabase.from('albums').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
     supabase.from('newsletter_subscribers').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+    supabase.from('creator_playlists').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+    supabase.from('playlist_campaigns').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+    supabase
+      .from('playlist_campaign_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .in('status', ['requested', 'approved']),
   ])
 
   const artistIds = (artists || []).map(a => a.id)
   let qrClickCount = 0
   let embedViewCount = 0
   let linkClickCount = 0
+
+  const { data: userPlaylists } = await supabase
+    .from('creator_playlists')
+    .select('spotify_url')
+    .eq('user_id', user.id)
+    .limit(20)
+  const hasPlaylistSpotifyUrl = (userPlaylists || []).some(p => !!(p.spotify_url && String(p.spotify_url).trim()))
 
   if (artistIds.length > 0) {
     const { data: events } = await supabase
@@ -52,6 +74,10 @@ export async function fetchPlaybookContext(selectedArtistId?: string | null): Pr
     linkClickCount,
     selectedArtistId: selectedArtistId || artists?.[0]?.id || null,
     planId: plan.id,
+    creatorPlaylistCount: creatorPlaylistCount || 0,
+    playlistCampaignCount: playlistCampaignCount || 0,
+    joinedPlaylistCampaignCount: joinedPlaylistCampaignCount || 0,
+    hasPlaylistSpotifyUrl,
   }
 }
 

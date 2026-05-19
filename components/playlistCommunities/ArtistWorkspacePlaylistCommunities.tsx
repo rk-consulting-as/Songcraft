@@ -17,6 +17,8 @@ import {
 import { buildCampaignInviteUrl } from '@/lib/playlistCommunities/serialize'
 import PlaylistCampaignCard from './PlaylistCampaignCard'
 import PlaylistCommunityDisclaimer from './PlaylistCommunityDisclaimer'
+import PlaylistCommunityHints from './PlaylistCommunityHints'
+import CommunityQualityBlurb from './CommunityQualityBlurb'
 import UpgradePrompt from '@/components/UpgradePrompt'
 
 type Song = { id: string; title: string; spotify_url?: string | null; public_hidden?: boolean | null }
@@ -210,6 +212,15 @@ export default function ArtistWorkspacePlaylistCommunities({ artistId, artistNam
       </div>
 
       <PlaylistCommunityDisclaimer />
+      <CommunityQualityBlurb compact />
+
+      {!loading && (
+        <PlaylistCommunityHints
+          ownedCampaigns={ownedCampaigns}
+          joinedCount={joinedCampaigns.length}
+          artistId={artistId}
+        />
+      )}
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '20px 0' }}>
         {panels.map(p => (
@@ -318,10 +329,10 @@ export default function ArtistWorkspacePlaylistCommunities({ artistId, artistNam
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
               {ownedCampaigns.map(c => (
                 <div key={c.id}>
-                  <PlaylistCampaignCard campaign={{ ...c, isOwner: true }} onManage={() => copyInvite(c.id)} />
-                  <button type="button" className="btn-outline" style={{ fontSize: 11, marginTop: 8, width: '100%' }} onClick={() => copyInvite(c.id)}>
-                    {tx.playlistCommunityCopyInvite}
-                  </button>
+                  <PlaylistCampaignCard
+                    campaign={{ ...c, isOwner: true }}
+                    onManage={() => { window.location.href = `/playlist-campaigns/${c.id}` }}
+                  />
                 </div>
               ))}
             </div>

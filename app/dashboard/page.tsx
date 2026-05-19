@@ -14,6 +14,7 @@ import MobileQuickActions from '@/components/MobileQuickActions'
 import { getUserPlan } from '@/lib/subscription'
 import PlaybookGrowthCoach from '@/components/PlaybookGrowthCoach'
 import DashboardDiscoverHighlights from '@/components/DashboardDiscoverHighlights'
+import PlaylistCommunityDashboardBanner from '@/components/playlistCommunities/PlaylistCommunityDashboardBanner'
 
 type Artist = {
   id: string; name: string; genre: string; description: string
@@ -784,6 +785,7 @@ export default function Dashboard() {
             }, disabled: !artists.some(a => a.page_enabled && a.page_slug) },
           ]}
         />
+        {artists[0] && <PlaylistCommunityDashboardBanner artistId={artists[0].id} />}
         {/* Stats */}
         <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '32px' }}>
           {[

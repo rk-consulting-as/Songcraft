@@ -44,7 +44,9 @@ async function enrichCampaign(sb: ReturnType<typeof serviceClient>, campaign: Re
 
   const [{ data: artists }, { data: songs }] = await Promise.all([
     artistIds.length ? sb.from('artists').select('id, name, page_slug').in('id', artistIds) : { data: [] },
-    songIds.length ? sb.from('songs').select('id, title, public_hidden').in('id', songIds) : { data: [] },
+    songIds.length
+      ? sb.from('songs').select('id, title, public_hidden, spotify_url, suno_url').in('id', songIds)
+      : { data: [] },
   ])
 
   const artistMap = Object.fromEntries((artists || []).map(a => [a.id, a]))
@@ -66,10 +68,13 @@ async function enrichCampaign(sb: ReturnType<typeof serviceClient>, campaign: Re
   const membersOut = visibleMembers.map(m => {
     const artist = m.artist_id ? artistMap[m.artist_id] : null
     const song = m.song_id ? songMap[m.song_id] : null
+    const songPublic = song && song.public_hidden === false
     const base = {
       ...m,
       artistName: artist?.name || null,
       songTitle: song?.title || null,
+      songSpotifyUrl: isOwner || m.user_id === userId ? (song?.spotify_url || song?.suno_url || null) : null,
+      songHref: songPublic && song?.id ? `/s/${song.id}` : null,
     }
     if (!isOwner && m.user_id !== userId) {
       return sanitizePublicMember({

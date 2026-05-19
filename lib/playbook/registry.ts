@@ -42,6 +42,12 @@ export const PLAYBOOK_TASKS: PlaybookTaskDef[] = [
   { id: 'growth_qr', category: 'growth', checkId: 'has_qr_click', weight: 2, priority: 25, labelKey: 'playbookTaskGrowthQr', tags: ['growth'], href: ctx => artistHref(ctx, '#public') },
   { id: 'growth_embed', category: 'growth', checkId: 'has_embed_view', weight: 2, priority: 26, labelKey: 'playbookTaskGrowthEmbed', tags: ['growth'], href: ctx => songHref(ctx, '#publish') },
   { id: 'growth_interaction', category: 'growth', checkId: 'has_fan_interaction', weight: 2, priority: 27, labelKey: 'playbookTaskGrowthInteraction', tags: ['growth'], href: ctx => artistHref(ctx, '#analytics') },
+
+  { id: 'playlist_first_playlist', category: 'growth', checkId: 'has_creator_playlist', weight: 3, priority: 5, labelKey: 'playbookTaskPlaylistFirst', tags: ['growth'], href: ctx => artistHref(ctx, '#playlists') },
+  { id: 'playlist_first_campaign', category: 'growth', checkId: 'has_playlist_campaign', weight: 3, priority: 6, labelKey: 'playbookTaskPlaylistCampaign', tags: ['growth'], href: ctx => artistHref(ctx, '#playlists') },
+  { id: 'playlist_join_campaign', category: 'growth', checkId: 'has_joined_playlist_campaign', weight: 2, priority: 7, labelKey: 'playbookTaskPlaylistJoin', tags: ['growth'], href: () => '/discover' },
+  { id: 'playlist_spotify_link', category: 'growth', checkId: 'has_playlist_with_spotify_url', weight: 2, priority: 8, labelKey: 'playbookTaskPlaylistSpotify', tags: ['growth'], href: ctx => artistHref(ctx, '#playlists') },
+  { id: 'playlist_invite_creator', category: 'growth', checkId: 'has_invited_playlist_creator', weight: 1, priority: 9, labelKey: 'playbookTaskPlaylistInvite', tags: ['growth'], href: ctx => artistHref(ctx, '#playlists') },
 ]
 
 export const PLAYBOOK_MILESTONES: PlaybookMilestoneDef[] = [

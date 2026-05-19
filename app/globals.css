@@ -2701,3 +2701,368 @@ body.artist-workspace-page button[title="Open chat"] {
     height: 180px;
   }
 }
+
+/* Phase 46B: Playlist campaign UX */
+.playlist-campaign-page .playlist-campaign-detail {
+  max-width: 960px;
+}
+.playlist-campaign-detail__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(260px, 0.85fr);
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 800px) {
+  .playlist-campaign-detail__grid {
+    grid-template-columns: 1fr;
+  }
+}
+.playlist-status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.playlist-status--draft { background: rgba(138, 122, 96, 0.2); color: #a09080; }
+.playlist-status--open { background: rgba(123, 200, 123, 0.15); color: #7bc87b; }
+.playlist-status--active { background: rgba(212, 168, 67, 0.18); color: #d4a843; }
+.playlist-status--closed { background: rgba(200, 128, 96, 0.15); color: #c08060; }
+.playlist-status--archived { background: rgba(106, 90, 64, 0.2); color: #6a5a40; }
+.playlist-health-indicators {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.playlist-health-chip {
+  font-size: 11px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(180, 140, 80, 0.25);
+  color: #c8b8a0;
+  background: rgba(255, 255, 255, 0.03);
+}
+.playlist-health-chip--ready-to-launch {
+  border-color: rgba(123, 200, 123, 0.4);
+  color: #7bc87b;
+}
+.playlist-health-chip--needs-setup,
+.playlist-health-chip--songs-missing-links {
+  border-color: rgba(212, 168, 67, 0.35);
+  color: #d4a843;
+}
+.playlist-meta-chip {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: #8a7a60;
+  border: 1px solid rgba(180, 140, 80, 0.2);
+}
+.playlist-rules-card__body {
+  margin: 0;
+  color: #c8c0b0;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+.playlist-rules-card__note {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: #6a5a40;
+  line-height: 1.5;
+}
+.playlist-commitment-dl {
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+.playlist-commitment-dl div {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 8px;
+  font-size: 13px;
+}
+.playlist-commitment-dl dt { color: #8a7a60; margin: 0; }
+.playlist-commitment-dl dd { color: #e8e0d0; margin: 0; }
+.playlist-submitted-songs {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.playlist-missing-link-warn {
+  display: block;
+  font-size: 11px;
+  color: #c08060;
+  margin-top: 4px;
+}
+.playlist-quality-checklist {
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.playlist-quality-checklist__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.playlist-quality-checklist__title {
+  margin: 0;
+  font-size: 14px;
+  color: #d4a843;
+  font-weight: 500;
+}
+.playlist-quality-checklist__score {
+  font-size: 13px;
+  color: #7bc87b;
+}
+.playlist-quality-checklist__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 13px;
+  color: #8a7a60;
+}
+.playlist-quality-checklist__list li {
+  display: flex;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.playlist-quality-checklist__list li.is-done {
+  color: #c8c0b0;
+}
+.playlist-quality-check__mark {
+  width: 18px;
+  flex-shrink: 0;
+  color: #6a5a40;
+}
+.playlist-quality-checklist__list li.is-done .playlist-quality-check__mark {
+  color: #7bc87b;
+}
+.playlist-invite-panel {
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.playlist-invite-panel__title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #d4a843;
+}
+.playlist-invite-panel__desc {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: #8a7a60;
+  line-height: 1.5;
+}
+.playlist-invite-panel__url {
+  font-size: 11px;
+  color: #6a5a40;
+  word-break: break-all;
+  margin: 0 0 12px;
+}
+.playlist-invite-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.playlist-invite-panel__ref {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: #6a5a40;
+}
+.playlist-owner-actions,
+.playlist-join-panel {
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.playlist-owner-actions__title,
+.playlist-join-panel__title {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: #d4a843;
+}
+.playlist-owner-actions__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.playlist-join-panel__desc {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #8a7a60;
+  line-height: 1.5;
+}
+.playlist-join-label {
+  display: block;
+  font-size: 12px;
+  color: #8a7a60;
+  margin-bottom: 6px;
+}
+.playlist-eligibility-warn {
+  font-size: 12px;
+  color: #a08050;
+  margin: 8px 0 0;
+}
+.playlist-quality-blurb {
+  margin: 16px 0;
+  padding: 14px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(180, 140, 80, 0.15);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 13px;
+  color: #8a7a60;
+  line-height: 1.55;
+}
+.playlist-quality-blurb ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+.playlist-quality-blurb--compact {
+  margin: 12px 0;
+  padding: 10px 12px;
+  font-size: 12px;
+}
+.playlist-reputation-badges {
+  margin: 16px 0;
+}
+.playlist-reputation-badges__label {
+  margin: 0 0 8px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6a5a40;
+}
+.playlist-reputation-badges__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.playlist-reputation-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  border: 1px solid rgba(212, 168, 67, 0.3);
+  color: #d4a843;
+  background: rgba(212, 168, 67, 0.08);
+}
+.playlist-reputation-badge.is-placeholder {
+  opacity: 0.85;
+  border-style: dashed;
+}
+.playlist-campaign-card {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+}
+.playlist-campaign-card__top {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.playlist-campaign-card__cover {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.playlist-campaign-card__cover--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(212, 168, 67, 0.1);
+  font-size: 22px;
+}
+.playlist-campaign-card__meta {
+  flex: 1;
+  min-width: 0;
+}
+.playlist-campaign-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.playlist-campaign-card__commitment {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid rgba(180, 140, 80, 0.25);
+  color: #8a7a60;
+}
+.playlist-campaign-card__title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: #e8e0d0;
+  line-height: 1.3;
+}
+.playlist-campaign-card__playlist {
+  margin: 0;
+  font-size: 12px;
+  color: #8a7a60;
+}
+.playlist-campaign-card__host {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #6a5a40;
+}
+.playlist-campaign-card__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 11px;
+  color: #6a5a40;
+}
+.playlist-campaign-card__full {
+  color: #c08060;
+}
+.playlist-campaign-card__rules {
+  margin: 0;
+  font-size: 12px;
+  color: #8a7a60;
+  line-height: 1.45;
+}
+.playlist-campaign-card__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+.playlist-campaign-card__btn {
+  font-size: 12px;
+  text-decoration: none;
+}
+.playlist-campaign-card__pending {
+  font-size: 12px;
+  color: #8a7a60;
+  align-self: center;
+}
+.playlist-community-hints {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 16px 0;
+}
+.playlist-community-hint {
+  padding: 14px 16px;
+}
+.discover-grid--campaigns {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+.discover-playlist-campaign-card:hover {
+  border-color: rgba(212, 168, 67, 0.35);
+}
