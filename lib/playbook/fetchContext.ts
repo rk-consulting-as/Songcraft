@@ -1,10 +1,13 @@
 import { createClient } from '@/lib/supabase'
+import { getUserPlan } from '@/lib/subscription'
 import type { PlaybookContext } from './types'
 
 export async function fetchPlaybookContext(selectedArtistId?: string | null): Promise<PlaybookContext | null> {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
+
+  const plan = await getUserPlan(supabase, user.id)
 
   const [{ data: artists }, { data: songs }, { count: albumCount }, { count: subscriberCount }] = await Promise.all([
     supabase.from('artists').select('id, name, genre, description, avatar_url, spotify_image_url, social_links, page_enabled, page_slug, page_settings').eq('user_id', user.id).order('created_at', { ascending: true }),
@@ -48,6 +51,7 @@ export async function fetchPlaybookContext(selectedArtistId?: string | null): Pr
     embedViewCount,
     linkClickCount,
     selectedArtistId: selectedArtistId || artists?.[0]?.id || null,
+    planId: plan.id,
   }
 }
 

@@ -22,6 +22,7 @@ import { clientPublicUrl } from '@/lib/appUrl'
 import ArtistWorkspaceNav from '@/components/ArtistWorkspaceNav'
 import ArtistWorkspaceOverview from '@/components/ArtistWorkspaceOverview'
 import ArtistCampaignsSummary from '@/components/ArtistCampaignsSummary'
+import ArtistWorkspaceGrowth from '@/components/ArtistWorkspaceGrowth'
 import ArtistSettingsPanel from '@/components/ArtistSettingsPanel'
 import SongPublicPageActions from '@/components/SongPublicPageActions'
 import { tabFromHash, type ArtistWorkspaceTab } from '@/lib/artistWorkspaceTabs'
@@ -2065,6 +2066,12 @@ export default function ArtistPage() {
             )}
           </div>
         </div>
+        )}
+
+        {workspaceTab === 'growth' && artist && (
+          <div className="workspace-section">
+            <ArtistWorkspaceGrowth artistId={artist.id} />
+          </div>
         )}
 
         {workspaceTab === 'fanhub' && artist && (

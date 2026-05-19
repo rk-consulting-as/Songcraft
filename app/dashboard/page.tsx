@@ -12,6 +12,7 @@ import ProfileMenu from '@/components/ProfileMenu'
 import UpgradePrompt from '@/components/UpgradePrompt'
 import MobileQuickActions from '@/components/MobileQuickActions'
 import { getUserPlan } from '@/lib/subscription'
+import PlaybookGrowthCoach from '@/components/PlaybookGrowthCoach'
 
 type Artist = {
   id: string; name: string; genre: string; description: string
@@ -1002,6 +1003,8 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+
+        <PlaybookGrowthCoach />
 
         {onboardingStatus?.show && (
           <div className="card" style={{ marginBottom: 24, borderColor: 'rgba(212,168,67,0.35)', background: 'rgba(212,168,67,0.05)' }}>

@@ -9,6 +9,7 @@ const TAB_LABEL_KEYS: Record<ArtistWorkspaceTab, keyof (typeof t)['en']> = {
   songs: 'workspaceTabSongs',
   campaigns: 'workspaceTabCampaigns',
   fanhub: 'workspaceTabFanHub',
+  growth: 'workspaceTabGrowth',
   analytics: 'workspaceTabAnalytics',
   epk: 'workspaceTabEpk',
   public: 'workspaceTabPublic',

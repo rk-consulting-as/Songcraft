@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { fetchPlaybookContext } from '@/lib/playbook/fetchContext'
-import { computePlaybookProgress } from '@/lib/playbook/compute'
-import type { PlaybookProgress } from '@/lib/playbook/types'
+import { computePlaybookEngine } from '@/lib/playbook/computeEngine'
+import type { PlaybookEngineResult } from '@/lib/playbook/computeEngine'
+import GrowthEnginePanel from '@/components/GrowthEnginePanel'
 import { t, useLang } from '@/lib/i18n'
 
 function ProgressBar({ percent, accent = '#d4a843' }: { percent: number; accent?: string }) {
@@ -22,7 +23,8 @@ export default function PlaybookPage() {
   const lang = useLang()
   const tx = t[lang]
   const [loading, setLoading] = useState(true)
-  const [progress, setProgress] = useState<PlaybookProgress | null>(null)
+  const [engine, setEngine] = useState<PlaybookEngineResult | null>(null)
+  const tab = searchParams.get('tab') === 'growth' ? 'growth' : 'roadmap'
 
   const load = async (selectedId?: string | null) => {
     setLoading(true)
@@ -31,7 +33,7 @@ export default function PlaybookPage() {
       router.push('/login')
       return
     }
-    setProgress(computePlaybookProgress(ctx, lang))
+    setEngine(computePlaybookEngine(ctx, lang, ctx.planId || 'free'))
     setLoading(false)
   }
 
@@ -39,11 +41,14 @@ export default function PlaybookPage() {
     load(searchParams.get('artist'))
   }, [lang, searchParams])
 
-  if (loading || !progress) {
+  if (loading || !engine) {
     return <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#8a7a60', padding: 40 }}>{tx.loading}</div>
   }
 
+  const { progress, growth } = engine
   const accent = '#d4a843'
+  const artistQuery = progress.primaryArtist ? `?artist=${progress.primaryArtist.id}` : ''
+  const growthQuery = progress.primaryArtist ? `?tab=growth&artist=${progress.primaryArtist.id}` : '?tab=growth'
 
   return (
     <main className="playbook-page" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0a0f 0%, #12071e 50%, #0a0f0a 100%)', color: '#e8e0d0' }}>
@@ -56,7 +61,7 @@ export default function PlaybookPage() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Link href="/onboarding" className="btn-outline" style={{ textDecoration: 'none' }}>{tx.playbookQuickSetup}</Link>
           {progress.primaryArtist && (
-            <Link href={`/artist/${progress.primaryArtist.id}`} className="btn-outline" style={{ textDecoration: 'none' }}>
+            <Link href={`/artist/${progress.primaryArtist.id}#growth`} className="btn-outline" style={{ textDecoration: 'none' }}>
               {tx.playbookOpenArtist}
             </Link>
           )}
@@ -64,87 +69,130 @@ export default function PlaybookPage() {
       </div>
 
       <div className="page-pad playbook-page-body" style={{ maxWidth: 960, margin: '0 auto', padding: '28px 24px 100px' }}>
-        <p style={{ color: '#8a7a60', fontSize: 14, lineHeight: 1.55, margin: '0 0 24px', maxWidth: 640 }}>{tx.playbookSubtitle}</p>
+        <p style={{ color: '#8a7a60', fontSize: 14, lineHeight: 1.55, margin: '0 0 20px', maxWidth: 640 }}>{tx.playbookSubtitle}</p>
 
-        {progress.contextualPrompt && (
+        <div className="playbook-tabs" style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
+          <Link
+            href={`/playbook${artistQuery}`}
+            className={`playbook-tab${tab === 'roadmap' ? ' is-active' : ''}`}
+            style={{ textDecoration: 'none' }}
+          >
+            {tx.playbookTabRoadmap}
+          </Link>
+          <Link
+            href={`/playbook${growthQuery}`}
+            className={`playbook-tab${tab === 'growth' ? ' is-active' : ''}`}
+            style={{ textDecoration: 'none' }}
+          >
+            {tx.playbookTabGrowth}
+          </Link>
+        </div>
+
+        {progress.contextualPrompt && tab === 'roadmap' && (
           <div className="card playbook-prompt-card" style={{ marginBottom: 24, borderColor: 'rgba(212,168,67,0.35)', background: 'rgba(212,168,67,0.06)' }}>
             <p style={{ margin: 0, color: '#e8e0d0', fontSize: 14, lineHeight: 1.5 }}>{progress.contextualPrompt}</p>
           </div>
         )}
 
-        <div className="card playbook-hero-card" style={{ marginBottom: 24, padding: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <p style={{ margin: '0 0 6px', color: '#8a7a60', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>{tx.playbookOverallScore}</p>
-              <p style={{ margin: 0, fontSize: 42, fontWeight: 700, color: '#fff', lineHeight: 1 }}>{progress.overallPercent}%</p>
-              <ProgressBar percent={progress.overallPercent} accent={accent} />
-            </div>
-            {progress.nextTask && (
-              <div style={{ flex: '1 1 280px', minWidth: 0, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(180,140,80,0.14)', borderRadius: 10, padding: 16 }}>
-                <p style={{ margin: '0 0 8px', color: accent, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' }}>{tx.playbookNextStep}</p>
-                <p style={{ margin: '0 0 12px', color: '#e8e0d0', fontSize: 14, fontWeight: 500 }}>{progress.nextTask.label}</p>
-                {progress.nextTask.href && (
-                  <Link href={progress.nextTask.href} className="btn-gold" style={{ textDecoration: 'none', display: 'inline-block' }}>
-                    {tx.playbookContinue} →
-                  </Link>
+        {growth.nextRecommendation && (
+          <div className="card playbook-prompt-card" style={{ marginBottom: 24, borderColor: 'rgba(180,140,80,0.25)', background: 'rgba(180,140,80,0.05)' }}>
+            <p style={{ margin: '0 0 6px', color: accent, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' }}>{tx.growthNextRecommended}</p>
+            <p style={{ margin: 0, color: '#e8e0d0', fontSize: 14, lineHeight: 1.55 }}>{growth.nextRecommendation.description}</p>
+          </div>
+        )}
+
+        {tab === 'growth' ? (
+          <GrowthEnginePanel growth={growth} showMissions showEmptyStates playbookHref={undefined} />
+        ) : (
+          <>
+            <div className="card playbook-hero-card" style={{ marginBottom: 24, padding: 24 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
+                <div>
+                  <p style={{ margin: '0 0 6px', color: '#8a7a60', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>{tx.playbookOverallScore}</p>
+                  <p style={{ margin: 0, fontSize: 42, fontWeight: 700, color: '#fff', lineHeight: 1 }}>{progress.overallPercent}%</p>
+                  <ProgressBar percent={progress.overallPercent} accent={accent} />
+                </div>
+                <div>
+                  <p style={{ margin: '0 0 6px', color: '#8a7a60', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>{tx.growthScoreLabel}</p>
+                  <p style={{ margin: 0, fontSize: 42, fontWeight: 700, color: '#fff', lineHeight: 1 }}>{growth.growthScorePercent}%</p>
+                  <ProgressBar percent={growth.growthScorePercent} accent="#7eb8a0" />
+                  <p style={{ margin: '8px 0 0', color: '#7eb8a0', fontSize: 12 }}>{growth.tierLabel}</p>
+                </div>
+              </div>
+
+              {progress.nextTask && (
+                <div style={{ marginTop: 20, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(180,140,80,0.14)', borderRadius: 10, padding: 16 }}>
+                  <p style={{ margin: '0 0 8px', color: accent, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' }}>{tx.playbookNextStep}</p>
+                  <p style={{ margin: '0 0 12px', color: '#e8e0d0', fontSize: 14, fontWeight: 500 }}>{progress.nextTask.label}</p>
+                  {progress.nextTask.href && (
+                    <Link href={progress.nextTask.href} className="btn-gold" style={{ textDecoration: 'none', display: 'inline-block' }}>
+                      {tx.playbookContinue} →
+                    </Link>
+                  )}
+                </div>
+              )}
+
+              <div className="playbook-rec-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginTop: 20 }}>
+                {progress.releaseTask && progress.releaseTask.id !== progress.nextTask?.id && (
+                  <div className="playbook-rec-card">
+                    <span className="playbook-rec-label">{tx.playbookRecommendedRelease}</span>
+                    <span className="playbook-rec-task">{progress.releaseTask.label}</span>
+                    {progress.releaseTask.href && <Link href={progress.releaseTask.href} style={{ color: accent, fontSize: 12 }}>{tx.playbookContinue} →</Link>}
+                  </div>
+                )}
+                {(growth.growthRecommendation || progress.growthTask) && (
+                  <div className="playbook-rec-card">
+                    <span className="playbook-rec-label">{tx.playbookRecommendedGrowth}</span>
+                    <span className="playbook-rec-task">{growth.growthRecommendation?.title || progress.growthTask?.label}</span>
+                    {(growth.growthRecommendation?.href || progress.growthTask?.href) && (
+                      <Link href={growth.growthRecommendation?.href || progress.growthTask!.href!} style={{ color: accent, fontSize: 12 }}>{tx.playbookContinue} →</Link>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-          </div>
 
-          <div className="playbook-rec-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginTop: 20 }}>
-            {progress.releaseTask && progress.releaseTask.id !== progress.nextTask?.id && (
-              <div className="playbook-rec-card">
-                <span className="playbook-rec-label">{tx.playbookRecommendedRelease}</span>
-                <span className="playbook-rec-task">{progress.releaseTask.label}</span>
-                {progress.releaseTask.href && <Link href={progress.releaseTask.href} style={{ color: accent, fontSize: 12 }}>{tx.playbookContinue} →</Link>}
-              </div>
-            )}
-            {progress.growthTask && progress.growthTask.id !== progress.nextTask?.id && (
-              <div className="playbook-rec-card">
-                <span className="playbook-rec-label">{tx.playbookRecommendedGrowth}</span>
-                <span className="playbook-rec-task">{progress.growthTask.label}</span>
-                {progress.growthTask.href && <Link href={progress.growthTask.href} style={{ color: accent, fontSize: 12 }}>{tx.playbookContinue} →</Link>}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <section style={{ marginBottom: 28 }}>
-          <h2 style={{ margin: '0 0 14px', color: accent, fontWeight: 'normal', fontSize: 14, letterSpacing: 1, textTransform: 'uppercase' }}>{tx.playbookMilestones}</h2>
-          <div className="playbook-milestones">
-            {progress.milestones.map(m => (
-              <div key={m.id} className={`playbook-milestone${m.done ? ' is-done' : ''}`} title={m.label}>
-                <span className="playbook-milestone-icon">{m.icon}</span>
-                <span className="playbook-milestone-label">{m.label}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {progress.categories.map(cat => (
-          <section key={cat.id} className="card playbook-category-card" style={{ marginBottom: 16, padding: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
-              <h2 style={{ margin: 0, fontSize: 16, color: '#e8e0d0', fontWeight: 600 }}>{cat.label}</h2>
-              <span style={{ color: '#8a7a60', fontSize: 12 }}>{cat.doneCount}/{cat.totalCount} · {cat.percent}%</span>
+              <p style={{ marginTop: 16, marginBottom: 0, textAlign: 'center' }}>
+                <Link href={`/playbook${growthQuery}`} style={{ color: '#8a7a60', fontSize: 13 }}>{tx.growthOpenMissions} →</Link>
+              </p>
             </div>
-            <ProgressBar percent={cat.percent} accent={accent} />
-            <ul className="playbook-task-list" style={{ listStyle: 'none', margin: '16px 0 0', padding: 0 }}>
-              {cat.tasks.map(task => (
-                <li key={task.id} className={`playbook-task${task.done ? ' is-done' : ''}`}>
-                  <span className="playbook-task-check" aria-hidden>{task.done ? '✓' : '○'}</span>
-                  <div className="playbook-task-body">
-                    <span className="playbook-task-label">{task.label}</span>
-                    {task.description && <span className="playbook-task-desc">{task.description}</span>}
+
+            <section style={{ marginBottom: 28 }}>
+              <h2 style={{ margin: '0 0 14px', color: accent, fontWeight: 'normal', fontSize: 14, letterSpacing: 1, textTransform: 'uppercase' }}>{tx.playbookMilestones}</h2>
+              <div className="playbook-milestones">
+                {progress.milestones.map(m => (
+                  <div key={m.id} className={`playbook-milestone${m.done ? ' is-done' : ''}`} title={m.label}>
+                    <span className="playbook-milestone-icon">{m.icon}</span>
+                    <span className="playbook-milestone-label">{m.label}</span>
                   </div>
-                  {!task.done && task.href && (
-                    <Link href={task.href} className="playbook-task-link">{tx.playbookContinue}</Link>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
+                ))}
+              </div>
+            </section>
+
+            {progress.categories.map(cat => (
+              <section key={cat.id} className="card playbook-category-card" style={{ marginBottom: 16, padding: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+                  <h2 style={{ margin: 0, fontSize: 16, color: '#e8e0d0', fontWeight: 600 }}>{cat.label}</h2>
+                  <span style={{ color: '#8a7a60', fontSize: 12 }}>{cat.doneCount}/{cat.totalCount} · {cat.percent}%</span>
+                </div>
+                <ProgressBar percent={cat.percent} accent={accent} />
+                <ul className="playbook-task-list" style={{ listStyle: 'none', margin: '16px 0 0', padding: 0 }}>
+                  {cat.tasks.map(task => (
+                    <li key={task.id} className={`playbook-task${task.done ? ' is-done' : ''}`}>
+                      <span className="playbook-task-check" aria-hidden>{task.done ? '✓' : '○'}</span>
+                      <div className="playbook-task-body">
+                        <span className="playbook-task-label">{task.label}</span>
+                        {task.description && <span className="playbook-task-desc">{task.description}</span>}
+                      </div>
+                      {!task.done && task.href && (
+                        <Link href={task.href} className="playbook-task-link">{tx.playbookContinue}</Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </>
+        )}
       </div>
     </main>
   )

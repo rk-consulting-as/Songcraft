@@ -90,6 +90,30 @@ export const PLAYBOOK_CHECKS: Record<string, PlaybookCheckFn> = {
   has_fan_interaction: ctx => ctx.subscriberCount > 0 || ctx.linkClickCount > 0,
   has_released_song: ctx => ctx.songs.some(s => s.status === 'released'),
   has_100_clicks: ctx => ctx.linkClickCount >= 100,
+  has_newsletter_ready: ctx => {
+    const a = primaryArtist(ctx)
+    const sections = (a?.page_settings as { sections?: { newsletter?: boolean } })?.sections
+    if (sections && sections.newsletter === false) return false
+    return !!(a?.page_enabled && a?.page_slug)
+  },
+  has_campaign_link_ready: ctx => {
+    return PLAYBOOK_CHECKS.has_campaign(ctx) && PLAYBOOK_CHECKS.has_public_artist_page(ctx)
+  },
+  has_embed_setup: ctx => {
+    const a = primaryArtist(ctx)
+    return !!(a?.page_enabled && ctx.songs.some(s => s.artist_id === a?.id && !s.public_hidden))
+  },
+  has_analytics_activity: ctx =>
+    ctx.qrClickCount > 0 || ctx.embedViewCount > 0 || ctx.linkClickCount > 0,
+  growth_starter_complete: ctx => {
+    const keys = ['has_public_artist_page', 'has_social_links', 'has_newsletter_ready', 'has_public_song_page']
+    const done = keys.filter(k => PLAYBOOK_CHECKS[k as keyof typeof PLAYBOOK_CHECKS]?.(ctx)).length
+    return done >= 3
+  },
+  release_ready_complete: ctx =>
+    PLAYBOOK_CHECKS.has_song_metadata(ctx) &&
+    PLAYBOOK_CHECKS.has_release_date(ctx) &&
+    PLAYBOOK_CHECKS.has_campaign(ctx),
 }
 
 export function runPlaybookCheck(checkId: string, ctx: PlaybookContext): boolean {

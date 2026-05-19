@@ -50,6 +50,7 @@ export type PlaybookContext = {
   embedViewCount: number
   linkClickCount: number
   selectedArtistId?: string | null
+  planId?: 'free' | 'pro'
 }
 
 export type PlaybookTaskDef = {
