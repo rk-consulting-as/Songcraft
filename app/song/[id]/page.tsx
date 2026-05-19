@@ -68,6 +68,8 @@ export default function SongPage() {
   const [coverQuality, setCoverQuality] = useState<'low' | 'medium' | 'high'>('medium')
 
   const [mediaLinks, setMediaLinks] = useState<{platform:string;url:string;label:string}[]>([])
+  const [spotifyUrl, setSpotifyUrl] = useState('')
+  const [savingSpotify, setSavingSpotify] = useState(false)
   const [newPlatform, setNewPlatform] = useState('Spotify')
   const [newUrl, setNewUrl] = useState('')
   const [newLabel, setNewLabel] = useState('')
@@ -200,6 +202,7 @@ export default function SongPage() {
       setCoverPrompt(data.cover_prompt || '')
       setCoverImageUrl(data.cover_image_url || '')
       setMediaLinks(data.media_links || [])
+      setSpotifyUrl(data.spotify_url || '')
       setCanvasPrompt(data.canvas_prompt || '')
       setCanvasUrl(data.canvas_video_url || '')
       setCanvasProvider(data.canvas_provider || '')
@@ -807,6 +810,14 @@ export default function SongPage() {
     const updated = mediaLinks.filter((_, idx) => idx !== i)
     setMediaLinks(updated)
     await save({ media_links: updated })
+  }
+
+  const saveSpotifyUrl = async () => {
+    setSavingSpotify(true)
+    const url = spotifyUrl.trim() || null
+    await save({ spotify_url: url })
+    setSong((prev: any) => (prev ? { ...prev, spotify_url: url } : prev))
+    setSavingSpotify(false)
   }
 
   const generatePublish = async (type: string) => {
@@ -2039,6 +2050,27 @@ export default function SongPage() {
         {tab === 'media' && (
           <div>
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>{tx.mediaTitle}</h2>
+            <div className="card song-streaming-links" style={{ marginBottom: 24 }}>
+              <p style={{ color: '#8a7a60', fontSize: 12, letterSpacing: 1, marginTop: 0 }}>{tx.songStreamingLinksTitle}</p>
+              <label style={{ display: 'block', fontSize: 12, color: '#8a7a60', marginBottom: 6 }}>{tx.songSpotifyUrlLabel}</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <input
+                  value={spotifyUrl}
+                  onChange={e => setSpotifyUrl(e.target.value)}
+                  placeholder="https://open.spotify.com/track/..."
+                  style={{ flex: '1 1 220px', minWidth: 0 }}
+                />
+                <button type="button" className="btn-gold" onClick={saveSpotifyUrl} disabled={savingSpotify}>
+                  {savingSpotify ? tx.saving : tx.save}
+                </button>
+              </div>
+              <p style={{ color: '#5a4a30', fontSize: 11, margin: '8px 0 0' }}>{tx.songSpotifyUrlHint}</p>
+              {!spotifyUrl.trim() && (
+                <p className="playlist-eligibility-warn playlist-eligibility-warn--strong" style={{ marginTop: 10, marginBottom: 0 }}>
+                  {tx.playlistCommunityWarnSpotifyLink}
+                </p>
+              )}
+            </div>
             <div className="card" style={{ marginBottom: '24px' }}>
               <p style={{ color: '#8a7a60', fontSize: '12px', letterSpacing: '1px', marginTop: 0 }}>{tx.addLink}</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', gap: '10px', marginBottom: '12px' }}>

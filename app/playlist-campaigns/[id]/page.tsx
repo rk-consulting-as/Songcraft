@@ -8,7 +8,6 @@ import { t, useLang } from '@/lib/i18n'
 import {
   fetchCampaignDetail,
   requestJoinCampaign,
-  updateCampaign,
   updateCampaignMember,
 } from '@/lib/playlistCommunities/client'
 import { getSongEligibilityWarnings } from '@/lib/playlistCommunities/eligibility'
@@ -26,6 +25,8 @@ import CampaignInvitePanel from '@/components/playlistCommunities/CampaignInvite
 import PlaylistReputationBadges from '@/components/playlistCommunities/PlaylistReputationBadges'
 import CommunityQualityBlurb from '@/components/playlistCommunities/CommunityQualityBlurb'
 import CampaignParticipationSection from '@/components/playlistCommunities/CampaignParticipationSection'
+import CampaignOwnerManagePanel from '@/components/playlistCommunities/CampaignOwnerManagePanel'
+import CampaignOnboardingHelper from '@/components/playlistCommunities/CampaignOnboardingHelper'
 
 type MemberRow = {
   id: string
@@ -54,6 +55,8 @@ export default function PlaylistCampaignPage() {
   const [joinArtistId, setJoinArtistId] = useState('')
   const [joinSongId, setJoinSongId] = useState('')
   const [joinMessage, setJoinMessage] = useState('')
+  const [joinSpotifyUrl, setJoinSpotifyUrl] = useState('')
+  const [savingSpotify, setSavingSpotify] = useState(false)
   const [songs, setSongs] = useState<Array<{ id: string; title: string; spotify_url?: string | null; public_hidden?: boolean | null }>>([])
 
   const load = useCallback(async () => {
@@ -130,19 +133,28 @@ export default function PlaylistCampaignPage() {
     }
   }
 
-  const setCampaignStatus = async (status: string) => {
+  const selectedJoinSong = songs.find(s => s.id === joinSongId)
+
+  const saveJoinSpotify = async () => {
+    if (!joinSongId || !joinSpotifyUrl.trim()) return
+    setSavingSpotify(true)
     try {
-      await updateCampaign(id, { status })
-      await load()
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed')
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (!user) return
+      await sb.from('songs').update({ spotify_url: joinSpotifyUrl.trim() }).eq('id', joinSongId).eq('user_id', user.id)
+      setSongs(prev => prev.map(s => (s.id === joinSongId ? { ...s, spotify_url: joinSpotifyUrl.trim() } : s)))
+    } finally {
+      setSavingSpotify(false)
     }
   }
 
-  const publishCampaign = () => setCampaignStatus('open')
-
   const handleJoin = async () => {
-    const selected = songs.find(s => s.id === joinSongId)
+    let selected = songs.find(s => s.id === joinSongId)
+    if (!selected?.spotify_url && joinSpotifyUrl.trim()) {
+      await saveJoinSpotify()
+      if (selected) selected = { ...selected, spotify_url: joinSpotifyUrl.trim() }
+    }
     const warnings = getSongEligibilityWarnings(selected)
     if (warnings.length && !window.confirm(warnings.map(w => tx[w.messageKey] || w.messageKey).join('\n'))) return
     try {
@@ -331,6 +343,15 @@ export default function PlaylistCampaignPage() {
           </div>
 
           <aside className="playlist-campaign-detail__aside">
+            <CampaignOnboardingHelper
+              campaignId={id}
+              isOwner={isOwner}
+              isApprovedMember={myMembership?.status === 'approved'}
+              hasRules={!!campaign.rules}
+              hasSpotifyOnSong={!!selectedJoinSong?.spotify_url}
+              inviteCopied={inviteCopied}
+              joinSongId={joinSongId}
+            />
             {isOwner && (
               <>
                 <CampaignQualityChecklist items={qualityItems} />
@@ -341,23 +362,7 @@ export default function PlaylistCampaignPage() {
                   referralCode={referralCode}
                   onCopied={() => setInviteCopied(true)}
                 />
-                <div className="playlist-owner-actions card">
-                  <h3 className="playlist-owner-actions__title">{tx.playlistOwnerActions}</h3>
-                  <div className="playlist-owner-actions__buttons">
-                    {campaign.status === 'draft' && (
-                      <button type="button" className="btn-gold" onClick={publishCampaign}>{tx.playlistCommunityPublish}</button>
-                    )}
-                    {['open', 'active'].includes(campaign.status) && (
-                      <button type="button" className="btn-outline" onClick={() => setCampaignStatus('closed')}>{tx.playlistCloseCampaign}</button>
-                    )}
-                    {campaign.status === 'closed' && (
-                      <button type="button" className="btn-outline" onClick={() => setCampaignStatus('archived')}>{tx.playlistArchiveCampaign}</button>
-                    )}
-                    <button type="button" className="btn-outline" disabled title={tx.playlistCommunityReportPlaceholder}>
-                      {tx.playlistCommunityReport}
-                    </button>
-                  </div>
-                </div>
+                <CampaignOwnerManagePanel campaign={campaign} onUpdated={load} />
               </>
             )}
 
@@ -372,12 +377,32 @@ export default function PlaylistCampaignPage() {
                 ) : (
                   <>
                     <label className="playlist-join-label">{tx.playlistCommunitySelectSong}</label>
-                    <select className="input" value={joinSongId} onChange={e => setJoinSongId(e.target.value)}>
+                    <select className="input" value={joinSongId} onChange={e => {
+                      setJoinSongId(e.target.value)
+                      const s = songs.find(x => x.id === e.target.value)
+                      setJoinSpotifyUrl(s?.spotify_url || '')
+                    }}>
                       {songs.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
                     </select>
+                    {!selectedJoinSong?.spotify_url && (
+                      <div className="playlist-join-spotify-quick">
+                        <label className="playlist-join-label">{tx.joinQuickAddSpotify}</label>
+                        <div className="playlist-join-spotify-quick__row">
+                          <input
+                            className="input"
+                            value={joinSpotifyUrl}
+                            onChange={e => setJoinSpotifyUrl(e.target.value)}
+                            placeholder="https://open.spotify.com/track/..."
+                          />
+                          <button type="button" className="btn-outline" style={{ fontSize: 11 }} disabled={savingSpotify || !joinSpotifyUrl.trim()} onClick={saveJoinSpotify}>
+                            {savingSpotify ? tx.saving : tx.save}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <textarea className="input" value={joinMessage} onChange={e => setJoinMessage(e.target.value)} placeholder={tx.playlistCommunityJoinMessage} rows={2} />
-                    {getSongEligibilityWarnings(songs.find(s => s.id === joinSongId)).map(w => (
-                      <p key={w.key} className="playlist-eligibility-warn">{tx[w.messageKey]}</p>
+                    {getSongEligibilityWarnings(selectedJoinSong || (joinSpotifyUrl ? { spotify_url: joinSpotifyUrl } : null)).map(w => (
+                      <p key={w.key} className="playlist-eligibility-warn playlist-eligibility-warn--strong">{tx[w.messageKey]}</p>
                     ))}
                     <button type="button" className="btn-gold" style={{ marginTop: 10 }} onClick={handleJoin}>{tx.playlistCommunityRequestJoin}</button>
                   </>

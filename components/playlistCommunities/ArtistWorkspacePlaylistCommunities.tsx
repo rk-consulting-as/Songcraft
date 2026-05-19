@@ -12,12 +12,14 @@ import {
   fetchCampaigns,
   fetchCreatorPlaylists,
   fetchParticipationSummary,
+  fetchDiscoverCampaigns,
   fetchSpotifyPlaylistByUrl,
   requestJoinCampaign,
 } from '@/lib/playlistCommunities/client'
 import type { UserParticipationSummary } from '@/lib/playlistCommunities/participationSummary'
 import { buildCampaignInviteUrl } from '@/lib/playlistCommunities/serialize'
 import PlaylistCampaignCard from './PlaylistCampaignCard'
+import PlaylistManageRow from './PlaylistManageRow'
 import PlaylistCommunityDisclaimer from './PlaylistCommunityDisclaimer'
 import PlaylistCommunityHints from './PlaylistCommunityHints'
 import CommunityQualityBlurb from './CommunityQualityBlurb'
@@ -79,49 +81,11 @@ export default function ArtistWorkspacePlaylistCommunities({ artistId, artistNam
       setParticipationSummary(part?.summary || null)
       if (owned?.limits) setLimits(owned.limits)
 
-      const res = await fetch('/api/discover/catalog')
-      if (res.ok) {
-        const catalog = await res.json()
-        setDiscoverCampaigns(
-          (catalog.playlistCampaigns || []).map((c: {
-            id: string
-            title: string
-            rules: string | null
-            genre: string | null
-            mood: string | null
-            commitmentLevel: string
-            status: string
-            memberCount: number
-            playlistTitle: string
-            playlistImageUrl: string | null
-            artistName: string | null
-          }) => ({
-            id: c.id,
-            title: c.title,
-            rules: c.rules,
-            genre: c.genre,
-            mood: c.mood,
-            commitment_level: c.commitmentLevel as CampaignCardData['commitment_level'],
-            status: c.status as CampaignCardData['status'],
-            memberCount: c.memberCount,
-            artistName: c.artistName,
-            isOwner: false,
-            playlist: { title: c.playlistTitle, image_url: c.playlistImageUrl, spotify_url: '', owner_name: null },
-            user_id: '',
-            artist_id: null,
-            playlist_id: '',
-            description: null,
-            max_members: null,
-            songs_per_member: 1,
-            active_days_per_week: null,
-            campaign_start_date: null,
-            campaign_end_date: null,
-            visibility: 'public' as const,
-            admin_hidden: false,
-            created_at: '',
-            updated_at: '',
-          }))
-        )
+      try {
+        const disc = await fetchDiscoverCampaigns({ sort: 'trending' })
+        setDiscoverCampaigns((disc.campaigns || []) as CampaignCardData[])
+      } catch {
+        setDiscoverCampaigns([])
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load')
@@ -281,21 +245,7 @@ export default function ArtistWorkspacePlaylistCommunities({ artistId, artistNam
           ) : (
             <div style={{ display: 'grid', gap: 12 }}>
               {playlists.map(pl => (
-                <div key={pl.id} className="card" style={{ padding: 14, display: 'flex', gap: 12, alignItems: 'center' }}>
-                  {pl.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={pl.image_url} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: 'cover' }} />
-                  ) : (
-                    <div style={{ width: 48, height: 48, borderRadius: 6, background: 'rgba(212,168,67,0.12)' }} />
-                  )}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ color: '#e8e0d0', fontSize: 14 }}>{pl.title}</div>
-                    {pl.owner_name && <div style={{ fontSize: 11, color: '#6a5a40' }}>{pl.owner_name}</div>}
-                  </div>
-                  {pl.spotify_url && (
-                    <a href={pl.spotify_url} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ fontSize: 11, textDecoration: 'none' }}>Spotify</a>
-                  )}
-                </div>
+                <PlaylistManageRow key={pl.id} playlist={pl} onUpdated={refresh} />
               ))}
             </div>
           )}
@@ -369,9 +319,14 @@ export default function ArtistWorkspacePlaylistCommunities({ artistId, artistNam
       {!loading && panel === 'discover' && (
         <div>
           <p style={{ color: '#8a7a60', fontSize: 13, marginBottom: 16 }}>{tx.playlistCommunityDiscoverHint}</p>
-          <Link href="/discover" className="btn-outline" style={{ textDecoration: 'none', fontSize: 12, marginBottom: 16, display: 'inline-block' }}>
-            {tx.discoverEcosystemTitle} →
-          </Link>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+            <Link href="/discover/campaigns" className="btn-gold" style={{ textDecoration: 'none', fontSize: 12 }}>
+              {tx.discoverCampaignsTitle} →
+            </Link>
+            <Link href="/discover" className="btn-outline" style={{ textDecoration: 'none', fontSize: 12 }}>
+              {tx.discoverEcosystemTitle} →
+            </Link>
+          </div>
           {discoverCampaigns.length === 0 ? (
             <p style={{ color: '#6a5a40', fontSize: 13 }}>{tx.playlistCommunityNoDiscover}</p>
           ) : (

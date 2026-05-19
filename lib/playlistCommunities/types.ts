@@ -22,6 +22,7 @@ export type CreatorPlaylist = {
   mood: string | null
   visibility: PlaylistVisibility
   admin_hidden: boolean
+  archived_at?: string | null
   created_at: string
   updated_at: string
 }
@@ -69,6 +70,8 @@ export type CampaignCardData = PlaylistCampaign & {
   pendingProofCount?: number
   approvedThisWeek?: number
   membersNeedingAttention?: number
+  isLookingForMembers?: boolean
+  activityThisWeek?: number
   artistName?: string | null
   isOwner?: boolean
   myMembership?: Pick<PlaylistCampaignMember, 'id' | 'status'> | null

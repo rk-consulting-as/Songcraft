@@ -57,7 +57,7 @@ export default function CampaignParticipationSection({
   if (!data) return null
 
   return (
-    <section className="public-section campaign-participation-section">
+    <section id="participation" className="public-section campaign-participation-section">
       <h2 className="public-section__title">{tx.participationBoardTitle}</h2>
       <p className="campaign-participation-intro">{tx.participationBoardIntro}</p>
 

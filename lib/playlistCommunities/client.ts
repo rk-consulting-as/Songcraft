@@ -64,6 +64,42 @@ export async function deleteCreatorPlaylist(id: string) {
   return apiFetch<{ ok: boolean }>(`/api/playlist-communities/playlists/${id}`, { method: 'DELETE' })
 }
 
+export async function archiveCreatorPlaylist(id: string) {
+  return updateCreatorPlaylist(id, { archive: true })
+}
+
+export async function unarchiveCreatorPlaylist(id: string) {
+  return updateCreatorPlaylist(id, { unarchive: true })
+}
+
+export async function refreshPlaylistMetadata(id: string) {
+  return apiFetch<{ playlist: CreatorPlaylist }>(`/api/playlist-communities/playlists/${id}/refresh`, {
+    method: 'POST',
+  })
+}
+
+export async function deleteCampaign(id: string) {
+  return apiFetch<{ ok: boolean }>(`/api/playlist-communities/campaigns/${id}`, { method: 'DELETE' })
+}
+
+export async function fetchDiscoverCampaigns(params: {
+  genre?: string
+  mood?: string
+  commitment?: string
+  sort?: string
+  lookingForMembers?: boolean
+}) {
+  const sp = new URLSearchParams()
+  if (params.genre) sp.set('genre', params.genre)
+  if (params.mood) sp.set('mood', params.mood)
+  if (params.commitment) sp.set('commitment', params.commitment)
+  if (params.sort) sp.set('sort', params.sort)
+  if (params.lookingForMembers) sp.set('looking_for_members', '1')
+  const res = await fetch(`/api/discover/campaigns?${sp}`)
+  if (!res.ok) throw new Error('discover_campaigns_failed')
+  return res.json() as Promise<{ campaigns: CampaignCardData[]; filters: { genres: string[]; moods: string[] } }>
+}
+
 export async function fetchCampaigns(params: { artistId?: string; scope?: 'owned' | 'joined' | 'all' }) {
   const sp = new URLSearchParams()
   if (params.artistId) sp.set('artist_id', params.artistId)

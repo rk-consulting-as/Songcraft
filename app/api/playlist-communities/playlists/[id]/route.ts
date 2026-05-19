@@ -26,6 +26,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       patch.spotify_url = normalizeSpotifyPlaylistUrl(String(body.spotify_url), id)
     }
   }
+  if (body.archive === true) patch.archived_at = new Date().toISOString()
+  if (body.unarchive === true) patch.archived_at = null
 
   const { data, error } = await sb
     .from('creator_playlists')
@@ -44,6 +46,28 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const auth = await requireUser(req)
   if (!auth) return NextResponse.json({ error: 'not_authenticated' }, { status: 401 })
   const { sb, userId } = auth
+
+  const { data: pl } = await sb
+    .from('creator_playlists')
+    .select('archived_at')
+    .eq('id', params.id)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (!pl) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  if (!pl.archived_at) {
+    return NextResponse.json({ error: 'archive_before_delete' }, { status: 400 })
+  }
+
+  const { count } = await sb
+    .from('playlist_campaigns')
+    .select('id', { count: 'exact', head: true })
+    .eq('playlist_id', params.id)
+    .neq('status', 'archived')
+
+  if ((count || 0) > 0) {
+    return NextResponse.json({ error: 'has_active_campaigns' }, { status: 400 })
+  }
 
   const { error } = await sb.from('creator_playlists').delete().eq('id', params.id).eq('user_id', userId)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

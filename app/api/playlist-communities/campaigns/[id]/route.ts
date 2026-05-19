@@ -157,3 +157,25 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!data) return NextResponse.json({ error: 'not_found' }, { status: 404 })
   return NextResponse.json({ campaign: data })
 }
+
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  const auth = await requireUser(req)
+  if (!auth) return NextResponse.json({ error: 'not_authenticated' }, { status: 401 })
+  const { sb, userId } = auth
+
+  const { data: campaign } = await sb
+    .from('playlist_campaigns')
+    .select('status')
+    .eq('id', params.id)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (!campaign) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  if (campaign.status !== 'archived') {
+    return NextResponse.json({ error: 'archive_before_delete' }, { status: 400 })
+  }
+
+  const { error } = await sb.from('playlist_campaigns').delete().eq('id', params.id).eq('user_id', userId)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true })
+}

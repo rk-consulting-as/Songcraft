@@ -11,8 +11,10 @@ export async function GET(req: NextRequest) {
   const { sb, userId } = auth
 
   const artistId = req.nextUrl.searchParams.get('artist_id')
+  const includeArchived = req.nextUrl.searchParams.get('include_archived') === '1'
   let query = sb.from('creator_playlists').select('*').eq('user_id', userId).order('created_at', { ascending: false })
   if (artistId) query = query.eq('artist_id', artistId)
+  if (!includeArchived) query = query.is('archived_at', null)
 
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

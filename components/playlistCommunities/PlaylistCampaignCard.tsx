@@ -45,6 +45,9 @@ export default function PlaylistCampaignCard({ campaign, accent = '#d4a843', onM
           <div className="playlist-campaign-card__badges">
             <PlaylistCampaignStatusBadge status={campaign.status as CampaignStatus} />
             <span className="playlist-campaign-card__commitment">{commitmentLabel}</span>
+            {campaign.isLookingForMembers && ['open', 'active'].includes(campaign.status) && (
+              <span className="playlist-campaign-card__looking">{tx.campaignCardLookingForMembers}</span>
+            )}
           </div>
           <h3 className="playlist-campaign-card__title">{campaign.title}</h3>
           <p className="playlist-campaign-card__playlist">{campaign.playlist?.title || tx.playlistCommunityPlaylist}</p>
@@ -66,6 +69,11 @@ export default function PlaylistCampaignCard({ campaign, accent = '#d4a843', onM
         {(campaign.approvedThisWeek ?? 0) > 0 && (
           <span className="playlist-campaign-card__proof-approved">
             {tx.campaignCardApprovedWeek.replace('{n}', String(campaign.approvedThisWeek))}
+          </span>
+        )}
+        {(campaign.activityThisWeek ?? campaign.approvedThisWeek ?? 0) > 0 && !campaign.isOwner && (
+          <span className="playlist-campaign-card__activity">
+            {tx.campaignCardActivityWeek.replace('{n}', String(campaign.activityThisWeek ?? campaign.approvedThisWeek))}
           </span>
         )}
         {(campaign.membersNeedingAttention ?? 0) > 0 && campaign.isOwner && (

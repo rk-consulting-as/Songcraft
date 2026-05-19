@@ -165,6 +165,9 @@ export default function DiscoverEcosystemPage() {
             {catalog.playlistCampaigns?.length > 0 && (
               <DiscoverSection title={tx.discoverSectionPlaylistCommunities}>
                 <p style={{ margin: '0 0 16px', color: '#8a7a60', fontSize: 13, lineHeight: 1.5 }}>{tx.discoverPlaylistCommunitiesDesc}</p>
+                <Link href="/discover/campaigns" className="btn-gold" style={{ textDecoration: 'none', fontSize: 12, marginBottom: 16, display: 'inline-block' }}>
+                  {tx.discoverCampaignsViewAll} →
+                </Link>
                 <div className="discover-grid discover-grid--campaigns">
                   {catalog.playlistCampaigns.slice(0, 8).map(c => (
                     <DiscoverPlaylistCampaignCard key={c.id} campaign={c} accent={accent} />
