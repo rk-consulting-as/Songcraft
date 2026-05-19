@@ -10,6 +10,7 @@ import DiscoverReleaseCard from './DiscoverReleaseCard'
 import DiscoverAcquisitionHero from '@/components/platform/DiscoverAcquisitionHero'
 import CreatorAcquisitionCta from '@/components/platform/CreatorAcquisitionCta'
 import ViaToneBranding from '@/components/platform/ViaToneBranding'
+import PublicEmptyState from '@/components/public/PublicEmptyState'
 
 type FilterMode = 'trending' | 'newest' | 'active' | 'genre'
 
@@ -77,22 +78,10 @@ export default function DiscoverEcosystemPage() {
     }
   }, [allCreators, filter, genre, search])
 
-  const filterChip = (active: boolean) => ({
-    padding: '6px 14px',
-    fontSize: 12,
-    borderRadius: 8,
-    border: active ? `1px solid ${accent}` : '1px solid rgba(180,140,80,0.2)',
-    background: active ? `${accent}18` : 'rgba(255,255,255,0.02)',
-    color: active ? accent : '#8a7a60',
-    cursor: 'pointer' as const,
-  })
+  const chipClass = (active: boolean) => `discover-filter-chip${active ? ' is-active' : ''}`
 
   return (
-    <div className="discover-ecosystem" style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0a0a0f 0%, #12071e 50%, #0a0f0a 100%)',
-      color: '#e8e0d0',
-    }}>
+    <div className="discover-ecosystem public-surface" style={{ ['--pub-accent' as string]: accent }}>
       <header className="discover-ecosystem-header" style={{
         borderBottom: '1px solid rgba(180,140,80,0.2)',
         padding: '14px 24px',
@@ -110,33 +99,33 @@ export default function DiscoverEcosystemPage() {
         </nav>
       </header>
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '36px 24px 80px' }}>
+      <div className="discover-ecosystem-main">
         <DiscoverAcquisitionHero />
 
         <div className="card" style={{ marginBottom: 24, padding: 16 }}>
           <input
+            className="discover-filter-search"
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={tx.discoverSearchArtists}
-            style={{ width: '100%', boxSizing: 'border-box', marginBottom: 12 }}
           />
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div className="discover-filter-bar" style={{ marginTop: 12 }}>
             {([
               ['trending', 'discoverFilterTrending'],
               ['newest', 'discoverFilterNewest'],
               ['active', 'discoverFilterActive'],
               ['genre', 'discoverFilterGenre'],
             ] as [FilterMode, string][]).map(([f, key]) => (
-              <button key={f} type="button" onClick={() => setFilter(f)} style={filterChip(filter === f)}>
+              <button key={f} type="button" onClick={() => setFilter(f)} className={chipClass(filter === f)}>
                 {tx[key] || f}
               </button>
             ))}
           </div>
           {catalog && catalog.genres.length > 0 && (
-            <div style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <button type="button" onClick={() => setGenre('')} style={filterChip(!genre)}>{tx.discoverAllGenres}</button>
+            <div className="discover-filter-bar" style={{ marginTop: 12 }}>
+              <button type="button" onClick={() => setGenre('')} className={chipClass(!genre)}>{tx.discoverAllGenres}</button>
               {catalog.genres.map(g => (
-                <button key={g.genre} type="button" onClick={() => setGenre(g.genre)} style={filterChip(genre === g.genre)}>
+                <button key={g.genre} type="button" onClick={() => setGenre(g.genre)} className={chipClass(genre === g.genre)}>
                   {g.genre} ({g.count})
                 </button>
               ))}
@@ -147,9 +136,7 @@ export default function DiscoverEcosystemPage() {
         {loading ? (
           <p style={{ textAlign: 'center', color: '#6a5a40', padding: 40 }}>{tx.loading}</p>
         ) : !catalog ? (
-          <div className="card" style={{ textAlign: 'center', padding: 48 }}>
-            <p style={{ color: '#8a7a60' }}>{tx.discoverLoadError}</p>
-          </div>
+          <PublicEmptyState icon="🌍" title={tx.discoverLoadError} accent={accent} />
         ) : (
           <>
             {catalog.spotlight.length > 0 && (
@@ -222,13 +209,22 @@ export default function DiscoverEcosystemPage() {
               </DiscoverSection>
             )}
 
-            {filteredCreators.length > 0 && filter !== 'trending' && (
+            {filter !== 'trending' && (
               <DiscoverSection title={tx.discoverSectionBrowse}>
-                <div className="discover-grid discover-grid--creators">
-                  {filteredCreators.map(c => (
-                    <DiscoverCreatorCard key={`b-${c.id}`} creator={c} levelLabel={levelLabel(c)} tx={tx} accent={accent} />
-                  ))}
-                </div>
+                {filteredCreators.length > 0 ? (
+                  <div className="discover-grid discover-grid--creators">
+                    {filteredCreators.map(c => (
+                      <DiscoverCreatorCard key={`b-${c.id}`} creator={c} levelLabel={levelLabel(c)} tx={tx} accent={accent} />
+                    ))}
+                  </div>
+                ) : (
+                  <PublicEmptyState
+                    icon="🔍"
+                    title={tx.discoverNoResults}
+                    description={tx.discoverNoResultsDesc}
+                    accent={accent}
+                  />
+                )}
               </DiscoverSection>
             )}
           </>
@@ -244,7 +240,7 @@ export default function DiscoverEcosystemPage() {
 
 function DiscoverSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section style={{ marginBottom: 40 }}>
+    <section className="discover-section">
       <h2 className="discover-section-title">{title}</h2>
       {children}
     </section>

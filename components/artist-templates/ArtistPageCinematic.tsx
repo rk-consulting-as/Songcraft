@@ -32,12 +32,7 @@ export default function ArtistPageCinematic({
   const sections = { newsletter: true, events: true, ...(artist.page_settings?.sections || {}) }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#0a0a0f',
-      color: '#e8e0d0',
-      fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-    }}>
+    <div className="public-surface" style={{ ['--pub-accent' as string]: accent }}>
       <PublicAnalyticsTracker artistId={artist.id} eventType="artist_page_view" />
       {/* Full-bleed hero with blurred image background */}
       <section style={{
@@ -231,14 +226,8 @@ export default function ArtistPageCinematic({
 
       <CreatorAcquisitionCta variant="card" accent={accent} />
 
-      <footer style={{
-        textAlign: 'center',
-        padding: '24px',
-        borderTop: '1px solid rgba(180,140,80,0.08)',
-        color: '#5a4a30',
-        fontSize: 12,
-        letterSpacing: 1,
-      }}>
+      <footer className="public-footer">
+        <CreatorAcquisitionCta variant="footer" accent={accent} />
         <ViaToneBranding variant="footer" accent={accent} href="/login" />
       </footer>
     </div>

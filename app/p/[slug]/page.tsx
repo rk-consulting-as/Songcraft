@@ -14,8 +14,10 @@ import PublicEventsList from '@/components/PublicEventsList'
 import PublicAnalyticsTracker from '@/components/PublicAnalyticsTracker'
 import ExpandableText from '@/components/ExpandableText'
 import PublicCreatorIdentityBlock from '@/components/discover/PublicCreatorIdentityBlock'
+import PublicEmptyState from '@/components/public/PublicEmptyState'
 import { getFeaturedRelease } from '@/lib/creatorIdentity'
 import { resolveArtistOgImage, resolvePublicArtistImages } from '@/lib/mediaLibrary/resolveImages'
+import { t } from '@/lib/i18n'
 
 // Public artist landing page. Server-rendered, anonymous Supabase client (RLS gates by page_enabled).
 // URL: /p/{slug}
@@ -152,35 +154,27 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
   const logoUrl = publicImages.logo
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#e8e0d0', fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif' }}>
+    <div className="public-surface" style={{ ['--pub-accent' as string]: accent }}>
       <PublicAnalyticsTracker artistId={artist.id} eventType="artist_page_view" />
       {/* Hero */}
-      <section style={{
-        position: 'relative',
-        minHeight: 480,
-        background: heroImage
-          ? `linear-gradient(180deg, rgba(10,10,15,0.55) 0%, rgba(10,10,15,0.85) 70%, #0a0a0f 100%), url(${heroImage}) center/cover no-repeat`
-          : `linear-gradient(135deg, ${accent}22 0%, #0a0a0f 100%)`,
-        padding: '60px 24px 48px',
-        textAlign: 'center',
-        borderBottom: `1px solid ${accent}33`,
-      }}>
-        <div style={{ maxWidth: 980, margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 }}>
+      <section
+        className={`public-hero${heroImage ? '' : ' public-hero--gradient-only'}`}
+        style={heroImage ? { backgroundImage: `linear-gradient(180deg, rgba(10,10,15,0.55) 0%, rgba(10,10,15,0.88) 72%, #0a0a0f 100%), url(${heroImage})` } : undefined}
+      >
+        <div className="public-hero__inner">
           {logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt="" style={{ height: 48, maxWidth: 200, objectFit: 'contain', marginBottom: 4 }} />
+            <img src={logoUrl} alt="" className="public-hero__logo" />
           )}
           {profileImage && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={profileImage} alt={artist.name} style={{ width: 180, height: 180, borderRadius: '50%', objectFit: 'cover', border: `3px solid ${accent}`, boxShadow: '0 12px 40px rgba(0,0,0,0.6)' }} />
+            <img src={profileImage} alt={artist.name} className="public-hero__avatar" width={180} height={180} loading="eager" />
           )}
-          <h1 style={{ margin: 0, fontSize: 'clamp(36px, 6vw, 64px)', fontWeight: 800, letterSpacing: '-0.02em', color: '#fff' }}>
-            {artist.name}
-          </h1>
+          <h1 className="public-hero__title">{artist.name}</h1>
           {artist.genre && (
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <div className="public-hero__genres">
               {artist.genre.split(', ').filter(Boolean).map((g: string) => (
-                <span key={g} style={{ padding: '4px 12px', borderRadius: 20, fontSize: 12, color: accent, border: `1px solid ${accent}55`, background: `${accent}11`, letterSpacing: 0.5 }}>{g}</span>
+                <span key={g} className="public-hero__genre-chip">{g}</span>
               ))}
             </div>
           )}
@@ -196,10 +190,10 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
 
           {/* Social row */}
           {s.social && (
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginTop: 6 }}>
+            <div className="public-social-pills">
               {artist.spotify_verified && artist.spotify_url && (
-                <a href={artist.spotify_url} target="_blank" rel="noopener noreferrer"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 24, background: '#1ed760', color: '#000', textDecoration: 'none', fontWeight: 600, fontSize: 13 }}>
+                <a href={artist.spotify_url} target="_blank" rel="noopener noreferrer" className="public-social-pill"
+                  style={{ background: '#1ed760', color: '#000' }}>
                   ♪ Spotify
                 </a>
               )}
@@ -232,7 +226,7 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
         </div>
       </section>
 
-      <div style={{ maxWidth: 980, margin: '0 auto', padding: '40px 24px 80px' }}>
+      <div className="public-body">
         <PublicCreatorIdentityBlock artist={artist} songs={songs} albums={albums} accent={accent} />
 
         {s.newsletter !== false && (
@@ -301,14 +295,14 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
         )}
 
         {/* Songs / tracks list */}
-        {s.songs && releasedSongs.length > 0 && (
-          <section style={{ marginBottom: 48 }}>
-            <h2 style={{ margin: '0 0 16px', fontSize: 13, letterSpacing: 2, color: accent, textTransform: 'uppercase' }}>Tracks</h2>
+        {s.songs && releasedSongs.length > 0 ? (
+          <section className="public-section">
+            <h2 className="public-section__title">Tracks</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {releasedSongs.map((song: any, i: number) => {
                 const thumb = song.spotify_cover_url || song.cover_image_url
                 return (
-                  <div key={song.id} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '10px 14px', flexWrap: 'wrap' }}>
+                  <div key={song.id} className="public-track-row">
                     {thumb ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={thumb} alt="" style={{ width: 48, height: 48, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} />
@@ -356,11 +350,19 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
               })}
             </div>
           </section>
-        )}
+        ) : s.songs ? (
+          <section className="public-section">
+            <PublicEmptyState
+              icon="🎵"
+              title={(t.en as Record<string, string>).publicEmptyNoTracks}
+              description={(t.en as Record<string, string>).publicEmptyNoTracksDesc}
+              accent={accent}
+            />
+          </section>
+        ) : null}
 
-        {/* Share */}
-        <section style={{ marginTop: 48, marginBottom: 32 }}>
-          <h2 style={{ margin: '0 0 14px', fontSize: 13, letterSpacing: 2, color: accent, textTransform: 'uppercase' }}>Share this artist</h2>
+        <section className="public-section">
+          <h2 className="public-section__title">Share this artist</h2>
           <ShareButtons
             url={`/p/${artist.page_slug}`}
             title={`${artist.name} — ViaTone`}
@@ -370,7 +372,7 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
         </section>
 
         <CreatorAcquisitionCta variant="card" accent={accent} />
-        <footer style={{ marginTop: 48, paddingTop: 24, borderTop: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
+        <footer className="public-footer">
           <CreatorAcquisitionCta variant="footer" accent={accent} />
           <ViaToneBranding variant="footer" accent={accent} href="/login" />
         </footer>

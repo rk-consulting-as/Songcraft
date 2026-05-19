@@ -31,12 +31,7 @@ export default function ArtistPageMinimal({
   const { logo: logoUrl, profile: profileImage } = resolvePublicArtistImages(artist)
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#0a0a0f',
-      color: '#e8e0d0',
-      fontFamily: 'system-ui, -apple-system, "Segoe UI", Georgia, serif',
-    }}>
+    <div className="public-surface public-surface--minimal" style={{ ['--pub-accent' as string]: accent }}>
       <PublicAnalyticsTracker artistId={artist.id} eventType="artist_page_view" />
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '80px 24px' }}>
         {/* Centered hero — name only */}

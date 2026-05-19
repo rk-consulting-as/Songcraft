@@ -50,10 +50,6 @@ export default async function EmbedSongPage({
   const accent = '#d4a843'
   const allowNoBranding = await canRemoveBranding(song.user_id)
   const showBranding = searchParams?.branding === '0' ? !allowNoBranding : true
-  const bg = theme === 'light' ? '#fbf7ef' : '#0a0a0f'
-  const fg = theme === 'light' ? '#18130c' : '#e8e0d0'
-  const muted = theme === 'light' ? '#75654a' : '#8a7a60'
-  const card = theme === 'light' ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.035)'
 
   const links = [
     ...(song.spotify_url ? [{ platform: 'Spotify', url: song.spotify_url, label: 'Spotify' }] : []),
@@ -62,41 +58,42 @@ export default async function EmbedSongPage({
   ]
 
   return (
-    <div style={{ margin: 0, background: bg, color: fg, fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif', minHeight: '100vh' }}>
+    <div className={`public-embed public-embed--${theme}`} style={{ ['--pub-accent' as string]: accent }}>
       <PublicAnalyticsTracker artistId={artist.id} songId={song.id} eventType="embed_view" />
-      <main style={{ boxSizing: 'border-box', width: '100%', minHeight: '100vh', padding: 14 }}>
-          <div style={{ background: card, border: `1px solid ${accent}30`, borderRadius: 14, padding: 14, boxShadow: theme === 'light' ? '0 10px 30px rgba(0,0,0,0.08)' : '0 10px 34px rgba(0,0,0,0.35)' }}>
-            <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 14 }}>
-              {cover ? (
-                <img src={cover} alt="" style={{ width: 92, height: 92, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
-              ) : (
-                <div style={{ width: 92, height: 92, borderRadius: 10, background: `${accent}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, flexShrink: 0 }}>♪</div>
-              )}
-              <div style={{ minWidth: 0 }}>
-                <h1 style={{ margin: 0, color: fg, fontSize: 20, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis' }}>{song.title}</h1>
-                <p style={{ margin: '5px 0 0', color: muted, fontSize: 13 }}>{artist.name}</p>
-              </div>
+      <main className="public-embed__main">
+        <div className="public-embed__card">
+          <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 14 }}>
+            {cover ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={cover} alt="" width={92} height={92} style={{ borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} loading="lazy" />
+            ) : (
+              <div style={{ width: 92, height: 92, borderRadius: 10, background: `${accent}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, flexShrink: 0 }} aria-hidden>♪</div>
+            )}
+            <div style={{ minWidth: 0 }}>
+              <h1 style={{ margin: 0, fontSize: 20, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis' }}>{song.title}</h1>
+              <p style={{ margin: '5px 0 0', fontSize: 13, opacity: 0.75 }}>{artist.name}</p>
             </div>
-
-            {song.backstory && (
-              <p style={{ color: muted, fontSize: 13, lineHeight: 1.55, margin: '0 0 14px' }}>
-                {song.backstory.length > 260 ? song.backstory.slice(0, 260).trimEnd() + '...' : song.backstory}
-              </p>
-            )}
-
-            {links.length > 0 && (
-              <div>
-                <div style={{ color: accent, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>Listen on</div>
-                <MediaLinksGrid links={links} songId={song.id} artistId={artist.id} sourcePage={`/embed/song/${song.id}`} accent={accent} />
-              </div>
-            )}
-
-            {showBranding && (
-              <div style={{ marginTop: 12, textAlign: 'right' }}>
-                <ViaToneBranding variant="embed" accent={accent} href="/login" />
-              </div>
-            )}
           </div>
+
+          {song.backstory && (
+            <p style={{ fontSize: 13, lineHeight: 1.55, margin: '0 0 14px', opacity: 0.85 }}>
+              {song.backstory.length > 260 ? song.backstory.slice(0, 260).trimEnd() + '...' : song.backstory}
+            </p>
+          )}
+
+          {links.length > 0 && (
+            <div>
+              <div className="public-section__title" style={{ marginBottom: 8 }}>Listen on</div>
+              <MediaLinksGrid links={links} songId={song.id} artistId={artist.id} sourcePage={`/embed/song/${song.id}`} accent={accent} />
+            </div>
+          )}
+
+          {showBranding && (
+            <div style={{ marginTop: 14, textAlign: 'right' }}>
+              <ViaToneBranding variant="embed" accent={accent} href="/login" />
+            </div>
+          )}
+        </div>
       </main>
     </div>
   )

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { BRAND_NAME, BRAND_TAGLINE } from '@/lib/brand'
 import { absoluteAppUrl } from '@/lib/appUrl'
+import { FALLBACK_OG_IMAGE } from '@/lib/mediaLibrary/resolveImages'
 
 type BuildPublicMetadataInput = {
   title: string
@@ -56,6 +57,7 @@ export function discoverPageMetadata(lang: 'en' | 'no' = 'en'): Metadata {
     title: `${title} · ${BRAND_NAME}`,
     description,
     path: '/discover',
+    image: absoluteAppUrl(FALLBACK_OG_IMAGE),
     keywords: ['discover music', 'independent artists', BRAND_TAGLINE],
   })
 }

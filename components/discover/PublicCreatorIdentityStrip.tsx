@@ -24,9 +24,9 @@ export default function PublicCreatorIdentityStrip({
   const achievements: PublicAchievement[] = identity.achievements
 
   return (
-    <div className="public-creator-identity card" style={{ marginBottom: 24, padding: '16px 20px', borderColor: `${accent}33` }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+    <div className="public-creator-identity card" style={{ ['--pub-accent' as string]: accent }}>
+      <div className="public-creator-identity__row">
+        <div className="public-creator-identity__badges">
           <CreatorLevelBadge level={identity.level} label={levelLabel} />
           {memberSinceLabel && (
             <span className="public-creator-identity__since">{memberSinceLabel}</span>

@@ -14,8 +14,8 @@ import BackstoryDisplay from '@/components/BackstoryDisplay'
 import ShareButtons from '@/components/ShareButtons'
 import NewsletterSignup from '@/components/NewsletterSignup'
 import PublicAnalyticsTracker from '@/components/PublicAnalyticsTracker'
+import PublicStickyListen from '@/components/public/PublicStickyListen'
 
-// Public song detail page. Server-rendered with anon client; RLS gates by artist.page_enabled.
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
@@ -34,7 +34,7 @@ async function fetchSong(songId: string) {
       .maybeSingle()
     if (error || !song) return null
     const a = (song as any).artists
-    if (!a?.page_enabled || a?.admin_hidden || (song as any).public_hidden) return null  // Not public
+    if (!a?.page_enabled || a?.admin_hidden || (song as any).public_hidden) return null
     return song as any
   } catch (e: any) {
     console.error('[s/id] fetchSong crashed:', e?.message)
@@ -64,9 +64,12 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
       featuredMediaAsset: featuredAsset,
     })
     const artistName = artist?.name || 'Artist'
+    const desc = song.backstory
+      ? String(song.backstory).slice(0, 155).trim() + (song.backstory.length > 155 ? '…' : '')
+      : `Listen to ${song.title} by ${artistName} — public release on ViaTone.`
     return buildPublicMetadata({
       title: `${song.title} · ${artistName}`,
-      description: `Listen to ${song.title} by ${artistName} — public release on ViaTone.`,
+      description: desc,
       path: `/s/${params.id}`,
       image: ogImage,
       keywords: [song.title, artistName, 'music release'],
@@ -83,163 +86,141 @@ export default async function PublicSongPage({ params }: { params: { id: string 
   const artist = song.artists
   const cover = song.cover_image_url || song.spotify_cover_url
   const accent = '#d4a843'
+  const hasListen = !!(song.media_links?.length || song.spotify_url || song.suno_url || song.suno_audio_url)
+
+  const mediaLinks = [
+    ...(song.spotify_url ? [{ platform: 'Spotify', url: song.spotify_url, label: 'Spotify' }] : []),
+    ...(song.suno_url ? [{ platform: 'Suno', url: song.suno_url, label: 'Suno' }] : []),
+    ...(Array.isArray(song.media_links) ? song.media_links : []),
+  ]
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0a0a0f 0%, #12071e 50%, #0a0f0a 100%)',
-      color: '#e8e0d0',
-      fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-    }}>
+    <div className="public-surface public-surface--song" style={{ ['--pub-accent' as string]: accent }}>
       <PublicAnalyticsTracker artistId={artist.id} songId={song.id} eventType="song_page_view" />
-      {/* Slim header */}
-      <div style={{
-        borderBottom: '1px solid rgba(180,140,80,0.2)',
-        padding: '14px 32px',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      }}>
-        {artist.page_slug ? (
-          <Link href={`/p/${artist.page_slug}`} style={{ color: '#6a5a40', textDecoration: 'none', fontSize: 13 }}>
-            ← {artist.name}
-          </Link>
-        ) : (
-          <Link href="/discover" style={{ color: '#6a5a40', textDecoration: 'none', fontSize: 13 }}>← Discover</Link>
-        )}
-        <Link href="/" style={{ color: accent, textDecoration: 'none', fontSize: 14, letterSpacing: 2 }}>VIATONE</Link>
-        <Link href="/login" style={{ color: '#8a7a60', textDecoration: 'none', fontSize: 13 }}>Sign in</Link>
-      </div>
 
-      <div style={{ maxWidth: 800, margin: '0 auto', padding: '32px 20px 80px' }}>
-        {/* Hero */}
-        <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', alignItems: 'center', marginBottom: 24 }}>
+      <header className="public-header">
+        {artist.page_slug ? (
+          <Link href={`/p/${artist.page_slug}`} className="public-header__back">← {artist.name}</Link>
+        ) : (
+          <Link href="/discover" className="public-header__back">← Discover</Link>
+        )}
+        <Link href="/" className="public-header__brand">VIATONE</Link>
+        <Link href="/login" className="public-header__signin">Sign in</Link>
+      </header>
+
+      <div className="public-body">
+        <section className="public-song-hero">
           {cover ? (
-            <img src={cover} alt={song.title} style={{ width: 180, height: 180, borderRadius: 8, objectFit: 'cover', flexShrink: 0, boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }} />
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={cover} alt="" className="public-song-cover" width={200} height={200} loading="eager" />
           ) : (
-            <div style={{ width: 180, height: 180, borderRadius: 8, background: 'rgba(212,168,67,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 56, flexShrink: 0 }}>🎵</div>
+            <div className="public-song-cover public-song-cover--placeholder" aria-hidden>🎵</div>
           )}
-          <div style={{ flex: '1 1 280px', minWidth: 0 }}>
-            <h1 style={{ margin: 0, color: '#e8e0d0', fontSize: 28, fontWeight: 700, letterSpacing: '-0.01em' }}>{song.title}</h1>
-            <div style={{ color: '#a09080', fontSize: 15, marginTop: 6 }}>
+          <div className="public-song-meta" style={{ flex: '1 1 260px', minWidth: 0 }}>
+            <h1>{song.title}</h1>
+            <p style={{ color: '#a09080', fontSize: 15, margin: '8px 0 0' }}>
               {artist.page_slug ? (
-                <Link href={`/p/${artist.page_slug}`} style={{ color: '#a09080', textDecoration: 'none' }}>🎤 {artist.name}</Link>
+                <Link href={`/p/${artist.page_slug}`} style={{ color: '#a09080', textDecoration: 'none' }}>
+                  {artist.name}
+                </Link>
               ) : (
-                <span>🎤 {artist.name}</span>
+                artist.name
               )}
-            </div>
+            </p>
             {song.spotify_album && (
-              <div style={{ color: '#6a5a40', fontSize: 12, marginTop: 4 }}>
-                {song.spotify_album}{song.spotify_release_date ? ' · ' + song.spotify_release_date.slice(0, 4) : ''}
-              </div>
+              <p style={{ color: '#6a5a40', fontSize: 12, margin: '4px 0 0' }}>
+                {song.spotify_album}
+                {song.spotify_release_date ? ` · ${song.spotify_release_date.slice(0, 4)}` : ''}
+              </p>
             )}
-            <div style={{ display: 'flex', gap: 14, marginTop: 14, color: '#6a5a40', fontSize: 12, flexWrap: 'wrap' }}>
+            <div className="public-song-stats">
               {song.internal_play_count > 0 && <span>▶ {song.internal_play_count.toLocaleString()} plays</span>}
               {song.embed_click_count > 0 && <span>🔗 {song.embed_click_count.toLocaleString()} clicks</span>}
-              {song.comment_count > 0 && <span>💬 {song.comment_count} comments</span>}
-              {song.reaction_count > 0 && <span>👍 {song.reaction_count} reactions</span>}
+              {song.comment_count > 0 && <span>💬 {song.comment_count}</span>}
+              {song.reaction_count > 0 && <span>👍 {song.reaction_count}</span>}
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Embed player */}
-        <ClientEmbedPlayer
-          song={{
-            id: song.id,
-            title: song.title,
-            cover_image_url: song.cover_image_url,
-            spotify_cover_url: song.spotify_cover_url,
-            suno_audio_url: song.suno_audio_url,
-            spotify_url: song.spotify_url,
-            suno_url: song.suno_url,
-            media_links: song.media_links,
-            artist_name: artist.name,
-          }}
-        />
+        <section id="listen" className="public-section">
+          <ClientEmbedPlayer
+            song={{
+              id: song.id,
+              title: song.title,
+              cover_image_url: song.cover_image_url,
+              spotify_cover_url: song.spotify_cover_url,
+              suno_audio_url: song.suno_audio_url,
+              spotify_url: song.spotify_url,
+              suno_url: song.suno_url,
+              media_links: song.media_links,
+              artist_name: artist.name,
+            }}
+          />
+        </section>
 
-        <div style={{ marginTop: 28 }}>
+        <section className="public-section">
           <NewsletterSignup artistId={artist.id} sourcePage={`/s/${song.id}`} accent={accent} />
-        </div>
+        </section>
 
-        {/* Listen / find on … (media links) */}
-        {(song.media_links?.length > 0 || song.spotify_url || song.suno_url) && (
-          <div style={{ marginTop: 28 }}>
-            <h2 style={sectionH2}>Listen / Find on</h2>
-            <MediaLinksGrid
-              links={[
-                ...(song.spotify_url ? [{ platform: 'Spotify', url: song.spotify_url, label: 'Spotify' }] : []),
-                ...(song.suno_url ? [{ platform: 'Suno', url: song.suno_url, label: 'Suno' }] : []),
-                ...(Array.isArray(song.media_links) ? song.media_links : []),
-              ]}
-              songId={song.id}
-              artistId={artist.id}
-              sourcePage={`/s/${song.id}`}
-            />
-          </div>
+        {hasListen && mediaLinks.length > 0 && (
+          <section className="public-section">
+            <h2 className="public-section__title">Listen / Find on</h2>
+            <div className="public-panel">
+              <MediaLinksGrid
+                links={mediaLinks}
+                songId={song.id}
+                artistId={artist.id}
+                sourcePage={`/s/${song.id}`}
+                accent={accent}
+              />
+            </div>
+          </section>
         )}
 
-        {/* Backstory */}
         {song.backstory && (
-          <div style={{ marginTop: 28 }}>
-            <h2 style={sectionH2}>The story behind</h2>
-            <BackstoryDisplay text={song.backstory} />
-          </div>
+          <section className="public-section">
+            <h2 className="public-section__title">The story behind</h2>
+            <div className="public-panel">
+              <BackstoryDisplay text={song.backstory} />
+            </div>
+          </section>
         )}
 
-        {/* Share */}
-        <div style={{ marginTop: 28 }}>
-          <h2 style={sectionH2}>Share</h2>
+        <section className="public-section">
+          <h2 className="public-section__title">Share</h2>
           <ShareButtons
             url={`/s/${song.id}`}
             title={`${song.title} · ${artist.name}`}
             text={`Listen to "${song.title}" by ${artist.name} on ViaTone`}
+            accent={accent}
           />
-        </div>
+        </section>
 
-        {/* Reactions */}
-        <div style={{ marginTop: 28 }}>
-          <h2 style={sectionH2}>Reactions</h2>
+        <section className="public-section">
+          <h2 className="public-section__title">Reactions</h2>
           <ReactionBar songId={song.id} />
-        </div>
+        </section>
 
-        {/* Lyrics excerpt (if present) */}
         {song.lyrics_text && (
-          <div style={{ marginTop: 24 }}>
-            <h2 style={sectionH2}>Lyrics</h2>
-            <pre style={{
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(180,140,80,0.15)',
-              borderRadius: 8,
-              padding: 16,
-              color: '#c8c0b0',
-              fontSize: 13,
-              fontFamily: 'inherit',
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-              maxHeight: 320,
-              overflowY: 'auto',
-            }}>{song.lyrics_text}</pre>
-          </div>
+          <section className="public-section">
+            <h2 className="public-section__title">Lyrics</h2>
+            <pre className="public-lyrics">{song.lyrics_text}</pre>
+          </section>
         )}
 
-        {/* Comments */}
-        <div style={{ marginTop: 28 }}>
-          <h2 style={sectionH2}>Comments ({song.comment_count || 0})</h2>
+        <section className="public-section">
+          <h2 className="public-section__title">Comments ({song.comment_count || 0})</h2>
           <CommentsThread songId={song.id} songOwnerId={song.user_id} />
-        </div>
+        </section>
 
         <CreatorAcquisitionCta variant="card" accent={accent} />
-        <footer style={{ marginTop: 40, paddingTop: 20, borderTop: '1px solid rgba(180,140,80,0.15)', textAlign: 'center' }}>
+
+        <footer className="public-footer">
           <ViaToneBranding variant="footer" accent={accent} href="/login" />
         </footer>
       </div>
+
+      <PublicStickyListen label="Listen now" targetId="listen" />
     </div>
   )
-}
-
-const sectionH2: React.CSSProperties = {
-  color: '#d4a843',
-  fontSize: 13,
-  letterSpacing: 1,
-  textTransform: 'uppercase',
-  fontWeight: 'normal',
-  margin: '0 0 12px',
 }

@@ -31,17 +31,8 @@ export default function ViaToneBranding({
 
   const sub = variant === 'footer' ? tx.platformCreateYourOwn : null
 
-  const style: React.CSSProperties =
-    variant === 'embed'
-      ? { fontSize: 10, color: '#6a5a40', textAlign: 'center' as const }
-      : variant === 'badge'
-        ? { fontSize: 10, color: '#5a4a30', marginTop: 8 }
-        : variant === 'minimal'
-          ? { fontSize: 11, color: '#5a4a30', textAlign: 'center' as const }
-          : { fontSize: 12, color: '#5a4a30', textAlign: 'center' as const, marginTop: variant === 'footer' ? 24 : 0 }
-
   return (
-    <div className={`viatone-branding viatone-branding--${variant} ${className}`.trim()} style={style}>
+    <div className={`viatone-branding viatone-branding--${variant} ${className}`.trim()}>
       <Link
         href={href}
         onClick={e => e.stopPropagation()}
