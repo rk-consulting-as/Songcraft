@@ -28,6 +28,23 @@ export type DiscoverGenreChip = {
   count: number
 }
 
+export type DiscoverPlaylistCampaign = {
+  id: string
+  title: string
+  description: string | null
+  rules: string | null
+  genre: string | null
+  mood: string | null
+  commitmentLevel: string
+  status: string
+  memberCount: number
+  playlistTitle: string
+  playlistImageUrl: string | null
+  artistName: string | null
+  href: string
+  createdAt: string
+}
+
 export type DiscoverCatalog = {
   trending: DiscoverCreatorCardData[]
   newReleases: DiscoverRelease[]
@@ -36,6 +53,7 @@ export type DiscoverCatalog = {
   recentlyActive: DiscoverCreatorCardData[]
   genres: DiscoverGenreChip[]
   epks: DiscoverEpk[]
+  playlistCampaigns: DiscoverPlaylistCampaign[]
   generatedAt: string
 }
 

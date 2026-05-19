@@ -24,6 +24,7 @@ import ArtistWorkspaceOverview from '@/components/ArtistWorkspaceOverview'
 import ArtistCampaignsSummary from '@/components/ArtistCampaignsSummary'
 import ArtistWorkspaceGrowth from '@/components/ArtistWorkspaceGrowth'
 import ArtistWorkspaceMedia from '@/components/ArtistWorkspaceMedia'
+import ArtistWorkspacePlaylistCommunities from '@/components/playlistCommunities/ArtistWorkspacePlaylistCommunities'
 import EpkMediaSection from '@/components/media/EpkMediaSection'
 import type { EpkSettings } from '@/lib/mediaLibrary/epkSettings'
 import ArtistFeaturedReleasePicker from '@/components/ArtistFeaturedReleasePicker'
@@ -2084,6 +2085,12 @@ export default function ArtistPage() {
         {workspaceTab === 'growth' && artist && (
           <div className="workspace-section">
             <ArtistWorkspaceGrowth artistId={artist.id} />
+          </div>
+        )}
+
+        {workspaceTab === 'playlists' && artist && (
+          <div className="workspace-section">
+            <ArtistWorkspacePlaylistCommunities artistId={artist.id} artistName={artist.name} songs={songs} />
           </div>
         )}
 

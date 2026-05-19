@@ -11,7 +11,7 @@ import {
   computeTrendingScore,
   mergeLinkClicks,
 } from '@/lib/discover/trending'
-import type { DiscoverCatalog, DiscoverEpk, DiscoverGenreChip, DiscoverRelease } from '@/lib/discover/types'
+import type { DiscoverCatalog, DiscoverEpk, DiscoverGenreChip, DiscoverPlaylistCampaign, DiscoverRelease } from '@/lib/discover/types'
 import type { DiscoverCreatorCardData } from '@/lib/creatorIdentity/types'
 import { isPublicDiscoverArtist, isPublicDiscoverSong } from '@/lib/discover/publicFilters'
 import { countPublicCampaigns, isArtistFeaturedOnViaTone, isSongFeaturedOnViaTone, parseSpotlightConfig } from '@/lib/platformGrowth/spotlight'
@@ -81,6 +81,7 @@ export async function GET() {
       recentlyActive: [],
       genres: [],
       epks: [],
+      playlistCampaigns: [],
       generatedAt: new Date().toISOString(),
     }
     return NextResponse.json(empty)
@@ -246,6 +247,57 @@ export async function GET() {
       href: `/epk/${a.page_slug}`,
     }))
 
+  const { data: campaignRows } = await sb
+    .from('playlist_campaigns')
+    .select('id, title, description, rules, genre, mood, commitment_level, status, created_at, artist_id, playlist_id, user_id')
+    .eq('visibility', 'public')
+    .in('status', ['open', 'active'])
+    .eq('admin_hidden', false)
+    .order('created_at', { ascending: false })
+    .limit(24)
+
+  const playlistIds = Array.from(new Set((campaignRows || []).map(c => c.playlist_id)))
+  const campaignArtistIds = Array.from(new Set((campaignRows || []).map(c => c.artist_id).filter(Boolean))) as string[]
+
+  const [{ data: plRows }, { data: campArtists }, { data: memberCounts }] = await Promise.all([
+    playlistIds.length
+      ? sb.from('creator_playlists').select('id, title, image_url').in('id', playlistIds)
+      : { data: [] },
+    campaignArtistIds.length
+      ? sb.from('artists').select('id, name').in('id', campaignArtistIds)
+      : { data: [] },
+    (campaignRows || []).length
+      ? sb.from('playlist_campaign_members').select('campaign_id').in('campaign_id', (campaignRows || []).map(c => c.id))
+      : { data: [] },
+  ])
+
+  const plMap = Object.fromEntries((plRows || []).map(p => [p.id, p]))
+  const campArtistMap = Object.fromEntries((campArtists || []).map(a => [a.id, a.name]))
+  const countMap: Record<string, number> = {}
+  for (const m of memberCounts || []) {
+    countMap[m.campaign_id] = (countMap[m.campaign_id] || 0) + 1
+  }
+
+  const playlistCampaigns: DiscoverPlaylistCampaign[] = (campaignRows || []).map(c => {
+    const pl = plMap[c.playlist_id]
+    return {
+      id: c.id,
+      title: c.title,
+      description: c.description,
+      rules: c.rules,
+      genre: c.genre,
+      mood: c.mood,
+      commitmentLevel: c.commitment_level,
+      status: c.status,
+      memberCount: countMap[c.id] || 0,
+      playlistTitle: pl?.title || 'Playlist',
+      playlistImageUrl: pl?.image_url || null,
+      artistName: c.artist_id ? campArtistMap[c.artist_id] || null : null,
+      href: `/playlist-campaigns/${c.id}`,
+      createdAt: c.created_at,
+    }
+  })
+
   const catalog: DiscoverCatalog = {
     trending,
     newReleases: newReleases.slice(0, 16),
@@ -254,6 +306,7 @@ export async function GET() {
     recentlyActive,
     genres,
     epks,
+    playlistCampaigns,
     generatedAt: new Date().toISOString(),
   }
 

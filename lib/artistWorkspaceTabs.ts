@@ -2,6 +2,7 @@ export type ArtistWorkspaceTab =
   | 'overview'
   | 'songs'
   | 'campaigns'
+  | 'playlists'
   | 'fanhub'
   | 'growth'
   | 'media'
@@ -15,6 +16,7 @@ export const ARTIST_WORKSPACE_TABS: ArtistWorkspaceTab[] = [
   'overview',
   'songs',
   'campaigns',
+  'playlists',
   'fanhub',
   'growth',
   'media',

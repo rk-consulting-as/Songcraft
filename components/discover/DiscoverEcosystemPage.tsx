@@ -7,6 +7,7 @@ import type { DiscoverCatalog } from '@/lib/discover/types'
 import type { DiscoverCreatorCardData } from '@/lib/creatorIdentity/types'
 import DiscoverCreatorCard from './DiscoverCreatorCard'
 import DiscoverReleaseCard from './DiscoverReleaseCard'
+import DiscoverPlaylistCampaignCard from './DiscoverPlaylistCampaignCard'
 import DiscoverAcquisitionHero from '@/components/platform/DiscoverAcquisitionHero'
 import CreatorAcquisitionCta from '@/components/platform/CreatorAcquisitionCta'
 import ViaToneBranding from '@/components/platform/ViaToneBranding'
@@ -156,6 +157,17 @@ export default function DiscoverEcosystemPage() {
                 <div className="discover-grid discover-grid--creators">
                   {catalog.trending.map(c => (
                     <DiscoverCreatorCard key={c.id} creator={c} levelLabel={levelLabel(c)} tx={tx} accent={accent} />
+                  ))}
+                </div>
+              </DiscoverSection>
+            )}
+
+            {catalog.playlistCampaigns?.length > 0 && (
+              <DiscoverSection title={tx.discoverSectionPlaylistCommunities}>
+                <p style={{ margin: '0 0 16px', color: '#8a7a60', fontSize: 13, lineHeight: 1.5 }}>{tx.discoverPlaylistCommunitiesDesc}</p>
+                <div className="discover-grid discover-grid--campaigns">
+                  {catalog.playlistCampaigns.slice(0, 8).map(c => (
+                    <DiscoverPlaylistCampaignCard key={c.id} campaign={c} accent={accent} />
                   ))}
                 </div>
               </DiscoverSection>
