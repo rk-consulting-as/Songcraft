@@ -10,6 +10,7 @@ import ShareButtons from '@/components/ShareButtons'
 import NewsletterSignup from '@/components/NewsletterSignup'
 import PublicEventsList from '@/components/PublicEventsList'
 import PublicAnalyticsTracker from '@/components/PublicAnalyticsTracker'
+import ExpandableText from '@/components/ExpandableText'
 
 // Public artist landing page. Server-rendered, anonymous Supabase client (RLS gates by page_enabled).
 // URL: /p/{slug}
@@ -165,9 +166,13 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
             </div>
           )}
           {s.bio && artist.description && (
-            <p style={{ margin: 0, maxWidth: 640, fontSize: 15, lineHeight: 1.6, color: '#c8c0b0' }}>
-              {artist.description}
-            </p>
+            <ExpandableText
+              text={artist.description}
+              maxWidth={640}
+              accent={accent}
+              fadeToColor="#0a0a0f"
+              paragraphStyle={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: '#c8c0b0' }}
+            />
           )}
 
           {/* Social row */}

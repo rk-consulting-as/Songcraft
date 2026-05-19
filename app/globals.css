@@ -101,6 +101,42 @@ select option:checked {
   margin-top: 4px;
 }
 
+.expandable-text {
+  width: 100%;
+}
+
+.expandable-text__body {
+  position: relative;
+}
+
+.expandable-text__body.is-collapsed {
+  max-height: calc(var(--expandable-max-lines, 4) * 1.6em);
+  overflow: hidden;
+}
+
+.expandable-text__body.is-collapsed::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2.8em;
+  background: linear-gradient(to bottom, transparent, var(--expandable-fade-to, #0a0a0f));
+  pointer-events: none;
+}
+
+.expandable-text__toggle {
+  margin-top: 10px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 /* ============================================================
    Mobile responsiveness — applied automatically on narrow viewports.
    The app uses lots of inline styles, so we override with classes

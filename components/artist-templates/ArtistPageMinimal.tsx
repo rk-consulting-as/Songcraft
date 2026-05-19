@@ -3,6 +3,7 @@ import ClientEmbedPlayer from '@/components/ClientEmbedPlayer'
 import NewsletterSignup from '@/components/NewsletterSignup'
 import PublicEventsList from '@/components/PublicEventsList'
 import PublicAnalyticsTracker from '@/components/PublicAnalyticsTracker'
+import ExpandableText from '@/components/ExpandableText'
 
 /**
  * Minimal artist template — typography-first. Centered text hero (no big avatar),
@@ -46,17 +47,20 @@ export default function ArtistPageMinimal({
             {artist.name}
           </h1>
           {artist.description && (
-            <p style={{
-              marginTop: 24,
-              fontSize: 16,
-              color: '#a09080',
-              maxWidth: 520,
-              margin: '24px auto 0',
-              lineHeight: 1.6,
-              fontStyle: 'italic',
-            }}>
-              {artist.description}
-            </p>
+            <ExpandableText
+              text={artist.description}
+              accent={accent}
+              fadeToColor="#0a0a0f"
+              maxWidth={520}
+              style={{ margin: '24px auto 0' }}
+              paragraphStyle={{
+                margin: 0,
+                fontSize: 16,
+                color: '#a09080',
+                lineHeight: 1.6,
+                fontStyle: 'italic',
+              }}
+            />
           )}
           {artist.genre && (
             <p style={{

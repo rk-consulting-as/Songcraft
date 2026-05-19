@@ -3,6 +3,7 @@ import ClientEmbedPlayer from '@/components/ClientEmbedPlayer'
 import NewsletterSignup from '@/components/NewsletterSignup'
 import PublicEventsList from '@/components/PublicEventsList'
 import PublicAnalyticsTracker from '@/components/PublicAnalyticsTracker'
+import ExpandableText from '@/components/ExpandableText'
 
 /**
  * Cinematic artist template — full-bleed dramatic. Avatar fills viewport as blurred
@@ -96,16 +97,20 @@ export default function ArtistPageCinematic({
                 {artist.name}
               </h1>
               {artist.description && (
-                <p style={{
-                  fontSize: 16,
-                  color: '#c8c0b0',
-                  maxWidth: 600,
-                  lineHeight: 1.5,
-                  margin: '14px 0 0',
-                  textShadow: '0 2px 12px rgba(0,0,0,0.8)',
-                }}>
-                  {artist.description}
-                </p>
+                <ExpandableText
+                  text={artist.description}
+                  accent={accent}
+                  fadeToColor="rgba(10, 10, 15, 0.98)"
+                  maxWidth={600}
+                  style={{ margin: '14px 0 0' }}
+                  paragraphStyle={{
+                    margin: 0,
+                    fontSize: 16,
+                    color: '#c8c0b0',
+                    lineHeight: 1.5,
+                    textShadow: '0 2px 12px rgba(0,0,0,0.8)',
+                  }}
+                />
               )}
               {artist.social_links && (
                 <div style={{ display: 'flex', gap: 10, marginTop: 22, flexWrap: 'wrap' }}>
