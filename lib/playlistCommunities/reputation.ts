@@ -5,6 +5,8 @@ export type PlaylistReputationBadgeId =
   | 'campaign_host'
   | 'growth_partner'
   | 'campaign_contributor'
+  | 'streak_participant'
+  | 'consistent_member'
 
 export type PlaylistReputationBadge = {
   id: PlaylistReputationBadgeId
@@ -22,6 +24,9 @@ export type PlaylistReputationInput = {
   hostedApprovedMemberCount: number
   approvedActivityCount: number
   participationSubmitCount: number
+  dailyStreak?: number
+  weeklyStreak?: number
+  passiveSuggestionsApproved?: number
 }
 
 export function computePlaylistReputation(input: PlaylistReputationInput): PlaylistReputationBadge[] {
@@ -33,6 +38,9 @@ export function computePlaylistReputation(input: PlaylistReputationInput): Playl
     hostedApprovedMemberCount,
     approvedActivityCount,
     participationSubmitCount,
+    dailyStreak = 0,
+    weeklyStreak = 0,
+    passiveSuggestionsApproved = 0,
   } = input
 
   return [
@@ -72,6 +80,18 @@ export function computePlaylistReputation(input: PlaylistReputationInput): Playl
       icon: '✓',
       earned: approvedActivityCount >= 7,
       placeholder: approvedActivityCount < 7,
+    },
+    {
+      id: 'streak_participant',
+      labelKey: 'playlistBadgeStreak',
+      icon: '🔥',
+      earned: dailyStreak >= 3 || weeklyStreak >= 2,
+    },
+    {
+      id: 'consistent_member',
+      labelKey: 'playlistBadgeConsistent',
+      icon: '◎',
+      earned: passiveSuggestionsApproved >= 2 || (approvedActivityCount >= 5 && dailyStreak >= 2),
     },
   ]
 }

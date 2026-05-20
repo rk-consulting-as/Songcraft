@@ -186,6 +186,52 @@ export type LastfmActivitySuggestion = {
   headline: string
 }
 
+export async function fetchActivitySuggestions() {
+  return apiFetch<{ suggestions: import('@/lib/passiveParticipation/types').ActivitySuggestion[] }>(
+    '/api/playlist-communities/activity-suggestions'
+  )
+}
+
+export async function syncActivitySuggestions(force = false) {
+  return apiFetch<{
+    created: number
+    skipped: number
+    scanned: number
+    suggestions: import('@/lib/passiveParticipation/types').ActivitySuggestion[]
+  }>('/api/playlist-communities/activity-suggestions', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'sync', force }),
+  })
+}
+
+export async function approveActivitySuggestion(suggestionId: string) {
+  return apiFetch<{ ok: boolean }>('/api/playlist-communities/activity-suggestions', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'approve', suggestion_id: suggestionId }),
+  })
+}
+
+export async function ignoreActivitySuggestion(suggestionId: string) {
+  return apiFetch<{ ok: boolean }>('/api/playlist-communities/activity-suggestions', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'ignore', suggestion_id: suggestionId }),
+  })
+}
+
+export async function fetchCampaignPassiveHealth(campaignId: string) {
+  return apiFetch<{ health: import('@/lib/passiveParticipation/types').CampaignHealthScore }>(
+    `/api/playlist-communities/campaigns/${campaignId}/health-score`
+  )
+}
+
+export async function fetchPassiveParticipation(view?: 'widget' | 'digest' | 'all') {
+  const sp = view ? `?view=${view}` : ''
+  return apiFetch<{
+    widget?: import('@/lib/passiveParticipation/types').ParticipationWidgetStats
+    digest?: import('@/lib/passiveParticipation/types').PassiveParticipationDigest
+  }>(`/api/playlist-communities/passive-participation${sp}`)
+}
+
 export async function detectLastfmActivity(body: {
   lastfm_username?: string
   from_date?: string

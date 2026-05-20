@@ -29,6 +29,7 @@ type Profile = {
   open_to_collab?: boolean | null
   visible_in_catalog?: boolean | null
   lastfm_username?: string | null
+  lastfm_auto_sync?: boolean | null
 }
 
 const BIO_MAX = 280
@@ -48,6 +49,7 @@ export default function ProfilePage() {
   const [prefSongLang, setPrefSongLang] = useState<'no' | 'en' | 'auto'>('auto')
   const [prefAiOutputLang, setPrefAiOutputLang] = useState<AIOutputLang>('en')
   const [lastfmUsername, setLastfmUsername] = useState('')
+  const [lastfmAutoSync, setLastfmAutoSync] = useState(false)
 
   // Creator profile (Nordic catalog)
   const [creatorRoles, setCreatorRoles] = useState<string[]>([])
@@ -101,6 +103,7 @@ export default function ProfilePage() {
       setPrefSongLang((p.preferred_song_lang as any) || 'auto')
       setPrefAiOutputLang(normalizeAIOutputLang(p.preferred_ai_output_lang || (p.preferred_song_lang === 'no' ? 'no' : 'en')))
       setLastfmUsername(p.lastfm_username || '')
+      setLastfmAutoSync(!!p.lastfm_auto_sync)
       setCreatorRoles(Array.isArray(p.roles) ? p.roles : [])
       setLocation(p.location || '')
       setCreationLangs(Array.isArray(p.languages) ? p.languages : [])
@@ -198,12 +201,17 @@ export default function ProfilePage() {
         preferred_song_lang: prefSongLang,
         preferred_ai_output_lang: prefAiOutputLang,
         lastfm_username: lastfmUsername.trim() || null,
+        lastfm_auto_sync: lastfmAutoSync && !!lastfmUsername.trim(),
         updated_at: new Date().toISOString(),
       })
       .eq('id', profile.id)
     setSavingPrefs(false)
     if (error) { showErr(`${tx.profileErrSave}: ${error.message}`); return }
-    setProfile({ ...profile, lastfm_username: lastfmUsername.trim() || null })
+    setProfile({
+      ...profile,
+      lastfm_username: lastfmUsername.trim() || null,
+      lastfm_auto_sync: lastfmAutoSync && !!lastfmUsername.trim(),
+    })
     // Sync localStorage so UI lang reflects immediately
     setLang(prefLang)
     setLangState(prefLang)
@@ -470,6 +478,20 @@ export default function ProfilePage() {
                 style={{ marginTop: 6, width: '100%' }}
               />
               <p style={{ color: '#5a4a30', fontSize: 11, marginTop: 6 }}>{tx.lastfmUsernameHint}</p>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 12, fontSize: 13, color: '#8a7a60', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={lastfmAutoSync}
+                  onChange={e => setLastfmAutoSync(e.target.checked)}
+                  disabled={!lastfmUsername.trim()}
+                  style={{ marginTop: 3 }}
+                />
+                <span>
+                  <strong style={{ color: '#d4a843', fontWeight: 500 }}>{tx.lastfmAutoSyncLabel}</strong>
+                  <br />
+                  <span style={{ fontSize: 11, color: '#5a4a30' }}>{tx.lastfmAutoSyncHint}</span>
+                </span>
+              </label>
             </div>
           </div>
 

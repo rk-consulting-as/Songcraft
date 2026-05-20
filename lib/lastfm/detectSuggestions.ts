@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AiConfidence } from '@/lib/playlistCommunities/activityTypes'
+import type { MatchedScrobble } from '@/lib/lastfm/matchScrobbles'
 import { extractSpotifyPlaylistId } from '@/lib/playlistCommunities/spotifyPlaylist'
 import { fetchLastfmRecentTracks, lastfmApiKey } from './client'
 import { analyzeLastfmPlaylistActivity, type ListeningSession } from './matchScrobbles'
@@ -27,6 +28,7 @@ export type LastfmActivitySuggestion = {
   toDate: string
   activityDate: string
   headline: string
+  matched: MatchedScrobble[]
 }
 
 const CONFIDENCE_RANK: Record<AiConfidence, number> = {
@@ -194,6 +196,7 @@ export async function detectLastfmAcrossCampaigns(
       toDate: range.toDate,
       activityDate,
       headline: suggestionHeadline(campaign.title, analysis.confidence, matchedCount, analysis.clusterCount),
+      matched: analysis.matched.slice(0, 40),
     })
   }
 

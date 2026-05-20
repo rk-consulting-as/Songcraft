@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireUser } from '@/lib/playlistCommunities/apiAuth'
 import { getApprovedMembership } from '@/lib/playlistCommunities/campaignAccess'
 import { runLastfmImportAnalysis } from '@/lib/lastfm/importProof'
+import { recordParticipationDay } from '@/lib/passiveParticipation/streaks'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -112,6 +113,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       .from('profiles')
       .update({ lastfm_username: lastfmUsername, updated_at: new Date().toISOString() })
       .eq('id', userId)
+
+    await recordParticipationDay(sb, userId, activityDate)
 
     return NextResponse.json({ log, analysis: { confidence: analysis.confidence, completionPercent: analysis.completionPercent } })
   } catch (e: unknown) {

@@ -23,6 +23,7 @@ import PlaylistManageRow from './PlaylistManageRow'
 import PlaylistCommunityDisclaimer from './PlaylistCommunityDisclaimer'
 import PlaylistCommunityHints from './PlaylistCommunityHints'
 import CommunityQualityBlurb from './CommunityQualityBlurb'
+import ParticipationWorkspaceWidget from './ParticipationWorkspaceWidget'
 import UpgradePrompt from '@/components/UpgradePrompt'
 
 type Song = { id: string; title: string; spotify_url?: string | null; public_hidden?: boolean | null }
@@ -197,6 +198,8 @@ export default function ArtistWorkspacePlaylistCommunities({ artistId, artistNam
           participationSummary={participationSummary}
         />
       )}
+
+      <ParticipationWorkspaceWidget />
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '20px 0' }}>
         {panels.map(p => (

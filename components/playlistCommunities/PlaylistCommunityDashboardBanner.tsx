@@ -6,6 +6,8 @@ import type { CampaignCardData } from '@/lib/playlistCommunities/types'
 import type { UserParticipationSummary } from '@/lib/playlistCommunities/participationSummary'
 import PlaylistCommunityHints from './PlaylistCommunityHints'
 import CampaignActivityDashboardCard from './CampaignActivityDashboardCard'
+import DetectedActivityInboxCard from './DetectedActivityInboxCard'
+import WeeklyParticipationDigestCard from './WeeklyParticipationDigestCard'
 
 export default function PlaylistCommunityDashboardBanner({ artistId }: { artistId?: string }) {
   const [owned, setOwned] = useState<CampaignCardData[]>([])
@@ -37,6 +39,8 @@ export default function PlaylistCommunityDashboardBanner({ artistId }: { artistI
 
   return (
     <div className="playlist-dashboard-participation" style={{ marginBottom: 24 }}>
+      <DetectedActivityInboxCard />
+      <WeeklyParticipationDigestCard />
       <CampaignActivityDashboardCard />
       <PlaylistCommunityHints
         ownedCampaigns={owned}

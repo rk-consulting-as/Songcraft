@@ -15,6 +15,7 @@ export default function SettingsPage() {
   const [lang, setLangState] = useState<Lang>('en')
   const [aiOutputLang, setAiOutputLang] = useState<AIOutputLang>('en')
   const [lastfmUsername, setLastfmUsername] = useState('')
+  const [lastfmAutoSync, setLastfmAutoSync] = useState(false)
   const [savingLastfm, setSavingLastfm] = useState(false)
   const [rules, setRules] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
@@ -47,8 +48,10 @@ export default function SettingsPage() {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data } = await supabase.from('profiles').select('lastfm_username').eq('id', user.id).maybeSingle()
-    setLastfmUsername((data as { lastfm_username?: string } | null)?.lastfm_username || '')
+    const { data } = await supabase.from('profiles').select('lastfm_username, lastfm_auto_sync').eq('id', user.id).maybeSingle()
+    const row = data as { lastfm_username?: string; lastfm_auto_sync?: boolean } | null
+    setLastfmUsername(row?.lastfm_username || '')
+    setLastfmAutoSync(!!row?.lastfm_auto_sync)
   }
 
   const saveLastfmUsername = async () => {
@@ -58,7 +61,11 @@ export default function SettingsPage() {
     if (!user) return
     await supabase
       .from('profiles')
-      .update({ lastfm_username: lastfmUsername.trim() || null, updated_at: new Date().toISOString() })
+      .update({
+        lastfm_username: lastfmUsername.trim() || null,
+        lastfm_auto_sync: lastfmAutoSync && !!lastfmUsername.trim(),
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', user.id)
     setSavingLastfm(false)
     setSaved(true)
@@ -181,6 +188,20 @@ export default function SettingsPage() {
               {savingLastfm ? tx.saving : tx.save}
             </button>
           </div>
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 14, fontSize: 13, color: '#8a7a60', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={lastfmAutoSync}
+              onChange={e => setLastfmAutoSync(e.target.checked)}
+              disabled={!lastfmUsername.trim()}
+              style={{ marginTop: 3 }}
+            />
+            <span>
+              <strong style={{ color: '#d4a843', fontWeight: 500 }}>{tx.lastfmAutoSyncLabel}</strong>
+              <br />
+              <span style={{ fontSize: 11, color: '#5a4a30' }}>{tx.lastfmAutoSyncHint}</span>
+            </span>
+          </label>
           <p style={{ color: '#5a4a30', fontSize: 11, margin: '10px 0 0' }}>{tx.lastfmProofDisclaimer}</p>
         </div>
 

@@ -20,6 +20,7 @@ import type { CampaignCardData } from '@/lib/playlistCommunities/types'
 import PlaylistCommunityDisclaimer from '@/components/playlistCommunities/PlaylistCommunityDisclaimer'
 import PlaylistCampaignStatusBadge from '@/components/playlistCommunities/PlaylistCampaignStatusBadge'
 import CampaignHealthIndicators from '@/components/playlistCommunities/CampaignHealthIndicators'
+import CampaignPassiveHealthPanel from '@/components/playlistCommunities/CampaignPassiveHealthPanel'
 import CampaignQualityChecklist from '@/components/playlistCommunities/CampaignQualityChecklist'
 import CampaignInvitePanel from '@/components/playlistCommunities/CampaignInvitePanel'
 import PlaylistReputationBadges from '@/components/playlistCommunities/PlaylistReputationBadges'
@@ -225,6 +226,7 @@ export default function PlaylistCampaignPage() {
         </div>
 
         {isOwner && <CampaignHealthIndicators signals={healthSignals} />}
+        {isOwner && <CampaignPassiveHealthPanel campaignId={campaign.id} />}
 
         <CommunityQualityBlurb compact />
         <PlaylistCommunityDisclaimer />

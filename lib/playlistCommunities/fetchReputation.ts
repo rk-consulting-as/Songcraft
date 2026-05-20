@@ -11,6 +11,8 @@ export async function fetchUserPlaylistReputation(userId: string): Promise<Playl
     { data: ownedCampaigns },
     { count: approvedActivityCount },
     { count: participationSubmitCount },
+    { data: streakRow },
+    { count: passiveApproved },
   ] = await Promise.all([
     sb.from('creator_playlists').select('id', { count: 'exact', head: true }).eq('user_id', userId),
     sb.from('playlist_campaigns').select('id', { count: 'exact', head: true }).eq('user_id', userId),
@@ -26,6 +28,12 @@ export async function fetchUserPlaylistReputation(userId: string): Promise<Playl
       .select('id', { count: 'exact', head: true })
       .eq('user_id', userId)
       .in('status', ['submitted', 'approved', 'pending']),
+    sb.from('user_participation_streaks').select('daily_current, weekly_current').eq('user_id', userId).maybeSingle(),
+    sb
+      .from('campaign_activity_suggestions')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('status', 'approved'),
   ])
 
   const approvedMembershipCount = (memberships || []).filter(m => m.status === 'approved').length
@@ -52,5 +60,8 @@ export async function fetchUserPlaylistReputation(userId: string): Promise<Playl
     hostedApprovedMemberCount,
     approvedActivityCount: approvedActivityCount || 0,
     participationSubmitCount: participationSubmitCount || 0,
+    dailyStreak: streakRow?.daily_current ?? 0,
+    weeklyStreak: streakRow?.weekly_current ?? 0,
+    passiveSuggestionsApproved: passiveApproved || 0,
   })
 }
