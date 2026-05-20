@@ -14,12 +14,14 @@ export default function SettingsPage() {
   const router = useRouter()
   const [lang, setLangState] = useState<Lang>('en')
   const [aiOutputLang, setAiOutputLang] = useState<AIOutputLang>('en')
+  const [lastfmUsername, setLastfmUsername] = useState('')
+  const [savingLastfm, setSavingLastfm] = useState(false)
   const [rules, setRules] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [activeTab, setActiveTab] = useState<Platform>('TikTok')
 
-  useEffect(() => { setLangState(useLang()); fetchRules(); fetchAiLanguage() }, [])
+  useEffect(() => { setLangState(useLang()); fetchRules(); fetchAiLanguage(); fetchLastfmUsername() }, [])
 
   const tx = t[lang]
 
@@ -39,6 +41,28 @@ export default function SettingsPage() {
     if (!user) return
     const { data } = await supabase.from('profiles').select('preferred_ai_output_lang, preferred_song_lang').eq('id', user.id).maybeSingle()
     setAiOutputLang(normalizeAIOutputLang((data as any)?.preferred_ai_output_lang || ((data as any)?.preferred_song_lang === 'no' ? 'no' : 'en')))
+  }
+
+  const fetchLastfmUsername = async () => {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data } = await supabase.from('profiles').select('lastfm_username').eq('id', user.id).maybeSingle()
+    setLastfmUsername((data as { lastfm_username?: string } | null)?.lastfm_username || '')
+  }
+
+  const saveLastfmUsername = async () => {
+    setSavingLastfm(true)
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase
+      .from('profiles')
+      .update({ lastfm_username: lastfmUsername.trim() || null, updated_at: new Date().toISOString() })
+      .eq('id', user.id)
+    setSavingLastfm(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
   }
 
   const saveAiLanguage = async (nextLang: AIOutputLang) => {
@@ -137,6 +161,27 @@ export default function SettingsPage() {
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: '24px' }}>
+          <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '16px', marginTop: 0, marginBottom: '8px' }}>
+            🎧 {tx.lastfmSettingsTitle}
+          </h2>
+          <p style={{ color: '#6a5a40', fontSize: '13px', margin: '0 0 14px', lineHeight: '1.6' }}>{tx.lastfmSettingsDesc}</p>
+          <label style={{ display: 'block', fontSize: 12, color: '#8a7a60', marginBottom: 6 }}>{tx.lastfmUsernameLabel}</label>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <input
+              className="input"
+              value={lastfmUsername}
+              onChange={e => setLastfmUsername(e.target.value)}
+              placeholder={tx.lastfmUsernamePlaceholder}
+              style={{ flex: '1 1 220px', minWidth: 0 }}
+            />
+            <button type="button" className="btn-gold" onClick={saveLastfmUsername} disabled={savingLastfm}>
+              {savingLastfm ? tx.saving : tx.save}
+            </button>
+          </div>
+          <p style={{ color: '#5a4a30', fontSize: 11, margin: '10px 0 0' }}>{tx.lastfmProofDisclaimer}</p>
         </div>
 
         <div className="card" style={{ marginBottom: '24px' }}>

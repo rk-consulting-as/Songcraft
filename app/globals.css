@@ -3249,6 +3249,14 @@ body.artist-workspace-page button[title="Open chat"] {
   color: #e8e0d0;
   margin-bottom: 8px;
 }
+.owner-review-card__text--pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 11px;
+  line-height: 1.45;
+  max-height: 240px;
+  overflow: auto;
+}
 .owner-review-card__text {
   margin: 0 0 8px;
   font-size: 13px;
@@ -3559,6 +3567,67 @@ body.artist-workspace-page button[title="Open chat"] {
 .song-streaming-links {
   border-color: rgba(212, 168, 67, 0.25);
 }
+.lastfm-proof-import__intro {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #c8c0b0;
+  line-height: 1.5;
+}
+.lastfm-proof-import__disclaimer {
+  margin: 0 0 12px;
+  font-size: 11px;
+  color: #c08060;
+  font-style: italic;
+  line-height: 1.45;
+}
+.lastfm-proof-import__hint {
+  margin: 4px 0 12px;
+  font-size: 11px;
+  color: #6a5a40;
+}
+.lastfm-proof-import__dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.lastfm-proof-import__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.lastfm-proof-preview {
+  margin-top: 16px;
+  padding: 14px;
+}
+.lastfm-proof-preview h4 {
+  margin: 0 0 10px;
+  color: #d4a843;
+  font-weight: normal;
+  font-size: 14px;
+}
+.lastfm-proof-preview__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: #8a7a60;
+}
+.lastfm-proof-preview__summary {
+  margin: 0;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #a09080;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 280px;
+  overflow: auto;
+}
 
 /* Phase 48: Mobile QA pass */
 @media (max-width: 640px) {
@@ -3632,5 +3701,13 @@ body.artist-workspace-page button[title="Open chat"] {
   .discover-campaigns-page__main {
     padding-left: 12px;
     padding-right: 12px;
+  }
+  .lastfm-proof-import__dates {
+    grid-template-columns: 1fr;
+  }
+  .lastfm-proof-import__actions .btn-gold,
+  .lastfm-proof-import__actions .btn-outline {
+    width: 100%;
+    text-align: center;
   }
 }

@@ -163,6 +163,39 @@ export async function fetchCampaignParticipation(campaignId: string) {
   >(`/api/playlist-communities/campaigns/${campaignId}/participation`)
 }
 
+export async function previewLastfmImport(
+  campaignId: string,
+  body: { lastfm_username: string; from_date: string; to_date: string }
+) {
+  return apiFetch<{
+    preview: boolean
+    analysis: {
+      completionPercent: number
+      confidence: string
+      matchedCount: number
+      scrobbleCount: number
+      playlistTrackCount: number
+      summaryText: string
+      explanation: string
+      clusterCount: number
+      sequenceMatches: number
+    }
+  }>(`/api/playlist-communities/campaigns/${campaignId}/activity/lastfm-import`, {
+    method: 'POST',
+    body: JSON.stringify({ ...body, preview: true }),
+  })
+}
+
+export async function submitLastfmImportProof(
+  campaignId: string,
+  body: { lastfm_username: string; from_date: string; to_date: string; activity_date?: string }
+) {
+  return apiFetch<{ log: CampaignActivityLog; analysis: { confidence: string; completionPercent: number } }>(
+    `/api/playlist-communities/campaigns/${campaignId}/activity/lastfm-import`,
+    { method: 'POST', body: JSON.stringify(body) }
+  )
+}
+
 export async function submitCampaignActivityProof(campaignId: string, form: FormData) {
   const headers = await getPlaylistAuthHeaders()
   if (!headers.Authorization) return null

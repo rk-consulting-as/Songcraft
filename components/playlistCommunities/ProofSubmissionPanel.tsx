@@ -6,6 +6,7 @@ import type { ActivityProofLimits } from '@/lib/playlistCommunities/activityLimi
 import type { CampaignActivityLog } from '@/lib/playlistCommunities/activityTypes'
 import { formatDateYmd } from '@/lib/playlistCommunities/participationBoard'
 import ActivityProofDisclaimer from './ActivityProofDisclaimer'
+import LastfmProofImportPanel from './LastfmProofImportPanel'
 import { t, useLang } from '@/lib/i18n'
 
 type Props = {
@@ -27,7 +28,7 @@ export default function ProofSubmissionPanel({
   const today = formatDateYmd(new Date())
   const todayLog = myLogs.find(l => l.activity_date === today)
 
-  const [proofType, setProofType] = useState<'text' | 'image' | 'csv'>('text')
+  const [proofType, setProofType] = useState<'text' | 'image' | 'csv' | 'lastfm'>('text')
   const [proofText, setProofText] = useState('')
   const [note, setNote] = useState('')
   const [file, setFile] = useState<File | null>(null)
@@ -97,7 +98,18 @@ export default function ProofSubmissionPanel({
         >
           {tx.activityProofTypeCsv}
         </button>
+        <button
+          type="button"
+          className={proofType === 'lastfm' ? 'proof-type-tabs__active' : ''}
+          onClick={() => setProofType('lastfm')}
+        >
+          {tx.activityProofTypeLastfm}
+        </button>
       </div>
+
+      {proofType === 'lastfm' && (
+        <LastfmProofImportPanel campaignId={campaignId} onSubmitted={onSubmitted} />
+      )}
 
       {proofType === 'text' && (
         <textarea
@@ -120,9 +132,11 @@ export default function ProofSubmissionPanel({
       <label className="playlist-join-label">{tx.activityProofNote}</label>
       <textarea className="input" rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder={tx.activityProofNotePlaceholder} />
 
-      <button type="button" className="btn-gold" style={{ marginTop: 10 }} disabled={busy} onClick={handleSubmit}>
-        {busy ? tx.loading : tx.activityProofSubmitButton}
-      </button>
+      {proofType !== 'lastfm' && (
+        <button type="button" className="btn-gold" style={{ marginTop: 10 }} disabled={busy} onClick={handleSubmit}>
+          {busy ? tx.loading : tx.activityProofSubmitButton}
+        </button>
+      )}
       {error && <p className="playlist-campaign-error">{error}</p>}
 
       {myLogs.length > 0 && (
@@ -133,7 +147,11 @@ export default function ProofSubmissionPanel({
               <li key={log.id}>
                 <span>{log.activity_date}</span>
                 <span>{tx[`activityStatus_${log.status}`] || log.status}</span>
-                {log.proof_type !== 'text' && <span className="proof-history__type">{log.proof_type}</span>}
+                {log.proof_type !== 'text' && (
+                  <span className="proof-history__type">
+                    {log.proof_type === 'lastfm_import' ? tx.activityProofTypeLastfm : log.proof_type}
+                  </span>
+                )}
               </li>
             ))}
           </ul>

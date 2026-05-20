@@ -1,6 +1,6 @@
 export type ActivityLogStatus = 'pending' | 'submitted' | 'approved' | 'rejected' | 'missed'
 
-export type ProofType = 'image' | 'csv' | 'text' | 'manual'
+export type ProofType = 'image' | 'csv' | 'text' | 'manual' | 'lastfm_import'
 
 export type AiConfidence = 'high' | 'medium' | 'low' | 'unclear'
 

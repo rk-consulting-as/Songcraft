@@ -55,9 +55,17 @@ export default function OwnerParticipationReview({ campaignId, logs, limits, onU
         <li key={log.id} className="owner-review-card card">
           <div className="owner-review-card__head">
             <span>{log.activity_date}</span>
-            <span className="owner-review-card__type">{log.proof_type}</span>
+            <span className="owner-review-card__type">
+              {log.proof_type === 'lastfm_import' ? tx.activityProofTypeLastfm : log.proof_type}
+            </span>
           </div>
-          {log.proof_text && <p className="owner-review-card__text">{log.proof_text}</p>}
+          {log.proof_text && (
+            log.proof_type === 'lastfm_import' ? (
+              <pre className="owner-review-card__text owner-review-card__text--pre">{log.proof_text}</pre>
+            ) : (
+              <p className="owner-review-card__text">{log.proof_text}</p>
+            )
+          )}
           {log.proofAssetUrl && (
             <a href={log.proofAssetUrl} target="_blank" rel="noopener noreferrer" className="owner-review-card__asset">
               {tx.activityProofViewFile}
