@@ -1,21 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase'
-import { previewLastfmImport, submitLastfmImportProof } from '@/lib/playlistCommunities/client'
+import {
+  detectLastfmActivity,
+  submitLastfmImportProof,
+  type LastfmActivitySuggestion,
+} from '@/lib/playlistCommunities/client'
 import { formatDateYmd } from '@/lib/playlistCommunities/participationBoard'
 import ActivityProofDisclaimer from './ActivityProofDisclaimer'
 import { t, useLang } from '@/lib/i18n'
-
-type Preview = {
-  completionPercent: number
-  confidence: string
-  matchedCount: number
-  scrobbleCount: number
-  playlistTrackCount: number
-  summaryText: string
-  explanation: string
-}
 
 type Props = {
   campaignId: string
@@ -30,10 +24,14 @@ export default function LastfmProofImportPanel({ campaignId, onSubmitted }: Prop
   const [username, setUsername] = useState('')
   const [fromDate, setFromDate] = useState(weekAgo)
   const [toDate, setToDate] = useState(today)
-  const [activityDate, setActivityDate] = useState(today)
-  const [preview, setPreview] = useState<Preview | null>(null)
-  const [busy, setBusy] = useState(false)
+  const [suggestions, setSuggestions] = useState<LastfmActivitySuggestion[]>([])
+  const [scrobbleCount, setScrobbleCount] = useState(0)
+  const [campaignsScanned, setCampaignsScanned] = useState(0)
+  const [scanning, setScanning] = useState(false)
+  const [approvingId, setApprovingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [scanned, setScanned] = useState(false)
+  const initialScanDone = useRef(false)
 
   useEffect(() => {
     ;(async () => {
@@ -45,60 +43,67 @@ export default function LastfmProofImportPanel({ campaignId, onSubmitted }: Prop
     })()
   }, [])
 
-  const saveUsernameToProfile = async () => {
-    const sb = createClient()
-    const { data: { user } } = await sb.auth.getUser()
-    if (!user || !username.trim()) return
-    await sb.from('profiles').update({ lastfm_username: username.trim() }).eq('id', user.id)
-  }
-
-  const runPreview = async () => {
-    setBusy(true)
+  const runDetect = useCallback(async () => {
+    if (!username.trim()) {
+      setError(tx.lastfmErrorUsername)
+      return
+    }
+    setScanning(true)
     setError(null)
-    setPreview(null)
+    setSuggestions([])
     try {
-      await saveUsernameToProfile()
-      const res = await previewLastfmImport(campaignId, {
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      if (user && username.trim()) {
+        await sb.from('profiles').update({ lastfm_username: username.trim() }).eq('id', user.id)
+      }
+      const res = await detectLastfmActivity({
         lastfm_username: username.trim(),
         from_date: fromDate,
         to_date: toDate,
+        campaign_id: campaignId,
       })
-      if (!res?.analysis) throw new Error('preview_failed')
-      setPreview(res.analysis)
+      setSuggestions(res?.suggestions || [])
+      setScrobbleCount(res?.scrobbleCount ?? 0)
+      setCampaignsScanned(res?.campaignsScanned ?? 0)
+      setScanned(true)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed'
       setError(mapError(msg, tx))
     } finally {
-      setBusy(false)
+      setScanning(false)
     }
-  }
+  }, [username, fromDate, toDate, campaignId, tx])
 
-  const submit = async () => {
-    setBusy(true)
+  useEffect(() => {
+    if (!username.trim() || initialScanDone.current) return
+    initialScanDone.current = true
+    runDetect()
+  }, [username, runDetect])
+
+  const approveSuggestion = async (s: LastfmActivitySuggestion) => {
+    setApprovingId(s.campaignId)
     setError(null)
     try {
-      await saveUsernameToProfile()
-      await submitLastfmImportProof(campaignId, {
+      await submitLastfmImportProof(s.campaignId, {
         lastfm_username: username.trim(),
-        from_date: fromDate,
-        to_date: toDate,
-        activity_date: activityDate,
+        from_date: s.fromDate,
+        to_date: s.toDate,
+        activity_date: s.activityDate,
       })
-      setPreview(null)
-      onSubmitted()
+      setSuggestions(prev => prev.filter(x => x.campaignId !== s.campaignId))
+      if (s.campaignId === campaignId) onSubmitted()
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed'
       setError(mapError(msg, tx))
     } finally {
-      setBusy(false)
+      setApprovingId(null)
     }
   }
-
-  const confidenceKey = preview ? `aiConfidence_${preview.confidence}` : null
 
   return (
     <div className="lastfm-proof-import">
-      <p className="lastfm-proof-import__intro">{tx.lastfmProofIntro}</p>
+      <p className="lastfm-proof-import__intro">{tx.lastfmAutoIntro}</p>
       <p className="lastfm-proof-import__disclaimer">{tx.lastfmProofDisclaimer}</p>
       <ActivityProofDisclaimer compact />
 
@@ -110,7 +115,6 @@ export default function LastfmProofImportPanel({ campaignId, onSubmitted }: Prop
         placeholder={tx.lastfmUsernamePlaceholder}
         autoComplete="off"
       />
-      <p className="lastfm-proof-import__hint">{tx.lastfmUsernameHint}</p>
 
       <div className="lastfm-proof-import__dates">
         <div>
@@ -123,33 +127,70 @@ export default function LastfmProofImportPanel({ campaignId, onSubmitted }: Prop
         </div>
       </div>
 
-      <label className="playlist-join-label">{tx.activityProofDate}</label>
-      <input type="date" className="input" value={activityDate} max={today} onChange={e => setActivityDate(e.target.value)} />
+      <button type="button" className="btn-outline" disabled={scanning || !username.trim()} onClick={runDetect}>
+        {scanning ? tx.lastfmScanning : tx.lastfmScanButton}
+      </button>
 
-      <div className="lastfm-proof-import__actions">
-        <button type="button" className="btn-outline" disabled={busy || !username.trim()} onClick={runPreview}>
-          {busy ? tx.loading : tx.lastfmPreviewButton}
-        </button>
-        <button type="button" className="btn-gold" disabled={busy || !username.trim() || !preview} onClick={submit}>
-          {busy ? tx.loading : tx.lastfmSubmitButton}
-        </button>
-      </div>
+      {scanned && !scanning && (
+        <p className="lastfm-proof-import__scan-meta">
+          {tx.lastfmScanMeta
+            .replace('{scrobbles}', String(scrobbleCount))
+            .replace('{campaigns}', String(campaignsScanned))}
+        </p>
+      )}
 
-      {preview && (
-        <div className="lastfm-proof-preview card">
-          <h4>{tx.lastfmPreviewTitle}</h4>
-          <div className="lastfm-proof-preview__stats">
-            <span>{tx.lastfmMatchedTracks.replace('{n}', String(preview.matchedCount)).replace('{total}', String(preview.playlistTrackCount))}</span>
-            <span>{tx.lastfmCompletion.replace('{pct}', String(preview.completionPercent))}</span>
-            <span>{tx.lastfmScrobbleCount.replace('{n}', String(preview.scrobbleCount))}</span>
-            {confidenceKey && (
-              <span className={`ai-confidence ai-confidence--${preview.confidence}`}>
-                {tx[confidenceKey] || preview.confidence}
-              </span>
-            )}
-          </div>
-          <pre className="lastfm-proof-preview__summary">{preview.summaryText}</pre>
+      {suggestions.length > 0 && (
+        <div className="lastfm-suggestions">
+          <h4 className="lastfm-suggestions__title">{tx.lastfmDetectedTitle}</h4>
+          <p className="lastfm-suggestions__subtitle">{tx.lastfmDetectedSubtitle}</p>
+          <ul className="lastfm-suggestions__list">
+            {suggestions.map(s => (
+              <li
+                key={s.campaignId}
+                className={`lastfm-suggestion-card card${s.campaignId === campaignId ? ' lastfm-suggestion-card--current' : ''}`}
+              >
+                <div className="lastfm-suggestion-card__top">
+                  {s.playlistImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={s.playlistImageUrl} alt="" className="lastfm-suggestion-card__cover" />
+                  ) : (
+                    <div className="lastfm-suggestion-card__cover lastfm-suggestion-card__cover--empty">♫</div>
+                  )}
+                  <div className="lastfm-suggestion-card__meta">
+                    <p className="lastfm-suggestion-card__headline">{s.headline}</p>
+                    <p className="lastfm-suggestion-card__playlist">{s.playlistTitle}</p>
+                    {s.sessionLabel && (
+                      <p className="lastfm-suggestion-card__session">{tx.lastfmSessionLabel}: {s.sessionLabel}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="lastfm-suggestion-card__stats">
+                  <span>{tx.lastfmMatchedTracks.replace('{n}', String(s.matchedCount)).replace('{total}', String(s.playlistTrackCount))}</span>
+                  <span>{tx.lastfmCompletion.replace('{pct}', String(s.completionPercent))}</span>
+                  <span className={`ai-confidence ai-confidence--${s.confidence}`}>
+                    {tx[`aiConfidence_${s.confidence}`] || s.confidence}
+                  </span>
+                  {s.clusterCount > 0 && (
+                    <span>{tx.lastfmClusterCount.replace('{n}', String(s.clusterCount))}</span>
+                  )}
+                </div>
+                <p className="lastfm-suggestion-card__explanation">{s.explanation}</p>
+                <button
+                  type="button"
+                  className="btn-gold lastfm-suggestion-card__approve"
+                  disabled={!!approvingId}
+                  onClick={() => approveSuggestion(s)}
+                >
+                  {approvingId === s.campaignId ? tx.loading : tx.lastfmApproveSuggestion}
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
+      )}
+
+      {scanned && !scanning && suggestions.length === 0 && !error && (
+        <p className="lastfm-proof-import__empty">{tx.lastfmNoSuggestions}</p>
       )}
 
       {error && <p className="playlist-campaign-error">{error}</p>}

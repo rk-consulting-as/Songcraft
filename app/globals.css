@@ -3628,6 +3628,100 @@ body.artist-workspace-page button[title="Open chat"] {
   max-height: 280px;
   overflow: auto;
 }
+.lastfm-proof-import__scan-meta {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: #8a7a60;
+}
+.lastfm-proof-import__empty {
+  margin: 16px 0 0;
+  font-size: 13px;
+  color: #6a5a40;
+  line-height: 1.5;
+}
+.lastfm-suggestions {
+  margin-top: 20px;
+}
+.lastfm-suggestions__title {
+  margin: 0 0 6px;
+  font-size: 15px;
+  color: #d4a843;
+  font-weight: normal;
+}
+.lastfm-suggestions__subtitle {
+  margin: 0 0 14px;
+  font-size: 12px;
+  color: #8a7a60;
+  line-height: 1.45;
+}
+.lastfm-suggestions__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.lastfm-suggestion-card {
+  padding: 14px;
+  border-color: rgba(180, 140, 80, 0.22);
+}
+.lastfm-suggestion-card--current {
+  border-color: rgba(212, 168, 67, 0.45);
+  box-shadow: 0 0 0 1px rgba(212, 168, 67, 0.15);
+}
+.lastfm-suggestion-card__top {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.lastfm-suggestion-card__cover {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.lastfm-suggestion-card__cover--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(212, 168, 67, 0.12);
+  color: #8a7a60;
+}
+.lastfm-suggestion-card__headline {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: #e8e0d0;
+  line-height: 1.35;
+}
+.lastfm-suggestion-card__playlist {
+  margin: 0;
+  font-size: 12px;
+  color: #8a7a60;
+}
+.lastfm-suggestion-card__session {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: #7bc87b;
+}
+.lastfm-suggestion-card__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-size: 11px;
+  color: #8a7a60;
+  margin-bottom: 8px;
+}
+.lastfm-suggestion-card__explanation {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #a09080;
+  line-height: 1.45;
+}
+.lastfm-suggestion-card__approve {
+  width: 100%;
+}
 
 /* Phase 48: Mobile QA pass */
 @media (max-width: 640px) {
@@ -3709,5 +3803,8 @@ body.artist-workspace-page button[title="Open chat"] {
   .lastfm-proof-import__actions .btn-outline {
     width: 100%;
     text-align: center;
+  }
+  .lastfm-suggestion-card__approve {
+    width: 100%;
   }
 }

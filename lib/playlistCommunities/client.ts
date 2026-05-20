@@ -163,6 +163,47 @@ export async function fetchCampaignParticipation(campaignId: string) {
   >(`/api/playlist-communities/campaigns/${campaignId}/participation`)
 }
 
+export type LastfmActivitySuggestion = {
+  campaignId: string
+  campaignTitle: string
+  playlistTitle: string
+  playlistImageUrl: string | null
+  memberId: string
+  matchedCount: number
+  playlistTrackCount: number
+  scrobbleCount: number
+  completionPercent: number
+  confidence: string
+  clusterCount: number
+  sequenceMatches: number
+  sessions: { startIso: string; endIso: string; durationMinutes: number; matchCount: number }[]
+  sessionLabel: string | null
+  summaryText: string
+  explanation: string
+  fromDate: string
+  toDate: string
+  activityDate: string
+  headline: string
+}
+
+export async function detectLastfmActivity(body: {
+  lastfm_username?: string
+  from_date?: string
+  to_date?: string
+  campaign_id?: string
+}) {
+  return apiFetch<{
+    suggestions: LastfmActivitySuggestion[]
+    scrobbleCount: number
+    fromDate: string
+    toDate: string
+    campaignsScanned: number
+  }>('/api/playlist-communities/lastfm/detect', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+}
+
 export async function previewLastfmImport(
   campaignId: string,
   body: { lastfm_username: string; from_date: string; to_date: string }

@@ -9,6 +9,13 @@ export type MatchedScrobble = {
   method: 'spotify_id' | 'title_artist' | 'fuzzy'
 }
 
+export type ListeningSession = {
+  startIso: string
+  endIso: string
+  durationMinutes: number
+  matchCount: number
+}
+
 export type LastfmImportAnalysis = {
   matched: MatchedScrobble[]
   completionPercent: number
@@ -17,6 +24,40 @@ export type LastfmImportAnalysis = {
   explanation: string
   clusterCount: number
   sequenceMatches: number
+  sessions: ListeningSession[]
+  primarySession: ListeningSession | null
+}
+
+/** Group matched scrobbles into listening sessions (default 45 min window). */
+export function detectListeningSessions(
+  matched: MatchedScrobble[],
+  windowMs = 45 * 60 * 1000
+): ListeningSession[] {
+  if (matched.length === 0) return []
+  const sorted = [...matched].sort((a, b) => a.scrobble.playedAt.getTime() - b.scrobble.playedAt.getTime())
+  const sessions: ListeningSession[] = []
+  let i = 0
+  while (i < sorted.length) {
+    const start = sorted[i].scrobble.playedAt.getTime()
+    let end = start
+    let count = 1
+    let j = i + 1
+    while (j < sorted.length && sorted[j].scrobble.playedAt.getTime() - start <= windowMs) {
+      end = sorted[j].scrobble.playedAt.getTime()
+      count += 1
+      j += 1
+    }
+    if (count >= 2) {
+      sessions.push({
+        startIso: new Date(start).toISOString(),
+        endIso: new Date(end).toISOString(),
+        durationMinutes: Math.max(1, Math.round((end - start) / 60000)),
+        matchCount: count,
+      })
+    }
+    i = j
+  }
+  return sessions.sort((a, b) => b.matchCount - a.matchCount)
 }
 
 export function normalizeMatchKey(artist: string, track: string): string {
@@ -162,6 +203,8 @@ export function analyzeLastfmPlaylistActivity(
   const completionPercent = total > 0 ? Math.round((uniqueCount / total) * 100) : 0
   const clusterCount = countClusters(matched)
   const sequenceMatches = countSequenceMatches(matched, playlistTracks)
+  const sessions = detectListeningSessions(matched)
+  const primarySession = sessions[0] || null
   const hasSpotifyMatches = matched.some(m => m.method === 'spotify_id')
   const confidence = computeConfidence(uniqueCount, total, clusterCount, sequenceMatches, hasSpotifyMatches)
 
@@ -218,5 +261,7 @@ export function analyzeLastfmPlaylistActivity(
     explanation,
     clusterCount,
     sequenceMatches,
+    sessions,
+    primarySession,
   }
 }
