@@ -15,6 +15,7 @@ import ShareButtons from '@/components/ShareButtons'
 import NewsletterSignup from '@/components/NewsletterSignup'
 import PublicAnalyticsTracker from '@/components/PublicAnalyticsTracker'
 import PublicStickyListen from '@/components/public/PublicStickyListen'
+import PublicOwnerAdSlot from '@/components/ads/PublicOwnerAdSlot'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -214,6 +215,8 @@ export default async function PublicSongPage({ params }: { params: { id: string 
         </section>
 
         <CreatorAcquisitionCta variant="card" accent={accent} />
+
+        {song.user_id && <PublicOwnerAdSlot ownerUserId={song.user_id} placement="song_footer" />}
 
         <footer className="public-footer">
           <ViaToneBranding variant="footer" accent={accent} href="/login" />

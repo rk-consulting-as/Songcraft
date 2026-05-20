@@ -18,6 +18,7 @@ import PublicEmptyState from '@/components/public/PublicEmptyState'
 import { getFeaturedRelease } from '@/lib/creatorIdentity'
 import { resolveArtistOgImage, resolvePublicArtistImages } from '@/lib/mediaLibrary/resolveImages'
 import { t } from '@/lib/i18n'
+import PublicOwnerAdSlot from '@/components/ads/PublicOwnerAdSlot'
 
 // Public artist landing page. Server-rendered, anonymous Supabase client (RLS gates by page_enabled).
 // URL: /p/{slug}
@@ -229,6 +230,8 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
       <div className="public-body">
         <PublicCreatorIdentityBlock artist={artist} songs={songs} albums={albums} accent={accent} />
 
+        {artist.user_id && <PublicOwnerAdSlot ownerUserId={artist.user_id} placement="artist_mid" />}
+
         {s.newsletter !== false && (
           <section style={{ marginBottom: 48 }}>
             <NewsletterSignup artistId={artist.id} sourcePage={`/p/${artist.page_slug}`} accent={accent} />
@@ -372,6 +375,7 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
         </section>
 
         <CreatorAcquisitionCta variant="card" accent={accent} />
+        {artist.user_id && <PublicOwnerAdSlot ownerUserId={artist.user_id} placement="artist_footer" />}
         <footer className="public-footer">
           <CreatorAcquisitionCta variant="footer" accent={accent} />
           <ViaToneBranding variant="footer" accent={accent} href="/login" />

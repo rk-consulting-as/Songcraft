@@ -8,6 +8,7 @@ import PublicCreatorIdentityBlock from '@/components/discover/PublicCreatorIdent
 import CreatorAcquisitionCta from '@/components/platform/CreatorAcquisitionCta'
 import ViaToneBranding from '@/components/platform/ViaToneBranding'
 import { resolvePublicArtistImages } from '@/lib/mediaLibrary/resolveImages'
+import PublicOwnerAdSlot from '@/components/ads/PublicOwnerAdSlot'
 
 /**
  * Minimal artist template — typography-first. Centered text hero (no big avatar),
@@ -82,6 +83,8 @@ export default function ArtistPageMinimal({
         </header>
 
         <PublicCreatorIdentityBlock artist={artist} songs={songs} albums={albums} accent={accent} />
+
+        {artist.user_id && <PublicOwnerAdSlot ownerUserId={artist.user_id} placement="artist_mid" />}
 
         {sections.newsletter !== false && (
           <section style={{ marginBottom: 64 }}>
@@ -180,6 +183,7 @@ export default function ArtistPageMinimal({
         )}
 
         <CreatorAcquisitionCta variant="card" accent={accent} />
+        {artist.user_id && <PublicOwnerAdSlot ownerUserId={artist.user_id} placement="artist_footer" />}
         <footer style={{ textAlign: 'center', paddingTop: 32, borderTop: '1px solid rgba(180,140,80,0.08)' }}>
           <ViaToneBranding variant="footer" accent={accent} href="/login" />
         </footer>

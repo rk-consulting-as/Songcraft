@@ -54,6 +54,12 @@ export function isProStatus(status?: string | null) {
   return status === 'active' || status === 'trialing' || status === 'past_due'
 }
 
+/** Any paid tier (Pro today; Growth/Studio when added) — no ads. */
+export function isPaidPlan(planId?: string | null): boolean {
+  if (!planId) return false
+  return planId !== 'free'
+}
+
 export async function getUserPlan(supabase: any, userId: string): Promise<UserPlan> {
   const { data } = await supabase
     .from('subscriptions')

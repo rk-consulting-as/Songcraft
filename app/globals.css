@@ -3362,6 +3362,45 @@ body.artist-workspace-page button[title="Open chat"] {
   gap: 8px;
 }
 
+/* Display ads (Free users, discrete in-content slots) */
+.ad-slot {
+  margin: 24px 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(180, 140, 80, 0.15);
+  background: rgba(255, 255, 255, 0.02);
+  max-width: 100%;
+  overflow: hidden;
+}
+.ad-slot__label {
+  margin: 0 0 8px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6a5a40;
+}
+.ad-slot__unit {
+  min-height: 90px;
+}
+.ad-slot__placeholder {
+  min-height: 90px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.ad-slot--dashboard-card {
+  margin-bottom: 24px;
+}
+@media (max-width: 640px) {
+  .ad-slot {
+    margin: 20px 0;
+    padding: 10px 12px;
+  }
+  .ad-slot__unit,
+  .ad-slot__placeholder {
+    min-height: 72px;
+  }
+}
+
 /* Phase 49D: Passive participation */
 .detected-activity-inbox {
   margin-bottom: 16px;

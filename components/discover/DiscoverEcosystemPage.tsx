@@ -12,6 +12,7 @@ import DiscoverAcquisitionHero from '@/components/platform/DiscoverAcquisitionHe
 import CreatorAcquisitionCta from '@/components/platform/CreatorAcquisitionCta'
 import ViaToneBranding from '@/components/platform/ViaToneBranding'
 import PublicEmptyState from '@/components/public/PublicEmptyState'
+import ViewerAdSlot from '@/components/ads/ViewerAdSlot'
 
 type FilterMode = 'trending' | 'newest' | 'active' | 'genre'
 
@@ -151,6 +152,8 @@ export default function DiscoverEcosystemPage() {
             )}
 
             <CreatorAcquisitionCta variant="inline" accent={accent} />
+
+            <ViewerAdSlot placement="discover_between" />
 
             {catalog.trending.length > 0 && filter === 'trending' && (
               <DiscoverSection title={tx.discoverSectionTrending}>

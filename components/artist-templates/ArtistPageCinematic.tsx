@@ -8,6 +8,7 @@ import PublicCreatorIdentityBlock from '@/components/discover/PublicCreatorIdent
 import CreatorAcquisitionCta from '@/components/platform/CreatorAcquisitionCta'
 import ViaToneBranding from '@/components/platform/ViaToneBranding'
 import { resolvePublicArtistImages } from '@/lib/mediaLibrary/resolveImages'
+import PublicOwnerAdSlot from '@/components/ads/PublicOwnerAdSlot'
 
 /**
  * Cinematic artist template — full-bleed dramatic. Avatar fills viewport as blurred
@@ -147,6 +148,8 @@ export default function ArtistPageCinematic({
       {/* Content sections — glass-morphism cards */}
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 80px' }}>
         <PublicCreatorIdentityBlock artist={artist} songs={songs} albums={albums} accent={accent} />
+
+        {artist.user_id && <PublicOwnerAdSlot ownerUserId={artist.user_id} placement="artist_mid" />}
         {sections.newsletter !== false && (
           <section style={{ marginBottom: 40 }}>
             <NewsletterSignup artistId={artist.id} sourcePage={`/p/${artist.page_slug}`} accent={accent} />
@@ -225,6 +228,8 @@ export default function ArtistPageCinematic({
       </div>
 
       <CreatorAcquisitionCta variant="card" accent={accent} />
+
+      {artist.user_id && <PublicOwnerAdSlot ownerUserId={artist.user_id} placement="artist_footer" />}
 
       <footer className="public-footer">
         <CreatorAcquisitionCta variant="footer" accent={accent} />

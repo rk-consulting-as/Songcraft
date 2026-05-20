@@ -15,6 +15,7 @@ import { getUserPlan } from '@/lib/subscription'
 import PlaybookGrowthCoach from '@/components/PlaybookGrowthCoach'
 import DashboardDiscoverHighlights from '@/components/DashboardDiscoverHighlights'
 import PlaylistCommunityDashboardBanner from '@/components/playlistCommunities/PlaylistCommunityDashboardBanner'
+import ViewerAdSlot from '@/components/ads/ViewerAdSlot'
 
 type Artist = {
   id: string; name: string; genre: string; description: string
@@ -799,6 +800,8 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
+
+        {planId === 'free' && <ViewerAdSlot placement="dashboard_card" planId={planId} />}
 
         {/* Top streamed songs widget */}
         {topStreamedSongs.length > 0 && (
