@@ -28,6 +28,7 @@ import ArtistWorkspacePlaylistCommunities from '@/components/playlistCommunities
 import EpkMediaSection from '@/components/media/EpkMediaSection'
 import type { EpkSettings } from '@/lib/mediaLibrary/epkSettings'
 import ArtistFeaturedReleasePicker from '@/components/ArtistFeaturedReleasePicker'
+import SongCreationStudio from '@/components/songCreation/SongCreationStudio'
 import ArtistSettingsPanel from '@/components/ArtistSettingsPanel'
 import SongPublicPageActions from '@/components/SongPublicPageActions'
 import { tabFromHash, type ArtistWorkspaceTab } from '@/lib/artistWorkspaceTabs'
@@ -150,12 +151,6 @@ export default function ArtistPage() {
   const [songs, setSongs] = useState<Song[]>([])
   const [loading, setLoading] = useState(true)
   const [showGenerator, setShowGenerator] = useState(false)
-  const [prompt, setPrompt] = useState('')
-  const [count, setCount] = useState(3)
-  const [generating, setGenerating] = useState(false)
-  const [generatedSongs, setGeneratedSongs] = useState<{ title: string; instructions: string }[]>([])
-  const [saving, setSaving] = useState(false)
-  const [useProfile, setUseProfile] = useState(true)
 
   // AI provider
   const [aiProvider, setAiProvider] = useState<AIProvider>('anthropic')
@@ -684,16 +679,6 @@ export default function ArtistPage() {
   }
   const onDragEnd = () => { setDragIndex(null); setDragOverIndex(null) }
 
-  const buildArtistContext = () => {
-    if (!artist || !useProfile) return ''
-    const parts = []
-    if (artist.name) parts.push(`Artist: ${artist.name}`)
-    if (artist.genre) parts.push(`Genre: ${artist.genre}`)
-    if (artist.description) parts.push(`Description: ${artist.description}`)
-    if (artist.song_structure) parts.push(`Song structure/profile: ${artist.song_structure}`)
-    return parts.join('\n')
-  }
-
   const saveEpk = async (updates: Partial<EpkContent>) => {
     if (!artist) return
     const nextEpk = { ...epk, ...updates }
@@ -827,50 +812,6 @@ export default function ArtistPage() {
       console.warn('EPK generation failed', e)
     }
     setEpkGenerating(false)
-  }
-
-  const generateBatch = async () => {
-    if (!prompt.trim()) return
-    setGenerating(true)
-    setGeneratedSongs([])
-    const artistContext = buildArtistContext()
-    const supabase = createClient()
-    const { data: { session } } = await supabase.auth.getSession()
-    const res = await fetch('/api/ai', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-      },
-      body: JSON.stringify({
-        provider: aiProvider,
-        messages: [{ role: 'user', content: `${artistContext ? artistContext + '\n\n' : ''}User request: ${prompt}\n\nNumber of songs: ${count}` }],
-        system: `${aiOutputLanguageDirective(aiOutputLang)}\nYou are a creative music producer and songwriter. The user describes a theme or concept for multiple songs. Your task: Create EXACTLY ${count} song proposals with title and instructions for a songwriter.\n\nRespond ONLY with valid JSON, no text around it:\n[\n  {\n    "title": "Song title here",\n    "instructions": "Detailed instructions for the songwriter: theme, mood, verse structure, specific images/metaphors, chorus idea, tone and style. At least 3-4 sentences.${artist?.song_structure && useProfile ? ' Follow the song structure profile provided.' : ''}"\n  }\n]`,
-      }),
-    })
-    const data = await res.json()
-    try {
-      const clean = data.text.replace(/```json|```/g, '').trim()
-      setGeneratedSongs(JSON.parse(clean))
-    } catch (e) { console.error('Parse error', e) }
-    setGenerating(false)
-  }
-
-  const updateGenerated = (i: number, field: 'title' | 'instructions', value: string) => {
-    const updated = [...generatedSongs]
-    updated[i] = { ...updated[i], [field]: value }
-    setGeneratedSongs(updated)
-  }
-
-  const saveAll = async () => {
-    setSaving(true)
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    const { data } = await supabase.from('songs').insert(
-      generatedSongs.map(s => ({ artist_id: artistId, user_id: user?.id, title: s.title, lyrics_instructions: s.instructions, status: 'draft' }))
-    ).select()
-    if (data) { setSongs([...data, ...songs]); setShowGenerator(false); setGeneratedSongs([]); setPrompt('') }
-    setSaving(false)
   }
 
   const deleteSong = async (id: string, e: React.MouseEvent) => {
@@ -1099,7 +1040,7 @@ export default function ArtistPage() {
                 {tx.importFromSpotify}
               </button>
             )}
-            <button className="btn-gold" onClick={() => { setShowGenerator(true); setGeneratedSongs([]) }}>{tx.generateWithAI}</button>
+            <button className="btn-gold" onClick={() => { setShowGenerator(true) }}>{tx.createNewSong}</button>
           </div>
         )}
       </div>
@@ -1113,7 +1054,7 @@ export default function ArtistPage() {
             <MobileQuickActions
               title={tx.mobileQuickActions}
               actions={[
-                { label: tx.mobileCreateSong, icon: '+', onClick: () => { changeWorkspaceTab('songs'); setShowGenerator(true); setGeneratedSongs([]) } },
+                { label: tx.mobileCreateSong, icon: '+', onClick: () => { changeWorkspaceTab('songs'); setShowGenerator(true) } },
                 { label: tx.mobileOpenPublicPage, icon: '↗', href: artist?.page_enabled && artist?.page_slug ? `/p/${artist.page_slug}` : undefined, disabled: !artist?.page_enabled || !artist?.page_slug },
                 { label: tx.mobileCopyShareLink, icon: '⧉', onClick: () => {
                   if (artist?.page_slug) navigator.clipboard.writeText(`${window.location.origin}/p/${artist.page_slug}`)
@@ -1133,106 +1074,18 @@ export default function ArtistPage() {
 
         {workspaceTab === 'songs' && (
           <>
-        {showGenerator && (
-          <div className="card" style={{ marginBottom: '32px', borderColor: 'rgba(212,168,67,0.4)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ margin: 0, color: '#d4a843', fontWeight: 'normal', fontSize: '18px' }}>{tx.aiGenerator}</h2>
-              <button className="btn-outline" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => { setShowGenerator(false); setGeneratedSongs([]) }}>{tx.close}</button>
-            </div>
-            {planId === 'free' && (
-              <UpgradePrompt compact title={tx.upgradeAiTitle} description={tx.upgradeAiDesc} />
-            )}
-
-            {/* Artist profile toggle */}
-            {(artist?.genre || artist?.description || artist?.song_structure) && (
-              <div style={{ background: useProfile ? 'rgba(212,168,67,0.06)' : 'rgba(255,255,255,0.02)', border: `1px solid ${useProfile ? 'rgba(212,168,67,0.25)' : 'rgba(180,140,80,0.1)'}`, borderRadius: '6px', padding: '12px 16px', marginBottom: '16px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={useProfile} onChange={e => setUseProfile(e.target.checked)}
-                    style={{ width: '16px', height: '16px', accentColor: '#d4a843', cursor: 'pointer' }} />
-                  <div>
-                    <span style={{ color: useProfile ? '#d4a843' : '#6a5a40', fontSize: '13px', fontWeight: '500' }}>{tx.useArtistProfile}</span>
-                    <span style={{ color: '#5a4a30', fontSize: '12px', marginLeft: '8px' }}>— {tx.useArtistProfileHint}</span>
-                  </div>
-                </label>
-                {useProfile && artist?.song_structure && (
-                  <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(212,168,67,0.1)', color: '#5a4a30', fontSize: '12px', lineHeight: '1.5' }}>
-                    🎸 {artist.song_structure.length > 120 ? artist.song_structure.slice(0, 120) + '...' : artist.song_structure}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '8px' }}>{tx.describeTheme}</label>
-              <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder={tx.themePlaceholder} rows={4} />
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '10px' }}>{tx.numberOfSongs}</label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {[1, 2, 3, 4, 5, 6, 8, 10].map(n => (
-                  <button key={n} onClick={() => setCount(n)} style={{
-                    width: '42px', height: '42px', borderRadius: '4px', cursor: 'pointer',
-                    border: count === n ? '1px solid #d4a843' : '1px solid rgba(180,140,80,0.2)',
-                    background: count === n ? 'rgba(212,168,67,0.15)' : 'transparent',
-                    color: count === n ? '#d4a843' : '#6a5a40',
-                    fontSize: '14px', fontWeight: count === n ? 'bold' : 'normal',
-                  }}>{n}</button>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: generatedSongs.length > 0 ? '28px' : '0' }}>
-              <button className="btn-gold" onClick={generateBatch} disabled={generating || !prompt.trim()}>
-                {generating ? tx.planningText.replace('{n}', String(count)) : tx.generateProposals.replace('{n}', String(count))}
-              </button>
-              <AIProviderPicker value={aiProvider} onChange={pickProvider} disabled={generating} />
-              <select
-                value={aiOutputLang}
-                onChange={e => setAiOutputLang(normalizeAIOutputLang(e.target.value))}
-                disabled={generating}
-                title={tx.aiOutputLangHint}
-                style={{ width: 'auto', minWidth: 145, padding: '6px 9px', fontSize: 12 }}
-              >
-                {AI_OUTPUT_LANGUAGES.map(option => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-            </div>
-
-            {generating && (
-              <div style={{ marginTop: '20px' }}>
-                {Array.from({ length: count }).map((_, i) => (
-                  <div key={i} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(180,140,80,0.1)', borderRadius: '6px', padding: '16px', marginBottom: '10px', opacity: 0.4 }}>
-                    <div style={{ height: '14px', background: 'rgba(212,168,67,0.15)', borderRadius: '3px', width: '40%', marginBottom: '10px' }} />
-                    <div style={{ height: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', width: '90%', marginBottom: '6px' }} />
-                    <div style={{ height: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', width: '70%' }} />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {generatedSongs.length > 0 && (
-              <div>
-                <p style={{ color: '#8a7a60', fontSize: '12px', letterSpacing: '1px', marginBottom: '14px' }}>{tx.proposalsLabel}</p>
-                {generatedSongs.map((s, i) => (
-                  <div key={i} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(212,168,67,0.2)', borderRadius: '8px', padding: '18px', marginBottom: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                      <span style={{ color: '#d4a843', fontSize: '13px', fontWeight: 'bold', minWidth: '24px' }}>#{i + 1}</span>
-                      <input value={s.title} onChange={e => updateGenerated(i, 'title', e.target.value)} style={{ fontSize: '15px', flex: 1 }} />
-                    </div>
-                    <textarea value={s.instructions} onChange={e => updateGenerated(i, 'instructions', e.target.value)} rows={4} style={{ fontSize: '13px', color: '#a09080' }} />
-                  </div>
-                ))}
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button className="btn-gold" onClick={saveAll} disabled={saving}>
-                    {saving ? tx.saving : tx.saveAll.replace('{n}', String(generatedSongs.length))}
-                  </button>
-                  <button className="btn-outline" onClick={generateBatch} disabled={generating}>{tx.regenerate}</button>
-                </div>
-              </div>
-            )}
-          </div>
+        {showGenerator && artist && (
+          <SongCreationStudio
+            artist={artist}
+            songs={songs}
+            planId={planId}
+            aiProvider={aiProvider}
+            aiOutputLang={aiOutputLang}
+            onPickProvider={pickProvider}
+            onAiOutputLangChange={setAiOutputLang}
+            onClose={() => setShowGenerator(false)}
+            onSaved={newSongs => { setSongs([...(newSongs as Song[]), ...songs]); setShowGenerator(false) }}
+          />
         )}
 
         {/* Spotify import card */}
@@ -1713,7 +1566,7 @@ export default function ArtistPage() {
                 icon="🎵"
                 title={tx.noSongs}
                 description={tx.workspaceEmptyNoSongsDesc}
-                action={<button type="button" className="btn-gold" onClick={() => setShowGenerator(true)}>{tx.generateWithAI}</button>}
+                action={<button type="button" className="btn-gold" onClick={() => setShowGenerator(true)}>{tx.createNewSong}</button>}
               />
             ) : (
               <WorkspaceEmptyState icon="🔍" title={tx.filterNoMatch} />

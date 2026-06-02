@@ -3621,6 +3621,111 @@ body.artist-workspace-page button[title="Open chat"] {
     grid-template-columns: 1fr;
     gap: 4px;
   }
+  .song-creation-studio__inspiration-list {
+    max-height: 200px;
+  }
+  .suno-prompt-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* Phase 51: Song Creation Studio */
+.song-creation-studio__inspiration-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.song-creation-studio__inspiration-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #c8c0b0;
+  cursor: pointer;
+}
+.song-creation-studio__controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+.song-creation-studio__control-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #8a7a60;
+  cursor: pointer;
+}
+.song-dna-panel__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.song-dna-panel__row {
+  display: grid;
+  grid-template-columns: 120px 1fr 28px;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+}
+.song-dna-panel__label {
+  color: #8a7a60;
+}
+.song-dna-panel__bar {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+.song-dna-panel__fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #6a5020, #d4a843);
+  border-radius: 4px;
+}
+.song-dna-panel__value {
+  color: #d4a843;
+  text-align: right;
+  font-weight: 600;
+}
+.song-dna-panel__meta {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: #8a7a60;
+}
+.song-dna-proposal {
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: rgba(212, 168, 67, 0.06);
+  border: 1px solid rgba(212, 168, 67, 0.15);
+  margin-bottom: 8px;
+}
+.suno-prompt-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.suno-prompt-toolbar__modes,
+.suno-prompt-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.suno-prompt-toolbar__counter {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 .playlist-campaign-card__proof-pending {
   font-size: 11px;

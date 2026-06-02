@@ -78,7 +78,7 @@ export default function ArtistWorkspaceOverview({
           <h3 className="workspace-card-title">{tx.workspaceQuickActions}</h3>
           <div className="workspace-action-grid">
             <button type="button" className="btn-gold" onClick={() => onOpenTab('songs')}>
-              + {tx.workspaceActionNewSong}
+              + {tx.createNewSong.replace(/^\+ /, '')}
             </button>
             {artist.spotify_id && (
               <button type="button" className="btn-outline" onClick={() => onOpenTab('songs')}>

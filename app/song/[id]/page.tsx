@@ -25,6 +25,13 @@ import SongPublicPageActions, { isSongPublicPageAvailable } from '@/components/S
 import { clientPublicUrl } from '@/lib/appUrl'
 import { canUseFeature, getMonthlyAiUsage, getUserPlan } from '@/lib/subscription'
 import { AI_OUTPUT_LANGUAGES, aiOutputLanguageDirective, aiOutputLanguageName, normalizeAIOutputLang, type AIOutputLang } from '@/lib/aiOutputLanguage'
+import { generateSongDNA } from '@/lib/songDNA/generateSongDNA'
+import { normalizeSongDNA, type SongDNA } from '@/lib/songDNA/types'
+import { compressSunoPrompt } from '@/lib/songCreation/compressSunoPrompt'
+import { prepareSunoPromptPair, sunoSystemPromptForMode } from '@/lib/songCreation/exportPrompt'
+import type { SunoPromptMode } from '@/lib/songCreation/types'
+import SongDNAPanel from '@/components/songCreation/SongDNAPanel'
+import SunoPromptToolbar from '@/components/songCreation/SunoPromptToolbar'
 
 const PLATFORMS = ['TikTok', 'Instagram', 'Facebook', 'YouTube', 'X/Twitter']
 const MEDIA_PLATFORMS = ['Spotify', 'YouTube', 'TikTok', 'Instagram', 'Facebook', 'Apple Music', 'SoundCloud', 'Other']
@@ -50,6 +57,11 @@ export default function SongPage() {
   const [useProfileForLyrics, setUseProfileForLyrics] = useState(true)
 
   const [sunoPrompt, setSunoPrompt] = useState('')
+  const [sunoPromptDetailed, setSunoPromptDetailed] = useState('')
+  const [sunoPromptMode, setSunoPromptMode] = useState<SunoPromptMode>('compact')
+  const [songDna, setSongDna] = useState<SongDNA | null>(null)
+  const [proposalMeta, setProposalMeta] = useState<{ genre?: string; mood?: string } | null>(null)
+  const [dnaRegenerating, setDnaRegenerating] = useState(false)
   const [backstory, setBackstory] = useState('')
 
   const [captions, setCaptions] = useState<Record<string, string>>({})
@@ -153,6 +165,7 @@ export default function SongPage() {
 
   const TAB_LABELS: Record<string, string> = {
     lyrics: `🎵 ${tx.lyrics}`,
+    dna: `🧬 ${tx.songDnaTab}`,
     backstory: `📖 ${tx.backstory}`,
     suno: `🤖 ${tx.suno}`,
     captions: `📱 ${tx.captions}`,
@@ -196,6 +209,19 @@ export default function SongPage() {
       setLyrics(data.lyrics_text || '')
       setLyricsHistory(data.lyrics_history || [])
       setSunoPrompt(data.suno_prompt || '')
+      setSunoPromptDetailed(data.suno_prompt_detailed || '')
+      setSongDna(data.song_dna ? normalizeSongDNA(data.song_dna) : null)
+      setProposalMeta(data.proposal_meta || null)
+      if (!data.song_dna && (data.lyrics_text || data.lyrics_instructions)) {
+        setSongDna(generateSongDNA({
+          title: data.title,
+          instructions: data.lyrics_instructions,
+          lyrics: data.lyrics_text,
+          genre: data.proposal_meta?.genre,
+          mood: data.proposal_meta?.mood,
+          backstory: data.backstory,
+        }))
+      }
       setBackstory(data.backstory || '')
       setCaptions(data.captions || {})
       setCoverStyle(data.cover_style || '')
@@ -599,6 +625,29 @@ export default function SongPage() {
     return parts.length ? '\n\nArtist context:\n' + parts.join('\n') : ''
   }
 
+  const computeAndSaveSongDna = async (extra?: Partial<{ title: string; lyrics: string }>) => {
+    const dna = generateSongDNA({
+      title: extra?.title ?? title,
+      instructions: lyricsInstructions,
+      lyrics: extra?.lyrics ?? lyrics,
+      genre: proposalMeta?.genre,
+      mood: proposalMeta?.mood,
+      backstory,
+    })
+    setSongDna(dna)
+    await save({ song_dna: dna })
+    return dna
+  }
+
+  const regenerateSongDna = async () => {
+    setDnaRegenerating(true)
+    try {
+      await computeAndSaveSongDna()
+    } finally {
+      setDnaRegenerating(false)
+    }
+  }
+
   const generateLyrics = async () => {
     if (!lyricsInstructions.trim()) return
     const artistCtx = buildArtistContext()
@@ -610,6 +659,7 @@ export default function SongPage() {
     const newHistory = [...msgs, { role: 'assistant', content: result }]
     setLyrics(result); setLyricsHistory(newHistory)
     await save({ lyrics_instructions: lyricsInstructions, lyrics_text: result, lyrics_history: newHistory, status: 'in_progress' })
+    await computeAndSaveSongDna({ lyrics: result })
   }
 
   const generateBackstory = async () => {
@@ -642,6 +692,7 @@ export default function SongPage() {
     const updatedHistory = [...newHistory, { role: 'assistant', content: result }]
     setLyrics(result); setLyricsHistory(updatedHistory); setLyricsChat('')
     await save({ lyrics_text: result, lyrics_history: updatedHistory })
+    await computeAndSaveSongDna({ lyrics: result })
   }
 
   // Fetch metadata for a Suno song URL via our server route.
@@ -703,13 +754,31 @@ export default function SongPage() {
   }
 
   const generateSuno = async () => {
-    const result = await callAI(
-      [{ role: 'user', content: `Lyrics:\n\n${lyrics}` }],
-      `You are a Suno AI music generator expert. Create a detailed prompt based on the lyrics. Include genre, tempo, mood, instruments, vocal style and tags in [brackets]. Write the output in: ${aiOutputLanguageName(aiOutputLang)}. Max 200 words.`,
-      'suno')
-    setSunoPrompt(result)
-    await save({ suno_prompt: result })
+    const langName = aiOutputLanguageName(aiOutputLang)
+    const detailedRaw = await callAI(
+      [{ role: 'user', content: `Song title: ${title}\n\nLyrics:\n\n${lyrics}` }],
+      sunoSystemPromptForMode('detailed', langName),
+      'suno_detailed'
+    )
+    const { compact, detailed } = prepareSunoPromptPair(detailedRaw)
+    setSunoPromptDetailed(detailed)
+    setSunoPrompt(compact)
+    const dna = await computeAndSaveSongDna()
+    await save({ suno_prompt: compact, suno_prompt_detailed: detailed, song_dna: dna })
   }
+
+  const updateSunoPromptField = (value: string) => {
+    if (sunoPromptMode === 'compact') {
+      const next = compressSunoPrompt(value)
+      setSunoPrompt(next)
+      save({ suno_prompt: next })
+    } else {
+      setSunoPromptDetailed(value)
+      save({ suno_prompt_detailed: value })
+    }
+  }
+
+  const activeSunoPrompt = sunoPromptMode === 'compact' ? sunoPrompt : sunoPromptDetailed
 
   const getCaptionLang = () => {
     if (captionLangOverride) return captionForcedLang === 'no' ? 'Norwegian' : 'English'
@@ -1514,20 +1583,37 @@ export default function SongPage() {
             {sunoPrompt && (
               <>
                 <div className="card" style={{ marginBottom: '16px', borderColor: 'rgba(80,160,80,0.25)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                    <span style={{ color: '#7bc87b', fontSize: '11px', letterSpacing: '1px' }}>{tx.sunoLabel}</span>
-                    <button className="btn-outline" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={() => copy(sunoPrompt)}>📋 {tx.sunoCopy}</button>
-                  </div>
-                  <textarea value={sunoPrompt} onChange={e => { setSunoPrompt(e.target.value); save({ suno_prompt: e.target.value }) }} rows={10} />
+                  <SunoPromptToolbar
+                    prompt={activeSunoPrompt}
+                    mode={sunoPromptMode}
+                    onModeChange={setSunoPromptMode}
+                    onCopy={() => copy(activeSunoPrompt)}
+                  />
+                  <textarea
+                    value={activeSunoPrompt}
+                    onChange={e => updateSunoPromptField(e.target.value)}
+                    rows={10}
+                    style={{ marginTop: 12 }}
+                  />
                 </div>
                 <div style={{ background: 'rgba(100,140,200,0.08)', border: '1px solid rgba(100,140,200,0.2)', borderRadius: '6px', padding: '14px 18px' }}>
                   <p style={{ margin: 0, fontSize: '13px', color: '#8090b0' }}>
-                    💡 {tx.sunoHint} <a href="https://suno.ai" target="_blank" rel="noopener noreferrer" style={{ color: '#7090d0' }}>suno.ai</a>
+                    💡 {tx.sunoHint}
                   </p>
                 </div>
               </>
             )}
           </div>
+        )}
+
+        {tab === 'dna' && (
+          <SongDNAPanel
+            dna={songDna}
+            genre={proposalMeta?.genre}
+            mood={proposalMeta?.mood}
+            onRegenerate={regenerateSongDna}
+            regenerating={dnaRegenerating}
+          />
         )}
 
         {/* CAPTIONS TAB */}
