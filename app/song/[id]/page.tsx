@@ -12,6 +12,8 @@ import SongStudioMobileNavigator from '@/components/songStudio/SongStudioMobileN
 import SongStudioSubNav from '@/components/songStudio/SongStudioSubNav'
 import SongStudioOverview from '@/components/songStudio/SongStudioOverview'
 import SongStudioSettingsPanel from '@/components/songStudio/SongStudioSettingsPanel'
+import SongStudioWorkspaceContext from '@/components/songStudio/SongStudioWorkspaceContext'
+import ImportFinishedTrackCard from '@/components/songStudio/ImportFinishedTrackCard'
 import SongPromoteAssetsPanel from '@/components/songStudio/SongPromoteAssetsPanel'
 import SongStudioToast from '@/components/songStudio/SongStudioToast'
 import ContentLimitCounter from '@/components/songStudio/ContentLimitCounter'
@@ -1490,6 +1492,15 @@ export default function SongPage() {
         )}
       >
         <div className="song-studio-body">
+        <SongStudioWorkspaceContext
+          route={studioRoute}
+          songTitle={title || song?.title || ''}
+          artistId={artist?.id}
+          artistName={artist?.name}
+          publicSongAvailable={songPublicPageAvailable}
+          publicSongHidden={!!song?.public_hidden}
+          songId={songId}
+        />
         <MobileQuickActions
           title={tx.mobileQuickActions}
           actions={[
@@ -1833,102 +1844,6 @@ export default function SongPage() {
         {panel === 'suno' && (
           <div>
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>{tx.sunoTitle}</h2>
-
-            {/* Import-section: paste URL of a finished Suno track */}
-            <div style={{ background: 'rgba(80,160,80,0.05)', border: '1px solid rgba(80,160,80,0.25)', borderRadius: 6, padding: 14, marginBottom: 22 }}>
-              <p style={{ margin: '0 0 8px', color: '#7bc87b', fontSize: 11, letterSpacing: 1 }}>
-                {tx.sunoImportLabel}
-              </p>
-
-              {/* Already-saved Suno track on this song */}
-              {song?.suno_url && !sunoPreview && (
-                <div style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(80,160,80,0.3)', borderRadius: 6, padding: 12, marginBottom: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ color: '#7bc87b', fontSize: 12, fontWeight: 500 }}>✓ {tx.sunoImportSaved}</div>
-                      <a href={song.suno_url} target="_blank" rel="noopener noreferrer" style={{ color: '#a09080', fontSize: 11, textDecoration: 'none', wordBreak: 'break-all' }}>{song.suno_url}</a>
-                    </div>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="btn-outline" style={{ padding: '4px 12px', fontSize: 11 }} onClick={clearSunoFromSong}>{tx.sunoImportClear}</button>
-                    </div>
-                  </div>
-                  {song?.suno_audio_url && (
-                    <audio src={song.suno_audio_url} controls style={{ width: '100%', marginTop: 10 }} />
-                  )}
-                </div>
-              )}
-
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <input
-                  value={sunoUrlInput}
-                  onChange={e => setSunoUrlInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') fetchSunoTrack() }}
-                  placeholder={tx.sunoImportPlaceholder}
-                  style={{ flex: '1 1 220px', minWidth: 0 }}
-                />
-                <button
-                  type="button"
-                  onClick={fetchSunoTrack}
-                  disabled={sunoFetching || !sunoUrlInput.trim()}
-                  style={{ background: 'rgba(80,160,80,0.18)', border: '1px solid rgba(80,160,80,0.45)', color: '#7bc87b', padding: '8px 16px', borderRadius: 4, cursor: 'pointer', fontSize: 12, fontWeight: 500 }}
-                >
-                  {sunoFetching ? '...' : tx.sunoImportFetch}
-                </button>
-              </div>
-
-              {sunoError && (
-                <div style={{ background: 'rgba(200,80,80,0.08)', border: '1px solid rgba(200,80,80,0.3)', color: '#c05050', padding: '6px 10px', borderRadius: 4, fontSize: 12, marginTop: 8 }}>
-                  {sunoError}
-                </div>
-              )}
-
-              {sunoPreview && (
-                <div style={{ marginTop: 14, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(80,160,80,0.3)', borderRadius: 6, padding: 14 }}>
-                  <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-                    {sunoPreview.coverUrl ? (
-                      <img src={sunoPreview.coverUrl} alt={sunoPreview.title || ''} style={{ width: 100, height: 100, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
-                    ) : (
-                      <div style={{ width: 100, height: 100, borderRadius: 6, background: 'rgba(80,160,80,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, flexShrink: 0 }}>🎵</div>
-                    )}
-                    <div style={{ flex: '1 1 240px', minWidth: 0 }}>
-                      <div style={{ color: '#e8e0d0', fontSize: 15, fontWeight: 500, marginBottom: 4 }}>{sunoPreview.title || '(untitled)'}</div>
-                      {sunoPreview.tags && (
-                        <div style={{ color: '#6a5a40', fontSize: 11, marginBottom: 6 }}>{sunoPreview.tags}</div>
-                      )}
-                      {sunoPreview.description && (
-                        <div style={{ color: '#8a7a60', fontSize: 12, lineHeight: 1.4, marginBottom: 8, maxHeight: 60, overflow: 'auto' }}>
-                          {sunoPreview.description}
-                        </div>
-                      )}
-                      {sunoPreview.audioUrl && (
-                        <audio src={sunoPreview.audioUrl} controls style={{ width: '100%' }} />
-                      )}
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
-                    <button
-                      className="btn-gold"
-                      onClick={() => saveSunoToSong({ useCover: true, useLyrics: false })}
-                      disabled={sunoSaving}
-                      style={{ background: '#7bc87b', borderColor: '#7bc87b', color: '#0a0f0a' }}
-                    >
-                      {sunoSaving ? tx.saving : tx.sunoImportSave}
-                    </button>
-                    {sunoPreview.lyrics && !lyrics && (
-                      <button
-                        className="btn-outline"
-                        onClick={() => saveSunoToSong({ useCover: true, useLyrics: true })}
-                        disabled={sunoSaving}
-                      >
-                        {tx.sunoImportSaveWithLyrics}
-                      </button>
-                    )}
-                    <button className="btn-outline" onClick={() => { setSunoPreview(null); setSunoUrlInput('') }}>{tx.cancel}</button>
-                  </div>
-                </div>
-              )}
-            </div>
 
             {!lyrics && <p style={{ color: '#e07070', fontSize: '13px' }}>{tx.sunoNoLyrics}</p>}
             <button className="btn-gold" onClick={generateSuno} disabled={aiLoading || !lyrics} style={{ marginBottom: '24px' }}>
@@ -2521,62 +2436,98 @@ export default function SongPage() {
 
         {/* MEDIA TAB */}
         {panel === 'media' && (
-          <div>
+          <div className="song-studio-publish-media">
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>{tx.mediaTitle}</h2>
-            <div className="card song-streaming-links" style={{ marginBottom: 24 }}>
-              <p style={{ color: '#8a7a60', fontSize: 12, letterSpacing: 1, marginTop: 0 }}>{tx.songStreamingLinksTitle}</p>
-              <label style={{ display: 'block', fontSize: 12, color: '#8a7a60', marginBottom: 6 }}>{tx.songSpotifyUrlLabel}</label>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <input
-                  value={spotifyUrl}
-                  onChange={e => setSpotifyUrl(e.target.value)}
-                  placeholder="https://open.spotify.com/track/..."
-                  style={{ flex: '1 1 220px', minWidth: 0 }}
-                />
-                <button type="button" className="btn-gold" onClick={saveSpotifyUrl} disabled={savingSpotify}>
-                  {savingSpotify ? tx.saving : tx.save}
-                </button>
-              </div>
-              <p style={{ color: '#5a4a30', fontSize: 11, margin: '8px 0 0' }}>{tx.songSpotifyUrlHint}</p>
-              {!spotifyUrl.trim() && (
-                <p className="playlist-eligibility-warn playlist-eligibility-warn--strong" style={{ marginTop: 10, marginBottom: 0 }}>
-                  {tx.playlistCommunityWarnSpotifyLink}
-                </p>
-              )}
-            </div>
-            <div className="card" style={{ marginBottom: '24px' }}>
-              <p style={{ color: '#8a7a60', fontSize: '12px', letterSpacing: '1px', marginTop: 0 }}>{tx.addLink}</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                <select value={newPlatform} onChange={e => setNewPlatform(e.target.value)} style={{ width: 'auto' }}>
-                  {MEDIA_PLATFORMS.map(p => <option key={p}>{p}</option>)}
-                </select>
-                <input value={newUrl} onChange={e => setNewUrl(e.target.value)} placeholder="https://..." />
-                <input value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder={tx.labelPlaceholder} />
-              </div>
-              <button className="btn-gold" onClick={addMediaLink} disabled={!newUrl.trim()}>+ {lang === 'no' ? 'Legg til' : 'Add'}</button>
-            </div>
-            {mediaLinks.length === 0 ? (
-              <WorkspaceEmptyState
-                icon="🔗"
-                title={tx.songStudioEmptyMedia}
-                description={tx.songStudioEmptyMediaDesc}
-              />
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {mediaLinks.map((link, i) => (
-                  <div key={i} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px' }}>
-                    <div>
-                      <span style={{ color: '#d4a843', fontSize: '13px', marginRight: '10px' }}>{link.platform}</span>
-                      <a href={link.url} target="_blank" rel="noopener noreferrer" style={{ color: '#7090d0', fontSize: '13px' }}>{link.label || link.url}</a>
-                    </div>
-                    <button onClick={() => removeMediaLink(i)} style={{ background: 'none', border: 'none', color: '#6a5a40', cursor: 'pointer', fontSize: '18px' }}>×</button>
-                  </div>
-                ))}
-              </div>
-            )}
 
-            {/* Click stats */}
-            <div className="card" style={{ marginTop: 28 }}>
+            <section className="song-studio-publish-section">
+              <h3 className="workspace-card-title">{tx.mediaTitle}</h3>
+              <div className="card song-streaming-links" style={{ marginBottom: 16 }}>
+                <p style={{ color: '#8a7a60', fontSize: 12, letterSpacing: 1, marginTop: 0 }}>{tx.songStreamingLinksTitle}</p>
+                <label style={{ display: 'block', fontSize: 12, color: '#8a7a60', marginBottom: 6 }}>{tx.songSpotifyUrlLabel}</label>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <input
+                    value={spotifyUrl}
+                    onChange={e => setSpotifyUrl(e.target.value)}
+                    placeholder="https://open.spotify.com/track/..."
+                    style={{ flex: '1 1 220px', minWidth: 0 }}
+                  />
+                  <button type="button" className="btn-gold" onClick={saveSpotifyUrl} disabled={savingSpotify}>
+                    {savingSpotify ? tx.saving : tx.save}
+                  </button>
+                </div>
+                <p style={{ color: '#5a4a30', fontSize: 11, margin: '8px 0 0' }}>{tx.songSpotifyUrlHint}</p>
+                {!spotifyUrl.trim() && (
+                  <p className="playlist-eligibility-warn playlist-eligibility-warn--strong" style={{ marginTop: 10, marginBottom: 0 }}>
+                    {tx.playlistCommunityWarnSpotifyLink}
+                  </p>
+                )}
+              </div>
+              <div className="card" style={{ marginBottom: 0 }}>
+                <p style={{ color: '#8a7a60', fontSize: '12px', letterSpacing: '1px', marginTop: 0 }}>{tx.addLink}</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                  <select value={newPlatform} onChange={e => setNewPlatform(e.target.value)} style={{ width: 'auto' }}>
+                    {MEDIA_PLATFORMS.map(p => <option key={p}>{p}</option>)}
+                  </select>
+                  <input value={newUrl} onChange={e => setNewUrl(e.target.value)} placeholder="https://..." />
+                  <input value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder={tx.labelPlaceholder} />
+                </div>
+                <button className="btn-gold" onClick={addMediaLink} disabled={!newUrl.trim()}>+ {lang === 'no' ? 'Legg til' : 'Add'}</button>
+              </div>
+              {mediaLinks.length === 0 ? (
+                <WorkspaceEmptyState
+                  icon="🔗"
+                  title={tx.songStudioEmptyMedia}
+                  description={tx.songStudioEmptyMediaDesc}
+                />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: 16 }}>
+                  {mediaLinks.map((link, i) => (
+                    <div key={i} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px' }}>
+                      <div>
+                        <span style={{ color: '#d4a843', fontSize: '13px', marginRight: '10px' }}>{link.platform}</span>
+                        <a href={link.url} target="_blank" rel="noopener noreferrer" style={{ color: '#7090d0', fontSize: '13px' }}>{link.label || link.url}</a>
+                      </div>
+                      <button onClick={() => removeMediaLink(i)} style={{ background: 'none', border: 'none', color: '#6a5a40', cursor: 'pointer', fontSize: '18px' }}>×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <ImportFinishedTrackCard
+              song={song}
+              sunoPreview={sunoPreview}
+              sunoUrlInput={sunoUrlInput}
+              onUrlInputChange={setSunoUrlInput}
+              onFetch={fetchSunoTrack}
+              sunoFetching={sunoFetching}
+              sunoError={sunoError}
+              sunoSaving={sunoSaving}
+              hasLyrics={!!lyrics?.trim()}
+              onSave={saveSunoToSong}
+              onClearSaved={clearSunoFromSong}
+              onDismissPreview={() => { setSunoPreview(null); setSunoUrlInput('') }}
+            />
+
+            <section className="song-studio-publish-section">
+              <h3 className="workspace-card-title">{tx.songStudioPublishShareTitle}</h3>
+              <div className="song-studio-publish-tools">
+                <div style={{ marginBottom: 24 }}>
+                  <QRCodeCard path={`/s/${songId}`} title={tx.qrSongHint} artistId={artist?.id} songId={songId} saveLabel={title} />
+                  {planId === 'free' && (
+                    <UpgradePrompt compact title={tx.upgradeQrTitle} description={tx.upgradeQrDesc} />
+                  )}
+                </div>
+                <div style={{ marginBottom: 0 }}>
+                  <EmbedCodeGenerator songId={songId} title={title || song?.title || 'ViaTone'} canRemoveBranding={planId === 'pro'} />
+                  {planId === 'free' && (
+                    <UpgradePrompt compact title={tx.upgradeEmbedTitle} description={tx.upgradeEmbedDesc} />
+                  )}
+                </div>
+              </div>
+            </section>
+
+            <section className="card song-studio-publish-section" style={{ marginTop: 28 }}>
               <h3 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: 14, letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 14px' }}>
                 📊 {lang === 'no' ? 'Klikkstatistikk' : 'Click stats'}
               </h3>
@@ -2586,7 +2537,7 @@ export default function SongPage() {
                   : 'Clicks from the public song page (/s/...) on Spotify, YouTube and other links.'}
               </p>
               <ClickStats songId={songId} />
-            </div>
+            </section>
           </div>
         )}
 
@@ -2902,22 +2853,6 @@ export default function SongPage() {
         {panel === 'publish' && (
           <div>
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>{tx.publishTitle}</h2>
-
-            <div className="song-studio-publish-tools">
-              <div style={{ marginBottom: 24 }}>
-                <QRCodeCard path={`/s/${songId}`} title={tx.qrSongHint} artistId={artist?.id} songId={songId} saveLabel={title} />
-                {planId === 'free' && (
-                  <UpgradePrompt compact title={tx.upgradeQrTitle} description={tx.upgradeQrDesc} />
-                )}
-              </div>
-
-              <div style={{ marginBottom: 24 }}>
-                <EmbedCodeGenerator songId={songId} title={title || song?.title || 'ViaTone'} canRemoveBranding={planId === 'pro'} />
-                {planId === 'free' && (
-                  <UpgradePrompt compact title={tx.upgradeEmbedTitle} description={tx.upgradeEmbedDesc} />
-                )}
-              </div>
-            </div>
 
             {/* Distribute to streaming platforms */}
             <div style={{
