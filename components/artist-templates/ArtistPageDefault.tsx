@@ -65,7 +65,7 @@ type Props = {
   albums: any[]
   events: any[]
   campaigns?: CampaignRow[]
-  stories?: Pick<ArtistStory, 'title' | 'slug' | 'excerpt' | 'cover_image_url' | 'story_type' | 'published_at'>[]
+  stories?: (Pick<ArtistStory, 'title' | 'slug' | 'excerpt' | 'cover_image_url' | 'story_type' | 'published_at'> & { body?: string | null })[]
 }
 
 function youtubeId(url: string): string | null {
@@ -214,6 +214,7 @@ export default function ArtistPageDefault({ artist, songs, albums, events, campa
             accent={accent}
             title={tx.publicStoriesLatest}
             viewAllLabel={tx.publicStoriesViewAll}
+            minReadLabel={tx.storyMinRead}
           />
         )}
 

@@ -1,8 +1,16 @@
-export type PublicAnalyticsEventType = 'artist_page_view' | 'song_page_view' | 'newsletter_signup' | 'embed_view' | 'embed_click'
+export type PublicAnalyticsEventType =
+  | 'artist_page_view'
+  | 'song_page_view'
+  | 'newsletter_signup'
+  | 'embed_view'
+  | 'embed_click'
+  | 'story_view'
+  | 'story_song_click'
 
 export type PublicAnalyticsPayload = {
   artist_id?: string | null
   song_id?: string | null
+  story_id?: string | null
   event_type: PublicAnalyticsEventType
   source?: string | null
   referrer?: string | null
@@ -33,6 +41,7 @@ export function trackPublicEvent(payload: PublicAnalyticsPayload) {
     referrer: payload.referrer ?? document.referrer ?? null,
     metadata: {
       page_path: currentPublicPath(),
+      ...(payload.story_id ? { story_id: payload.story_id } : {}),
       ...(payload.metadata || {}),
     },
   })

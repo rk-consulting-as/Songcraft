@@ -4,7 +4,10 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import PublicOwnerAdSlot from '@/components/ads/PublicOwnerAdSlot'
 import ViaToneBranding from '@/components/platform/ViaToneBranding'
+import PublicAnalyticsTracker from '@/components/PublicAnalyticsTracker'
 import { buildPublicMetadata } from '@/lib/platformGrowth/seo'
+import { queryLiveArtistStoriesList } from '@/lib/artistStories/fetchPublic'
+import { estimateReadTimeMinutes, formatReadTimeLabel } from '@/lib/artistStories/readTime'
 import { t } from '@/lib/i18n'
 import type { ArtistStory } from '@/lib/artistStories/types'
 
@@ -27,14 +30,7 @@ async function fetchStoriesIndex(slug: string) {
     .maybeSingle()
   if (!artist) return null
 
-  const { data: stories } = await sb
-    .from('artist_stories')
-    .select('id, title, slug, excerpt, cover_image_url, story_type, published_at')
-    .eq('artist_id', artist.id)
-    .eq('status', 'published')
-    .eq('public_hidden', false)
-    .eq('admin_hidden', false)
-    .order('published_at', { ascending: false })
+  const { data: stories } = await queryLiveArtistStoriesList(sb, artist.id).order('published_at', { ascending: false })
 
   return { artist, stories: (stories || []) as ArtistStory[] }
 }
@@ -62,6 +58,7 @@ export default async function ArtistStoriesIndexPage({ params }: { params: { slu
 
   return (
     <div className="public-surface public-stories-index" style={{ ['--pub-accent' as string]: accent }}>
+      <PublicAnalyticsTracker artistId={artist.id} eventType="artist_page_view" />
       <header className="public-stories-index__header">
         <Link href={`/p/${artist.page_slug}`} className="public-story-page__back">{tx.publicStoriesBackToArtist}</Link>
         <h1 className="public-hero__title">{tx.publicStoriesTitle}</h1>
@@ -72,20 +69,25 @@ export default async function ArtistStoriesIndexPage({ params }: { params: { slu
         <p className="public-stories-index__empty">{tx.publicStoriesEmpty}</p>
       ) : (
         <div className="public-stories-grid">
-          {stories.map(story => (
-            <Link key={story.slug} href={`/p/${artist.page_slug}/stories/${story.slug}`} className="public-story-card">
-              {story.cover_image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={story.cover_image_url} alt="" className="public-story-card__cover" />
-              ) : (
-                <div className="public-story-card__cover public-story-card__cover--empty" aria-hidden="true">📖</div>
-              )}
-              <div className="public-story-card__body">
-                <h2 className="public-story-card__title">{story.title}</h2>
-                {story.excerpt && <p className="public-story-card__excerpt">{story.excerpt}</p>}
-              </div>
-            </Link>
-          ))}
+          {stories.map(story => {
+            const mins = estimateReadTimeMinutes(story.body, story.excerpt)
+            const readLabel = formatReadTimeLabel(mins, { minRead: tx.storyMinRead })
+            return (
+              <Link key={story.slug} href={`/p/${artist.page_slug}/stories/${story.slug}`} className="public-story-card">
+                {story.cover_image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={story.cover_image_url} alt="" className="public-story-card__cover" />
+                ) : (
+                  <div className="public-story-card__cover public-story-card__cover--empty" aria-hidden="true">📖</div>
+                )}
+                <div className="public-story-card__body">
+                  <h2 className="public-story-card__title">{story.title}</h2>
+                  <p className="public-story-card__read-time">{readLabel}</p>
+                  {story.excerpt && <p className="public-story-card__excerpt">{story.excerpt}</p>}
+                </div>
+              </Link>
+            )
+          })}
         </div>
       )}
 

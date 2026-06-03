@@ -10,7 +10,10 @@ const sb = createClient(
   { auth: { persistSession: false } }
 )
 
-const EVENT_TYPES = new Set(['artist_page_view', 'song_page_view', 'newsletter_signup', 'embed_view', 'embed_click'])
+const EVENT_TYPES = new Set([
+  'artist_page_view', 'song_page_view', 'newsletter_signup', 'embed_view', 'embed_click',
+  'story_view', 'story_song_click',
+])
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 function clip(value: unknown, max: number): string | null {
@@ -46,22 +49,31 @@ export async function POST(req: NextRequest) {
 
     const artistId = body.artist_id && UUID_RE.test(String(body.artist_id)) ? String(body.artist_id) : null
     const songId = body.song_id && UUID_RE.test(String(body.song_id)) ? String(body.song_id) : null
+    const meta = safeMetadata(body.metadata)
+    const storyIdRaw = body.story_id || meta.story_id
+    const storyId = storyIdRaw && UUID_RE.test(String(storyIdRaw)) ? String(storyIdRaw) : null
     if (!artistId && !songId) return NextResponse.json({ error: 'missing_target' }, { status: 400 })
     if (eventType === 'artist_page_view' && !artistId) return NextResponse.json({ error: 'missing_artist' }, { status: 400 })
     if (eventType === 'song_page_view' && !songId) return NextResponse.json({ error: 'missing_song' }, { status: 400 })
     if ((eventType === 'embed_view' || eventType === 'embed_click') && !songId) return NextResponse.json({ error: 'missing_song' }, { status: 400 })
+    if ((eventType === 'story_view' || eventType === 'story_song_click') && (!artistId || !storyId)) {
+      return NextResponse.json({ error: 'missing_story' }, { status: 400 })
+    }
+    if (eventType === 'story_song_click' && !songId) return NextResponse.json({ error: 'missing_song' }, { status: 400 })
 
     const userAgent = clip(req.headers.get('user-agent'), 500)
     const referrer = clip(body.referrer || req.headers.get('referer'), 500)
+    const source = normalizeSource(body.source)
+    const storySource = eventType === 'story_view' || eventType === 'story_song_click' ? 'story' : source
 
     const { error } = await sb.from('analytics_events').insert({
       artist_id: artistId,
       song_id: songId,
       event_type: eventType,
-      source: normalizeSource(body.source),
+      source: storySource,
       user_agent: userAgent,
       referrer,
-      metadata: safeMetadata(body.metadata),
+      metadata: { ...meta, ...(storyId ? { story_id: storyId } : {}) },
     })
 
     if (error) {

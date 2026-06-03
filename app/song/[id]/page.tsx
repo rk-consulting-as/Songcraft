@@ -64,6 +64,10 @@ export default function SongPage() {
   const [song, setSong] = useState<any>(null)
   const [artist, setArtist] = useState<any>(null)
   const [planId, setPlanId] = useState<'free' | 'pro'>('free')
+  const [linkedStory, setLinkedStory] = useState<{
+    id: string; title: string; slug: string; status: string
+    published_at?: string | null; public_hidden?: boolean; admin_hidden?: boolean
+  } | null>(null)
   const [loading, setLoading] = useState(true)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiTarget, setAiTarget] = useState('')
@@ -258,6 +262,20 @@ export default function SongPage() {
       setCanvasProvider(data.canvas_provider || '')
       setCanvasMeta(data.canvas_meta || {})
       setPublishContent(data.publish_content || {})
+      const artistRow = data.artists as { id?: string } | null
+      if (artistRow?.id) {
+        const { data: storyRows } = await supabase
+          .from('artist_stories')
+          .select('id, title, slug, status, published_at, public_hidden, admin_hidden')
+          .eq('song_id', songId)
+          .eq('artist_id', artistRow.id)
+          .neq('status', 'archived')
+          .order('updated_at', { ascending: false })
+          .limit(1)
+        setLinkedStory(storyRows?.[0] || null)
+      } else {
+        setLinkedStory(null)
+      }
     }
     setLoading(false)
   }
@@ -1332,6 +1350,9 @@ export default function SongPage() {
             distributionStatus={distributionStatusLabel}
             campaignTimelineCount={campaignTimeline.length}
             artistId={artist?.id}
+            pageSlug={artist?.page_slug}
+            pageEnabled={!!artist?.page_enabled}
+            linkedStory={linkedStory}
             onGoToPanel={navigateToPanel}
           />
         )}

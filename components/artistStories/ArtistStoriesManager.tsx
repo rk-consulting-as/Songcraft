@@ -5,9 +5,20 @@ import Link from 'next/link'
 import AssetPicker from '@/components/media/AssetPicker'
 import UpgradePrompt from '@/components/UpgradePrompt'
 import WorkspaceEmptyState from '@/components/WorkspaceEmptyState'
+import StoryPreviewModal from '@/components/artistStories/StoryPreviewModal'
 import { buildBehindTheSongPrompt, parseGeneratedStoryJson } from '@/lib/artistStories/generateFromSong'
-import { canGenerateStoryWithAi, canPublishMoreStories, canUseStorySeoControls, getPublishedStoriesLimit } from '@/lib/artistStories/limits'
+import {
+  canGenerateStoryWithAi,
+  canPublishMoreStories,
+  canUseStorySeoControls,
+  countStoriesTowardLimit,
+  getPublishedStoriesLimit,
+} from '@/lib/artistStories/limits'
+import { resolveStoryOgImage } from '@/lib/artistStories/metadata'
+import { estimateReadTimeMinutes, formatReadTimeLabel } from '@/lib/artistStories/readTime'
 import { slugifyStoryTitle, uniqueStorySlug } from '@/lib/artistStories/slug'
+import { isStoryPubliclyLive } from '@/lib/artistStories/visibility'
+import { useStoryAnalytics } from '@/lib/artistStories/useStoryAnalytics'
 import { STORY_TYPES, type ArtistStory, type StoryStatus, type StoryType } from '@/lib/artistStories/types'
 import { clientPublicUrl } from '@/lib/appUrl'
 import { t, useLang } from '@/lib/i18n'
@@ -54,6 +65,29 @@ const EMPTY_FORM = {
   og_image_url: '',
   status: 'draft' as StoryStatus,
   public_hidden: false,
+  schedule_at: '',
+}
+
+function toDatetimeLocalValue(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function scheduleAtToIso(local: string): string | null {
+  if (!local.trim()) return null
+  const d = new Date(local)
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
+}
+
+function statusLabel(story: ArtistStory, tx: Record<string, string>): string {
+  if (story.status === 'scheduled') return tx.storyStatusScheduled
+  if (story.status === 'published' && story.published_at && !isStoryPubliclyLive(story)) return tx.storyStatusScheduled
+  if (story.status === 'published') return tx.storyStatusPublished
+  if (story.status === 'archived') return tx.storyStatusArchived
+  return tx.storyStatusDraft
 }
 
 export default function ArtistStoriesManager({
@@ -75,13 +109,20 @@ export default function ArtistStoriesManager({
   const [form, setForm] = useState({ ...EMPTY_FORM, song_id: initialSongId || '' })
   const [editing, setEditing] = useState(false)
   const [coverPickerOpen, setCoverPickerOpen] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [archiveTarget, setArchiveTarget] = useState<ArtistStory | null>(null)
   const [toast, setToast] = useState<string | null>(null)
 
-  const publishedCount = useMemo(() => stories.filter(s => s.status === 'published').length, [stories])
   const publishLimit = getPublishedStoriesLimit(planId)
-  const canPublish = canPublishMoreStories(planId, publishedCount) || form.status === 'published'
+  const slotCount = useMemo(() => countStoriesTowardLimit(stories), [stories])
+  const canPublishMore = canPublishMoreStories(planId, stories)
   const seoEnabled = canUseStorySeoControls(planId)
   const aiEnabled = canGenerateStoryWithAi(planId)
+
+  const { byStoryId, loading: analyticsLoading } = useStoryAnalytics(
+    artistId,
+    stories.map(s => ({ id: s.id, slug: s.slug })),
+  )
 
   const loadStories = useCallback(async () => {
     setLoading(true)
@@ -124,18 +165,17 @@ export default function ArtistStoriesManager({
       og_image_url: story.og_image_url || '',
       status: story.status,
       public_hidden: story.public_hidden,
+      schedule_at: story.status === 'scheduled' || (story.published_at && !isStoryPubliclyLive(story))
+        ? toDatetimeLocalValue(story.published_at)
+        : '',
     })
     setEditing(true)
   }
 
-  const saveStory = async (nextStatus?: StoryStatus) => {
-    if (!form.title.trim()) return
-    setSaving(true)
-    const supabase = createClient()
+  const buildPayload = (status: StoryStatus, publishedAt: string | null) => {
     const slugs = stories.filter(s => s.id !== form.id).map(s => s.slug)
     const slug = form.slug.trim() ? slugifyStoryTitle(form.slug) : uniqueStorySlug(form.title, slugs)
-    const status = nextStatus || form.status
-    const payload = {
+    return {
       artist_id: artistId,
       title: form.title.trim(),
       slug,
@@ -150,39 +190,87 @@ export default function ArtistStoriesManager({
       og_image_url: seoEnabled ? (form.og_image_url.trim() || null) : null,
       status,
       public_hidden: form.public_hidden,
+      published_at: publishedAt,
     }
+  }
 
+  const persistForm = async (status: StoryStatus, publishedAt: string | null) => {
+    if (!form.title.trim()) return false
+    setSaving(true)
+    const supabase = createClient()
+    const payload = buildPayload(status, publishedAt)
     let error
     if (form.id) {
       ({ error } = await supabase.from('artist_stories').update(payload).eq('id', form.id))
     } else {
       ({ error } = await supabase.from('artist_stories').insert(payload))
     }
-
     setSaving(false)
     if (error) {
       setToast(tx.storySaveError)
+      return false
+    }
+    return true
+  }
+
+  const saveDraft = async () => {
+    const ok = await persistForm('draft', null)
+    if (!ok) return
+    setToast(tx.storySavedSuccess)
+    resetForm()
+    loadStories()
+  }
+
+  const publishNow = async () => {
+    if (!canPublishMore && form.status !== 'published') {
+      setToast(tx.storyPublishLimit)
       return
     }
-    setToast(status === 'published' ? tx.storyPublishedSuccess : tx.storySavedSuccess)
+    const ok = await persistForm('published', new Date().toISOString())
+    if (!ok) return
+    setToast(tx.storyPublishedSuccess)
+    resetForm()
+    loadStories()
+  }
+
+  const schedulePublish = async () => {
+    const at = scheduleAtToIso(form.schedule_at)
+    if (!at) {
+      setToast(tx.storyScheduleInvalid)
+      return
+    }
+    if (new Date(at).getTime() <= Date.now()) {
+      setToast(tx.storyScheduleFuture)
+      return
+    }
+    if (!canPublishMore && form.status !== 'scheduled' && form.status !== 'published') {
+      setToast(tx.storyPublishLimit)
+      return
+    }
+    const ok = await persistForm('scheduled', at)
+    if (!ok) return
+    setToast(tx.storyScheduledSuccess)
     resetForm()
     loadStories()
   }
 
   const publishStory = async (story: ArtistStory) => {
-    if (!canPublishMoreStories(planId, publishedCount)) {
+    if (!canPublishMoreStories(planId, stories.filter(s => s.id !== story.id))) {
       setToast(tx.storyPublishLimit)
       return
     }
     const supabase = createClient()
-    await supabase.from('artist_stories').update({ status: 'published' }).eq('id', story.id)
+    await supabase.from('artist_stories').update({ status: 'published', published_at: new Date().toISOString() }).eq('id', story.id)
     setToast(tx.storyPublishedSuccess)
     loadStories()
   }
 
-  const archiveStory = async (story: ArtistStory) => {
+  const confirmArchive = async () => {
+    if (!archiveTarget) return
     const supabase = createClient()
-    await supabase.from('artist_stories').update({ status: 'archived' }).eq('id', story.id)
+    await supabase.from('artist_stories').update({ status: 'archived', published_at: null }).eq('id', archiveTarget.id)
+    setArchiveTarget(null)
+    setToast(tx.storyArchivedSuccess)
     loadStories()
   }
 
@@ -260,6 +348,18 @@ export default function ArtistStoriesManager({
   const publicStoryUrl = (storySlug: string) =>
     pageSlug && pageEnabled ? clientPublicUrl(`/p/${pageSlug}/stories/${storySlug}`) : ''
 
+  const sharePreviewImage = resolveStoryOgImage(
+    { og_image_url: form.og_image_url, cover_image_url: form.cover_image_url },
+    null,
+  )
+  const shareTitle = form.seo_title.trim() || form.title.trim() || artistName
+  const shareDescription = form.seo_description.trim() || form.excerpt.trim()
+
+  const copyStoryUrl = (url: string) => {
+    if (!url) return
+    navigator.clipboard.writeText(url).then(() => setToast(tx.copied)).catch(() => {})
+  }
+
   return (
     <div className="artist-stories-manager workspace-section">
       {toast && (
@@ -272,7 +372,7 @@ export default function ArtistStoriesManager({
             <h2 className="workspace-section-title">{tx.artistSiteStoriesTitle}</h2>
             <p className="workspace-section-desc">{tx.artistSiteStoriesDesc}</p>
             <p className="workspace-section-desc">
-              {tx.storyPublishLimitLabel}: {publishedCount}{publishLimit !== null ? ` / ${publishLimit}` : ''}
+              {tx.storyPublishLimitLabel}: {slotCount}{publishLimit !== null ? ` / ${publishLimit}` : ''}
             </p>
           </div>
           <button type="button" className="btn-gold quick-action-btn" onClick={() => { resetForm(); setEditing(true) }}>
@@ -348,28 +448,57 @@ export default function ArtistStoriesManager({
             <UpgradePrompt compact title={tx.storySeoProTitle} description={tx.storySeoProDesc} />
           )}
 
+          <div className="artist-stories-manager__share-preview card workspace-card">
+            <h4 className="workspace-card-title">{tx.storySharePreviewTitle}</h4>
+            {sharePreviewImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={sharePreviewImage} alt="" className="artist-stories-manager__og-preview" />
+            ) : (
+              <p className="workspace-section-desc">{tx.storySharePreviewNoImage}</p>
+            )}
+            <p className="artist-stories-manager__share-title"><strong>{shareTitle}</strong></p>
+            <p className="workspace-section-desc">{shareDescription || '—'}</p>
+            {form.slug && pageSlug && (
+              <div className="artist-stories-manager__share-actions">
+                <button type="button" className="btn-outline quick-action-btn" onClick={() => copyStoryUrl(publicStoryUrl(form.slug))}>
+                  {tx.storyCopyUrl}
+                </button>
+                {isStoryPubliclyLive({ status: form.status, published_at: scheduleAtToIso(form.schedule_at), public_hidden: form.public_hidden, admin_hidden: false }) && (
+                  <a href={publicStoryUrl(form.slug)} target="_blank" rel="noopener noreferrer" className="btn-outline quick-action-btn" style={{ textDecoration: 'none' }}>
+                    {tx.storyViewPublic}
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+
+          <label className="artist-stories-manager__label">{tx.storyScheduleAt}</label>
+          <input
+            type="datetime-local"
+            value={form.schedule_at}
+            onChange={e => setForm(f => ({ ...f, schedule_at: e.target.value }))}
+            aria-label={tx.storyScheduleAt}
+            className="artist-stories-manager__schedule-input"
+          />
+
           <label className="artist-stories-manager__checkbox">
             <input type="checkbox" checked={form.public_hidden} onChange={e => setForm(f => ({ ...f, public_hidden: e.target.checked }))} />
             {tx.storyPublicHidden}
           </label>
 
           <div className="artist-stories-manager__actions">
-            <button type="button" className="btn-gold quick-action-btn" onClick={() => saveStory('draft')} disabled={saving || !form.title.trim()}>
+            <button type="button" className="btn-gold quick-action-btn" onClick={saveDraft} disabled={saving || !form.title.trim()}>
               {saving ? tx.saving : tx.storySaveDraft}
             </button>
-            <button
-              type="button"
-              className="btn-outline quick-action-btn"
-              onClick={() => saveStory('published')}
-              disabled={saving || !form.title.trim() || !canPublish}
-            >
-              {tx.storyPublish}
+            <button type="button" className="btn-outline quick-action-btn" onClick={publishNow} disabled={saving || !form.title.trim() || !canPublishMore}>
+              {tx.storyPublishNow}
             </button>
-            {publicStoryUrl(form.slug) && (
-              <a href={publicStoryUrl(form.slug)} target="_blank" rel="noopener noreferrer" className="btn-outline quick-action-btn" style={{ textDecoration: 'none' }}>
-                {tx.storyPreview}
-              </a>
-            )}
+            <button type="button" className="btn-outline quick-action-btn" onClick={schedulePublish} disabled={saving || !form.title.trim() || !form.schedule_at || !canPublishMore}>
+              {tx.storySchedule}
+            </button>
+            <button type="button" className="btn-outline quick-action-btn" onClick={() => setPreviewOpen(true)} disabled={!form.title.trim()}>
+              {tx.storyPreview}
+            </button>
             <button type="button" className="btn-outline quick-action-btn" onClick={resetForm}>{tx.cancel}</button>
           </div>
           <p className="workspace-section-desc">{tx.storyDraftOnlyNote}</p>
@@ -384,32 +513,57 @@ export default function ArtistStoriesManager({
         <ul className="artist-stories-manager__list">
           {stories.map(story => {
             const url = publicStoryUrl(story.slug)
+            const live = isStoryPubliclyLive(story)
+            const stats = byStoryId[story.id]
+            const readMins = estimateReadTimeMinutes(story.body, story.excerpt)
+            const readLabel = formatReadTimeLabel(readMins, { minRead: tx.storyMinRead })
+            const hasActivity = stats && (stats.views > 0 || stats.newsletterSignups > 0 || stats.songClicks > 0)
+
             return (
               <li key={story.id} className="card workspace-card workspace-glass artist-stories-manager__item">
                 <div className="artist-stories-manager__item-main">
                   <h4 className="workspace-card-title">{story.title}</h4>
                   <p className="workspace-section-desc">
-                    {tx[STORY_TYPE_LABEL_KEYS[story.story_type]]} · {story.status}
+                    {tx[STORY_TYPE_LABEL_KEYS[story.story_type]]} · {statusLabel(story, tx)} · {readLabel}
                   </p>
+                  {story.published_at && story.status !== 'draft' && (
+                    <p className="artist-stories-manager__schedule-hint">
+                      {tx.storyPublishAt}: {new Date(story.published_at).toLocaleString()}
+                    </p>
+                  )}
                   {story.excerpt && <p className="artist-stories-manager__excerpt">{story.excerpt}</p>}
+
+                  {analyticsLoading ? (
+                    <p className="workspace-section-desc">{tx.loading}</p>
+                  ) : !hasActivity ? (
+                    <p className="artist-stories-manager__analytics-empty">{tx.storyAnalyticsEmpty}</p>
+                  ) : (
+                    <ul className="artist-stories-manager__analytics">
+                      <li><span>{tx.storyAnalyticsViews}</span><strong>{stats?.views ?? 0}</strong></li>
+                      <li><span>{tx.storyAnalyticsRecent}</span><strong>{stats?.recentViews ?? 0}</strong></li>
+                      <li><span>{tx.storyAnalyticsNewsletter}</span><strong>{stats?.newsletterSignups ?? 0}</strong></li>
+                      <li><span>{tx.storyAnalyticsSongClicks}</span><strong>{stats?.songClicks ?? 0}</strong></li>
+                    </ul>
+                  )}
                 </div>
                 <div className="artist-stories-manager__item-actions">
                   <button type="button" className="btn-outline quick-action-btn" onClick={() => openEdit(story)}>{tx.edit}</button>
-                  {story.status !== 'published' && (
-                    <button type="button" className="btn-gold quick-action-btn" onClick={() => publishStory(story)} disabled={!canPublishMoreStories(planId, publishedCount)}>
-                      {tx.storyPublish}
+                  <button type="button" className="btn-outline quick-action-btn" onClick={() => { openEdit(story); setPreviewOpen(true) }}>{tx.storyPreview}</button>
+                  {!live && story.status !== 'archived' && (
+                    <button type="button" className="btn-gold quick-action-btn" onClick={() => publishStory(story)} disabled={!canPublishMoreStories(planId, stories.filter(s => s.id !== story.id))}>
+                      {tx.storyPublishNow}
                     </button>
                   )}
-                  {story.status === 'published' && (
+                  {live && (
                     <button type="button" className="btn-outline quick-action-btn" onClick={() => unpublishStory(story)}>{tx.storyUnpublish}</button>
                   )}
                   {story.status !== 'archived' && (
-                    <button type="button" className="btn-outline quick-action-btn" onClick={() => archiveStory(story)}>{tx.storyArchive}</button>
+                    <button type="button" className="btn-outline quick-action-btn" onClick={() => setArchiveTarget(story)}>{tx.storyArchive}</button>
                   )}
-                  {url && story.status === 'published' && !story.public_hidden && (
+                  {url && live && !story.public_hidden && (
                     <>
                       <a href={url} target="_blank" rel="noopener noreferrer" className="btn-outline quick-action-btn" style={{ textDecoration: 'none' }}>{tx.storyViewPublic}</a>
-                      <button type="button" className="btn-outline quick-action-btn" onClick={() => navigator.clipboard.writeText(url)}>{tx.storyCopyUrl}</button>
+                      <button type="button" className="btn-outline quick-action-btn" onClick={() => copyStoryUrl(url)}>{tx.storyCopyUrl}</button>
                     </>
                   )}
                 </div>
@@ -423,6 +577,31 @@ export default function ArtistStoriesManager({
         <Link href={clientPublicUrl(`/p/${pageSlug}/stories`)} target="_blank" className="btn-outline quick-action-btn" style={{ textDecoration: 'none', alignSelf: 'flex-start' }}>
           {tx.storyViewAllPublic} ↗
         </Link>
+      )}
+
+      <StoryPreviewModal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        story={{
+          title: form.title,
+          excerpt: form.excerpt,
+          body: form.body,
+          cover_image_url: form.cover_image_url,
+        }}
+        artistName={artistName}
+      />
+
+      {archiveTarget && (
+        <div className="modal-overlay story-archive-confirm" role="dialog" aria-modal="true">
+          <div className="card workspace-card story-archive-confirm__panel">
+            <h3 className="workspace-card-title">{tx.storyArchiveConfirmTitle}</h3>
+            <p className="workspace-section-desc">{tx.storyArchiveConfirmDesc}</p>
+            <div className="artist-stories-manager__actions">
+              <button type="button" className="btn-outline quick-action-btn" onClick={() => setArchiveTarget(null)}>{tx.cancel}</button>
+              <button type="button" className="btn-gold quick-action-btn" onClick={confirmArchive}>{tx.storyArchive}</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {coverPickerOpen && (

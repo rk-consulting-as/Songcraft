@@ -50,9 +50,11 @@ async function fetchPageData(slug: string) {
       .eq('admin_hidden', false)
       .order('created_at', { ascending: false })
       .limit(3),
-    sb.from('artist_stories').select('title, slug, excerpt, cover_image_url, story_type, published_at')
+    sb.from('artist_stories').select('title, slug, excerpt, cover_image_url, story_type, published_at, body')
       .eq('artist_id', artist.id)
-      .eq('status', 'published')
+      .in('status', ['published', 'scheduled'])
+      .lte('published_at', new Date().toISOString())
+      .not('published_at', 'is', null)
       .eq('public_hidden', false)
       .eq('admin_hidden', false)
       .order('published_at', { ascending: false })

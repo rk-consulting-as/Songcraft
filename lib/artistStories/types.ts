@@ -10,7 +10,7 @@ export const STORY_TYPES = [
 
 export type StoryType = typeof STORY_TYPES[number]
 
-export const STORY_STATUSES = ['draft', 'published', 'archived'] as const
+export const STORY_STATUSES = ['draft', 'published', 'archived', 'scheduled'] as const
 export type StoryStatus = typeof STORY_STATUSES[number]
 
 export type ArtistStory = {

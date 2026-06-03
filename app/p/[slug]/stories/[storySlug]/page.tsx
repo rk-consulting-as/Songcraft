@@ -4,8 +4,9 @@ import type { Metadata } from 'next'
 import PublicStoryPageContent from '@/components/public/PublicStoryPageContent'
 import PublicOwnerAdSlot from '@/components/ads/PublicOwnerAdSlot'
 import { buildPublicMetadata } from '@/lib/platformGrowth/seo'
+import { queryLiveArtistStoriesList, queryLiveArtistStoryBySlug, queryLiveArtistStoriesRelated } from '@/lib/artistStories/fetchPublic'
+import { pickRelatedStories } from '@/lib/artistStories/relatedStories'
 import {
-  buildStoryCanonicalUrl,
   buildStoryPageDescription,
   buildStoryPageTitle,
   resolveStoryOgImage,
@@ -32,27 +33,11 @@ async function fetchStory(slug: string, storySlug: string) {
     .maybeSingle()
   if (!artist) return null
 
-  const { data: story } = await sb
-    .from('artist_stories')
-    .select('*')
-    .eq('artist_id', artist.id)
-    .eq('slug', storySlug)
-    .eq('status', 'published')
-    .eq('public_hidden', false)
-    .eq('admin_hidden', false)
-    .maybeSingle()
+  const { data: story } = await queryLiveArtistStoryBySlug(sb, artist.id, storySlug)
   if (!story) return null
 
-  const [{ data: related }, { data: linkedSong }] = await Promise.all([
-    sb.from('artist_stories')
-      .select('title, slug, excerpt, cover_image_url')
-      .eq('artist_id', artist.id)
-      .eq('status', 'published')
-      .eq('public_hidden', false)
-      .eq('admin_hidden', false)
-      .neq('id', story.id)
-      .order('published_at', { ascending: false })
-      .limit(4),
+  const [{ data: candidates }, { data: linkedSong }] = await Promise.all([
+    queryLiveArtistStoriesRelated(sb, artist.id, story.id),
     story.song_id
       ? sb.from('songs').select('id, title, spotify_url, suno_url, cover_image_url, spotify_cover_url, public_hidden, admin_hidden')
           .eq('id', story.song_id)
@@ -62,10 +47,16 @@ async function fetchStory(slug: string, storySlug: string) {
       : Promise.resolve({ data: null }),
   ])
 
+  const relatedStories = pickRelatedStories(
+    { id: story.id, story_type: story.story_type, song_id: story.song_id },
+    (candidates || []) as ArtistStory[],
+    4,
+  )
+
   return {
     artist,
     story: story as ArtistStory,
-    relatedStories: related || [],
+    relatedStories,
     linkedSong: linkedSong || null,
   }
 }
@@ -104,6 +95,8 @@ export default async function ArtistStoryDetailPage({ params }: { params: { slug
           relatedStories: tx.publicStoriesRelated,
           listenOnSpotify: tx.publicListenOnSpotify,
           openSongPage: tx.publicOpenSongPage,
+          listenToSong: tx.storyListenToSong,
+          minRead: tx.storyMinRead,
         }}
       />
       <PublicOwnerAdSlot ownerUserId={data.artist.user_id} placement="artist_footer" />

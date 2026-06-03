@@ -2,6 +2,8 @@
 
 import Link from 'next/link'
 import WorkspaceEmptyState from '@/components/WorkspaceEmptyState'
+import { isStoryPubliclyLive } from '@/lib/artistStories/visibility'
+import { clientPublicUrl } from '@/lib/appUrl'
 import { useSongEngagementStats } from '@/lib/songStudio/useSongEngagementStats'
 import { t, useLang } from '@/lib/i18n'
 
@@ -19,6 +21,9 @@ type Props = {
   distributionStatus?: string | null
   campaignTimelineCount?: number
   artistId?: string | null
+  pageSlug?: string | null
+  pageEnabled?: boolean
+  linkedStory?: { id: string; title: string; slug: string; status: string; published_at?: string | null; public_hidden?: boolean } | null
   onGoToPanel: (panel: string) => void
 }
 
@@ -34,6 +39,9 @@ export default function SongStudioOverview({
   distributionStatus,
   campaignTimelineCount = 0,
   artistId,
+  pageSlug,
+  pageEnabled,
+  linkedStory,
   onGoToPanel,
 }: Props) {
   const tx = t[useLang()] as Record<string, string>
@@ -111,6 +119,29 @@ export default function SongStudioOverview({
           )}
         </div>
       </div>
+
+      {linkedStory && artistId && (
+        <div className="card workspace-card workspace-glass song-studio-overview__linked-story">
+          <h3 className="workspace-card-title">{tx.storyLinkedStoryTitle}</h3>
+          <p className="workspace-section-desc">{linkedStory.title}</p>
+          <div className="song-studio-overview__actions">
+            <Link href={`/artist/${artistId}#brand-stories`} className="btn-outline quick-action-btn" style={{ textDecoration: 'none', textAlign: 'center' }}>
+              {tx.storyEditLinkedStory}
+            </Link>
+            {pageSlug && pageEnabled && isStoryPubliclyLive(linkedStory) && (
+              <a
+                href={clientPublicUrl(`/p/${pageSlug}/stories/${linkedStory.slug}`)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-outline quick-action-btn"
+                style={{ textDecoration: 'none', textAlign: 'center' }}
+              >
+                {tx.storyViewPublic} ↗
+              </a>
+            )}
+          </div>
+        </div>
+      )}
 
       {missingItems.length > 0 && (
         <div className="card workspace-card workspace-glass">

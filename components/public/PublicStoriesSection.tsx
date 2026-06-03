@@ -1,15 +1,17 @@
 import Link from 'next/link'
+import { estimateReadTimeMinutes, formatReadTimeLabel } from '@/lib/artistStories/readTime'
 import type { ArtistStory } from '@/lib/artistStories/types'
 
 type Props = {
-  stories: Pick<ArtistStory, 'title' | 'slug' | 'excerpt' | 'cover_image_url' | 'published_at' | 'story_type'>[]
+  stories: (Pick<ArtistStory, 'title' | 'slug' | 'excerpt' | 'cover_image_url' | 'published_at' | 'story_type'> & { body?: string | null })[]
   pageSlug: string
   accent?: string
   title: string
   viewAllLabel: string
+  minReadLabel: string
 }
 
-export default function PublicStoriesSection({ stories, pageSlug, accent = '#d4a843', title, viewAllLabel }: Props) {
+export default function PublicStoriesSection({ stories, pageSlug, accent = '#d4a843', title, viewAllLabel, minReadLabel }: Props) {
   if (stories.length === 0) return null
 
   return (
@@ -21,7 +23,12 @@ export default function PublicStoriesSection({ stories, pageSlug, accent = '#d4a
         </Link>
       </div>
       <div className="public-stories-grid">
-        {stories.slice(0, 3).map(story => (
+        {stories.slice(0, 3).map(story => {
+          const readLabel = formatReadTimeLabel(
+            estimateReadTimeMinutes(story.body, story.excerpt),
+            { minRead: minReadLabel },
+          )
+          return (
           <Link key={story.slug} href={`/p/${pageSlug}/stories/${story.slug}`} className="public-story-card">
             {story.cover_image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -31,10 +38,12 @@ export default function PublicStoriesSection({ stories, pageSlug, accent = '#d4a
             )}
             <div className="public-story-card__body">
               <h3 className="public-story-card__title">{story.title}</h3>
+              <p className="public-story-card__read-time">{readLabel}</p>
               {story.excerpt && <p className="public-story-card__excerpt">{story.excerpt}</p>}
             </div>
           </Link>
-        ))}
+          )
+        })}
       </div>
     </section>
   )
