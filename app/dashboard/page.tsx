@@ -887,7 +887,7 @@ export default function Dashboard() {
           </div>
         </div>
         {/* Compact header: main nav + chat button + profile dropdown */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="app-header-legacy-nav" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
           <Link href="/discover" className="btn-outline" style={navLinkStyle}>🌍 {tx.discoverNavLink}</Link>
           <Link href="/charts" className="btn-outline" style={navLinkStyle} title={tx.analyticsLabelChartsHelp}>📈 {tx.analyticsLabelCharts}</Link>
           <Link href="/analytics" className="btn-outline" style={navLinkStyle} title={tx.analyticsLabelAccountHelp}>📊 {tx.analyticsLabelAccount}</Link>

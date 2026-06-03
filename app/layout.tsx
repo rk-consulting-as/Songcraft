@@ -5,6 +5,7 @@ import ChatDock from '@/components/ChatDock'
 import MobileBottomNav from '@/components/MobileBottomNav'
 import PWARegister from '@/components/PWARegister'
 import BetaLaunchKit from '@/components/BetaLaunchKit'
+import AppNavigationShell from '@/components/navigation/AppNavigationShell'
 import { BRAND_DESCRIPTION_SHORT, BRAND_NAME, BRAND_TAGLINE } from '@/lib/brand'
 
 export const metadata: Metadata = {
@@ -54,7 +55,7 @@ export default function RootLayout({
       <body>
         <DynamicFavicon />
         <PWARegister />
-        {children}
+        <AppNavigationShell>{children}</AppNavigationShell>
         <BetaLaunchKit />
         <MobileBottomNav />
         <ChatDock />
