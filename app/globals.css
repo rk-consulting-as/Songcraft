@@ -1930,6 +1930,57 @@ select option:checked {
   outline-offset: 2px;
 }
 
+.song-studio-lyrics-generate {
+  margin-bottom: 24px;
+}
+
+.song-studio-lyrics-generate__hint {
+  margin: 0 0 10px;
+  color: #8a7a60;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.song-studio-lyrics-generate__btn {
+  width: auto;
+}
+
+.song-studio-lyrics-refine {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(180, 140, 80, 0.12);
+}
+
+.song-studio-lyrics-refine__label {
+  margin: 0 0 4px;
+  color: #d4a843;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+.song-studio-lyrics-refine__hint {
+  margin: 0 0 10px;
+  color: #8a7a60;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.song-studio-lyrics-refine__row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.song-studio-lyrics-refine__row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.song-studio-lyrics-refine__btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 @media (max-width: 760px) {
   .song-studio-nav {
     display: none;
@@ -1989,6 +2040,19 @@ select option:checked {
   .song-studio-body select,
   .song-studio-body textarea {
     max-width: 100%;
+  }
+
+  .song-studio-lyrics-generate__btn {
+    width: 100%;
+  }
+
+  .song-studio-lyrics-refine__row {
+    flex-direction: column;
+  }
+
+  .song-studio-lyrics-refine__btn {
+    width: 100%;
+    text-align: center;
   }
 }
 

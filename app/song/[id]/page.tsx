@@ -1374,16 +1374,6 @@ export default function SongPage() {
               <UpgradePrompt compact title={tx.upgradeAiTitle} description={tx.upgradeAiDesc} />
             )}
 
-            {lyricsInstructions && !lyrics && (
-              <div style={{ background: 'rgba(212,168,67,0.08)', border: '1px solid rgba(212,168,67,0.3)', borderRadius: '8px', padding: '16px 20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <p style={{ margin: '0 0 4px', color: '#d4a843', fontSize: '13px', fontWeight: '500' }}>{tx.readyToGenerate}</p>
-                  <p style={{ margin: 0, color: '#8a7a60', fontSize: '12px' }}>{tx.readyHint}</p>
-                </div>
-                <button className="btn-gold" onClick={generateLyrics} disabled={aiLoading}>{isLoading('lyrics') ? tx.generating : tx.generateNow}</button>
-              </div>
-            )}
-
             {/* Artist profile toggle */}
             {(artist?.genre || artist?.description || artist?.song_structure) && (
               <div style={{ background: useProfileForLyrics ? 'rgba(212,168,67,0.05)' : 'transparent', border: `1px solid ${useProfileForLyrics ? 'rgba(212,168,67,0.2)' : 'rgba(180,140,80,0.1)'}`, borderRadius: '6px', padding: '10px 14px', marginBottom: '14px' }}>
@@ -1400,9 +1390,22 @@ export default function SongPage() {
               <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.instructions}</label>
               <textarea value={lyricsInstructions} onChange={e => setLyricsInstructions(e.target.value)} placeholder={tx.instructionsPlaceholder} rows={4} />
             </div>
-            <button className="btn-gold" onClick={generateLyrics} disabled={aiLoading || !lyricsInstructions.trim()} style={{ marginBottom: '24px' }}>
-              {isLoading('lyrics') ? tx.generating : lyrics ? tx.regenerateLyrics : tx.generateLyrics}
-            </button>
+            <div className="song-studio-lyrics-generate">
+              <p className="song-studio-lyrics-generate__hint">
+                {!lyricsInstructions.trim()
+                  ? tx.lyricsGenerateHintNoInstructions
+                  : lyrics
+                    ? tx.lyricsGenerateHintRegenerate
+                    : tx.lyricsGenerateHintGenerate}
+              </p>
+              <button
+                className="btn-gold song-studio-lyrics-generate__btn"
+                onClick={generateLyrics}
+                disabled={aiLoading || !lyricsInstructions.trim()}
+              >
+                {isLoading('lyrics') ? tx.generating : lyrics ? tx.regenerateLyrics : tx.generateLyrics}
+              </button>
+            </div>
 
             {/* Lyrics editor — always visible. User can paste their own or use the AI generator above. */}
             <div className="card" style={{ marginBottom: '16px' }}>
@@ -1559,13 +1562,20 @@ export default function SongPage() {
                     </div>
                   </div>
                 )}
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <input value={lyricsChat} onChange={e => setLyricsChat(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && refineLyrics()}
-                    placeholder={tx.refineHint} style={{ flex: 1 }} />
-                  <button className="btn-gold" onClick={refineLyrics} disabled={aiLoading || !lyricsChat.trim()}>
-                    {isLoading('refine') ? tx.generating : tx.refine}
-                  </button>
+                <div className="song-studio-lyrics-refine">
+                  <p className="song-studio-lyrics-refine__label">{tx.lyricsRefineLabel}</p>
+                  <p className="song-studio-lyrics-refine__hint">{tx.lyricsRefineDesc}</p>
+                  <div className="song-studio-lyrics-refine__row">
+                    <input
+                      value={lyricsChat}
+                      onChange={e => setLyricsChat(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && refineLyrics()}
+                      placeholder={tx.refineHint}
+                    />
+                    <button className="btn-outline song-studio-lyrics-refine__btn" onClick={refineLyrics} disabled={aiLoading || !lyricsChat.trim()}>
+                      {isLoading('refine') ? tx.generating : tx.refineLyrics}
+                    </button>
+                  </div>
                 </div>
               </>
             )}
