@@ -37,6 +37,7 @@ type NavigationContextValue = {
   userRole: string | null
   studioPage: NavStudioPage | null
   unreadCount: number
+  loadError: boolean
   expandedArtistIds: Set<string>
   expandedSections: Set<string>
   expandedSongIds: Set<string>
@@ -57,7 +58,13 @@ function resolveCurrentArtistId(pathname: string | null, search: string, songArt
   return parseArtistIdFromPath(pathname) || parseArtistIdFromSearch(search) || songArtistId
 }
 
-export function NavigationProvider({ children }: { children: ReactNode }) {
+export function NavigationProvider({
+  children,
+  onLoadError,
+}: {
+  children: ReactNode
+  onLoadError?: () => void
+}) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const search = searchParams?.toString() ? `?${searchParams.toString()}` : ''
@@ -69,6 +76,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<string | null>(null)
   const [studioPage, setStudioPage] = useState<NavStudioPage | null>(null)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [loadError, setLoadError] = useState(false)
   const [pageHash, setPageHash] = useState('')
   const [expandedArtistIds, setExpandedArtistIds] = useState<Set<string>>(new Set())
   const [expandedSongIds, setExpandedSongIds] = useState<Set<string>>(new Set())
@@ -95,21 +103,28 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       setSongs([])
       return
     }
-    const [{ data: artistRows }, { data: songRows }] = await Promise.all([
-      supabase
-        .from('artists')
-        .select('id, name, genre, page_enabled, page_slug, page_settings, spotify_url, spotify_id, social_links')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: true }),
-      supabase
-        .from('songs')
-        .select('id, title, artist_id, status, public_hidden, cover_image_url, spotify_cover_url, lyrics_text, publish_content, media_links, spotify_url')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false }),
-    ])
-    setArtists((artistRows || []) as NavArtist[])
-    setSongs((songRows || []) as NavSong[])
-  }, [])
+    try {
+      const [{ data: artistRows, error: artistErr }, { data: songRows, error: songErr }] = await Promise.all([
+        supabase
+          .from('artists')
+          .select('id, name, genre, page_enabled, page_slug, page_settings, spotify_url, spotify_id, social_links')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: true }),
+        supabase
+          .from('songs')
+          .select('id, title, artist_id, status, public_hidden, cover_image_url, spotify_cover_url, lyrics_text, publish_content, media_links, spotify_url')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }),
+      ])
+      if (artistErr || songErr) throw artistErr || songErr
+      setArtists((artistRows || []) as NavArtist[])
+      setSongs((songRows || []) as NavSong[])
+      setLoadError(false)
+    } catch {
+      setLoadError(true)
+      onLoadError?.()
+    }
+  }, [onLoadError])
 
   useEffect(() => {
     void refreshArtists()
@@ -266,6 +281,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     userRole,
     studioPage,
     unreadCount,
+    loadError,
     expandedArtistIds,
     expandedSections,
     expandedSongIds,
@@ -285,6 +301,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     userRole,
     studioPage,
     unreadCount,
+    loadError,
     expandedArtistIds,
     expandedSections,
     expandedSongIds,

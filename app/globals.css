@@ -7054,28 +7054,102 @@ body[data-sidebar-nav-v1="1"] .app-header-brand {
 .app-nav-sidebar__status--missing_cover { background: rgba(224, 160, 80, 0.12); color: #d4a060; }
 .app-nav-sidebar__status--release_ready { background: rgba(112, 144, 208, 0.15); color: #7090d0; }
 
-.sidebar-nav-debug {
+.sidebar-nav-debug-panel {
   position: fixed;
   bottom: calc(var(--mobile-nav-height) + 12px);
   left: 12px;
   right: 12px;
-  z-index: 90;
-  padding: 10px 14px;
-  border-radius: 8px;
-  background: rgba(212, 168, 67, 0.12);
+  z-index: 95;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(10, 10, 18, 0.96);
   border: 1px solid rgba(212, 168, 67, 0.35);
+  color: #c8c0b0;
+  font-size: 11px;
+  max-height: 42vh;
+  overflow: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+.sidebar-nav-debug-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.sidebar-nav-debug-panel__head strong {
   color: #d4a843;
   font-size: 12px;
-  text-align: center;
+}
+
+.sidebar-nav-debug-panel__enable {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(212, 168, 67, 0.45);
+  background: rgba(212, 168, 67, 0.15);
+  color: #d4a843;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sidebar-nav-debug-panel__enable:hover {
+  background: rgba(212, 168, 67, 0.25);
+}
+
+.sidebar-nav-debug-panel__enable--off {
+  border-color: rgba(180, 140, 80, 0.3);
+  background: rgba(255, 255, 255, 0.04);
+  color: #8a7a60;
+}
+
+.sidebar-nav-debug-panel__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  margin: 0;
+}
+
+.sidebar-nav-debug-panel__grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-nav-debug-panel__grid dt {
+  color: #6a5a40;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sidebar-nav-debug-panel__grid dd {
+  margin: 0;
+  color: #e8e0d0;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+}
+
+.sidebar-nav-debug-panel__hint {
+  margin: 10px 0 0;
+  color: #8a7a60;
+  font-size: 10px;
+  line-height: 1.4;
 }
 
 @media (min-width: 761px) {
-  .sidebar-nav-debug {
+  .sidebar-nav-debug-panel {
     left: auto;
     right: 16px;
     bottom: 16px;
-    max-width: 360px;
+    width: min(420px, calc(100vw - 32px));
   }
+}
+
+.app-nav-sidebar--fallback {
+  border-color: rgba(224, 112, 112, 0.25);
 }
 
 .app-nav-topbar {
