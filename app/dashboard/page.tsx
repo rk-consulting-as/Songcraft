@@ -10,11 +10,22 @@ import Avatar from '@/components/Avatar'
 import ActivityList, { type ActivityEntry } from '@/components/ActivityList'
 import ProfileMenu from '@/components/ProfileMenu'
 import UpgradePrompt from '@/components/UpgradePrompt'
-import MobileQuickActions from '@/components/MobileQuickActions'
 import { getUserPlan } from '@/lib/subscription'
 import GrowthHubDashboardCard from '@/components/growth/GrowthHubDashboardCard'
 import DashboardDiscoverHighlights from '@/components/DashboardDiscoverHighlights'
 import ViewerAdSlot from '@/components/ads/ViewerAdSlot'
+import DashboardCommandCenterHero from '@/components/dashboard/DashboardCommandCenterHero'
+import DashboardArtistStrip from '@/components/dashboard/DashboardArtistStrip'
+import DashboardActiveReleases from '@/components/dashboard/DashboardActiveReleases'
+import DashboardCommunityPanel from '@/components/dashboard/DashboardCommunityPanel'
+import DashboardGrowthOpportunities from '@/components/dashboard/DashboardGrowthOpportunities'
+import DashboardInsights from '@/components/dashboard/DashboardInsights'
+import DashboardQuickActionBar from '@/components/dashboard/DashboardQuickActionBar'
+import { buildCommandCenter } from '@/lib/dashboard/buildCommandCenter'
+import type { CommandCenterSnapshot, DashboardSongRow } from '@/lib/dashboard/types'
+import { fetchPlaybookContext } from '@/lib/playbook/fetchContext'
+import { computePlaybookEngine } from '@/lib/playbook/computeEngine'
+import { fetchUserParticipationSummary } from '@/lib/playlistCommunities/participationSummary'
 
 type Artist = {
   id: string; name: string; genre: string; description: string
@@ -258,6 +269,8 @@ export default function Dashboard() {
   const [distributionSetupSongs, setDistributionSetupSongs] = useState<DistributionOverviewSong[]>([])
   const [distributionSubmittedSongs, setDistributionSubmittedSongs] = useState<DistributionOverviewSong[]>([])
   const [distributionLiveSongs, setDistributionLiveSongs] = useState<DistributionOverviewSong[]>([])
+  const [commandSnapshot, setCommandSnapshot] = useState<CommandCenterSnapshot | null>(null)
+  const [dashboardSongs, setDashboardSongs] = useState<DashboardSongRow[]>([])
 
   // Unread messages count for the nav badge
   const [unreadCount, setUnreadCount] = useState(0)
@@ -374,6 +387,7 @@ export default function Dashboard() {
       } catch {}
 
       // Pro dashboard overview: upcoming release campaign tasks across own songs.
+      let releaseTasksForCmd: ReleaseTask[] = []
       if (currentPlan.id === 'pro') {
         try {
           const { data: campaignSongs } = await supabase
@@ -399,7 +413,8 @@ export default function Dashboard() {
             }
           }
           tasks.sort((a, b) => a.due_date.localeCompare(b.due_date))
-          setUpcomingReleaseTasks(tasks.slice(0, 8))
+          releaseTasksForCmd = tasks.slice(0, 8)
+          setUpcomingReleaseTasks(releaseTasksForCmd)
         } catch {}
 
         try {
@@ -455,6 +470,89 @@ export default function Dashboard() {
             actor_code: actorMap[f.actor_id]?.referral_code || null,
           })))
         }
+      }
+
+      // Command center snapshot (all plans)
+      try {
+        const artistRows = (data || []) as any[]
+        const { data: allSongs } = await supabase
+          .from('songs')
+          .select('id, title, status, artist_id, lyrics_text, cover_image_url, spotify_cover_url, canvas_prompt, canvas_video_url, spotify_url, media_links, publish_content, suno_audio_url, internal_play_count, artists(name, page_enabled, page_slug, page_settings)')
+          .eq('user_id', user.id)
+          .limit(120)
+        const songRows = (allSongs || []) as DashboardSongRow[]
+        setDashboardSongs(songRows)
+
+        const [participation, playbookCtx, storiesRes, ownedCampaigns, pendingMembersRes, newestSub, newestStoryRes] = await Promise.all([
+          fetchUserParticipationSummary(supabase, user.id).catch(() => null),
+          fetchPlaybookContext(artistRows[0]?.id).catch(() => null),
+          supabase.from('artist_stories').select('id, title, slug, artist_id, status').eq('user_id', user.id).in('status', ['draft', 'scheduled']).order('updated_at', { ascending: false }).limit(8),
+          supabase.from('playlist_campaigns').select('id, title, artist_id, status').eq('user_id', user.id).in('status', ['open', 'active']).limit(20),
+          supabase.from('playlist_campaigns').select('id').eq('user_id', user.id),
+          supabase.from('newsletter_subscribers').select('email, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+          supabase.from('artist_stories').select('id, title, slug, artist_id').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        ])
+
+        let pendingMemberCount = 0
+        const ownedIds = (pendingMembersRes.data || []).map((c: { id: string }) => c.id)
+        if (ownedIds.length) {
+          const { count } = await supabase
+            .from('playlist_campaign_members')
+            .select('id', { count: 'exact', head: true })
+            .in('campaign_id', ownedIds)
+            .eq('status', 'requested')
+          pendingMemberCount = count || 0
+        }
+
+        const playbook = playbookCtx ? computePlaybookEngine(playbookCtx, lang, currentPlan.id) : null
+        const topSongRow = [...songRows].sort((a, b) =>
+          (b.internal_play_count || 0) - (a.internal_play_count || 0),
+        )[0]
+        const topArtistRow = [...artistRows].sort((a, b) => (b.songs?.[0]?.count ?? 0) - (a.songs?.[0]?.count ?? 0))[0]
+
+        const snapshot = buildCommandCenter({
+          lang,
+          artists: artistRows.map((a: any) => ({
+            id: a.id,
+            name: a.name,
+            genre: a.genre || '',
+            avatar_url: a.avatar_url || null,
+            spotify_image_url: a.spotify_image_url,
+            page_enabled: a.page_enabled,
+            page_slug: a.page_slug,
+            song_count: a.songs?.[0]?.count ?? 0,
+          })),
+          songs: songRows,
+          participation,
+          playbook,
+          releaseTasks: releaseTasksForCmd,
+          storyDrafts: (storiesRes.data || []) as { id: string; title: string; slug: string; artist_id: string; status: string }[],
+          pendingMemberCount,
+          campaignTitles: (ownedCampaigns.data || []) as { id: string; title: string; artist_id?: string }[],
+          insights: {
+            artistCount: artistRows.length,
+            songCount: songRows.length,
+            projectCount: artistRows.filter((a: any) => (a.songs?.[0]?.count ?? 0) > 0).length,
+            topArtist: topArtistRow ? { id: topArtistRow.id, name: topArtistRow.name, avatar_url: topArtistRow.avatar_url } : null,
+            topSong: topSongRow ? {
+              id: topSongRow.id,
+              title: topSongRow.title,
+              cover_url: topSongRow.cover_image_url || topSongRow.spotify_cover_url || null,
+              plays: topSongRow.internal_play_count || 0,
+            } : null,
+            newestSubscriber: newestSub.data ? { email: newestSub.data.email, created_at: newestSub.data.created_at } : null,
+            newestStory: newestStoryRes.data ? {
+              id: newestStoryRes.data.id,
+              title: newestStoryRes.data.title,
+              slug: newestStoryRes.data.slug,
+              artist_id: newestStoryRes.data.artist_id,
+            } : null,
+          },
+          tx: t[lang] as Record<string, string>,
+        })
+        setCommandSnapshot(snapshot)
+      } catch (e) {
+        console.warn('[dashboard] command center build failed', e)
       }
     }
     setLoading(false)
@@ -780,40 +878,69 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="page-pad" style={{ padding: '32px', maxWidth: '1100px', margin: '0 auto' }}>
-        <MobileQuickActions
-          title={tx.mobileQuickActions}
-          actions={[
-            { label: tx.mobileCreateArtist, icon: '+', onClick: openCreate },
-            { label: tx.mobileCreateSong, icon: '♪', href: artists[0] ? `/artist/${artists[0].id}` : undefined, disabled: artists.length === 0 },
-            { label: tx.mobileOpenPublicPage, icon: '↗', href: artists.find(a => a.page_enabled && a.page_slug)?.page_slug ? `/p/${artists.find(a => a.page_enabled && a.page_slug)?.page_slug}` : undefined, disabled: !artists.some(a => a.page_enabled && a.page_slug) },
-            { label: tx.mobileCopyShareLink, icon: '⧉', onClick: () => {
-              const publicArtist = artists.find(a => a.page_enabled && a.page_slug)
-              if (publicArtist?.page_slug) navigator.clipboard.writeText(`${window.location.origin}/p/${publicArtist.page_slug}`)
-            }, disabled: !artists.some(a => a.page_enabled && a.page_slug) },
-          ]}
-        />
-        <section id="campaign" className="dashboard-nav-section">
-          <GrowthHubDashboardCard artistId={artists[0]?.id} />
-        </section>
-        {/* Stats */}
-        <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '32px' }}>
-          {[
-            { label: tx.artists, value: artists.length },
-            { label: tx.totalSongs, value: artists.reduce((s, a) => s + (a.song_count || 0), 0) },
-            { label: tx.activeProjects, value: artists.filter(a => (a.song_count || 0) > 0).length },
-          ].map(stat => (
-            <div key={stat.label} className="card" style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#d4a843' }}>{stat.value}</div>
-              <div style={{ fontSize: '12px', color: '#6a5a40', letterSpacing: '1px', marginTop: '4px' }}>{stat.label.toUpperCase()}</div>
+      <div className="page-pad dashboard-command-center-layout" style={{ padding: '32px 32px 100px', maxWidth: '1100px', margin: '0 auto' }}>
+        {!loading && commandSnapshot && (
+          <div className="dashboard-command-center">
+            <DashboardCommandCenterHero
+              snapshot={commandSnapshot}
+              displayName={userProfile?.display_name}
+              tx={tx as Record<string, string>}
+            />
+            <DashboardArtistStrip
+              artists={commandSnapshot.artists}
+              tx={tx as Record<string, string>}
+              onCreateArtist={openCreate}
+            />
+            <DashboardActiveReleases releases={commandSnapshot.activeReleases} tx={tx as Record<string, string>} />
+            <DashboardCommunityPanel snapshot={commandSnapshot} tx={tx as Record<string, string>} />
+            <section className="dashboard-nav-section">
+              <GrowthHubDashboardCard artistId={artists[0]?.id} />
+            </section>
+            <DashboardGrowthOpportunities opportunities={commandSnapshot.growthOpportunities} tx={tx as Record<string, string>} />
+            <DashboardInsights insights={commandSnapshot.insights} tx={tx as Record<string, string>} />
+          </div>
+        )}
+
+        {/* Activity feed — directly below command center insights */}
+        {feedEntries.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+              <h2 style={{ color: '#d4a843', fontSize: 13, fontWeight: 'normal', letterSpacing: 1, textTransform: 'uppercase', margin: 0 }}>
+                📰 {tx.dashboardActivity}
+              </h2>
+              <Link href="/feed" style={{ color: '#8a7a60', fontSize: 12, textDecoration: 'none' }}>
+                {tx.dashboardViewAllActivity} →
+              </Link>
             </div>
-          ))}
-        </div>
+            <ActivityList entries={feedEntries} lang={lang} compact />
+          </div>
+        )}
+        {feedEntries.length === 0 && feedFollowCount === 0 && userProfile && (
+          <div style={{ marginBottom: 24 }}>
+            <div className="card" style={{ textAlign: 'center', padding: '20px 18px', borderColor: 'rgba(212,168,67,0.15)' }}>
+              <div style={{ fontSize: 26, marginBottom: 6 }}>🌍</div>
+              <p style={{ color: '#a09080', fontSize: 13, margin: '0 0 10px' }}>{tx.dashboardEmptyFeed}</p>
+              <Link href="/discover" style={{
+                display: 'inline-block',
+                padding: '8px 16px',
+                background: 'rgba(212,168,67,0.12)',
+                border: '1px solid rgba(212,168,67,0.4)',
+                color: '#d4a843',
+                textDecoration: 'none',
+                borderRadius: 4,
+                fontSize: 13,
+              }}>🌍 {tx.dashboardDiscoverCreators}</Link>
+            </div>
+          </div>
+        )}
 
         {planId === 'free' && <ViewerAdSlot placement="dashboard_card" planId={planId} />}
 
+        <details className="dashboard-pro-details card workspace-card" style={{ marginBottom: 24, padding: 16 }}>
+          <summary className="dashboard-pro-details__summary">{tx.cmdProDetails}</summary>
+          <div className="dashboard-pro-details__body">
         {/* Top streamed songs widget */}
-        <section id="songs" className="dashboard-nav-section" style={{ marginBottom: 24 }}>
+        <section className="dashboard-nav-section" style={{ marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
             <h2 style={{ color: '#d4a843', fontSize: 13, fontWeight: 'normal', letterSpacing: 1, textTransform: 'uppercase', margin: 0 }}>
               ♪ {tx.dashboardSectionSongs}
@@ -998,38 +1125,8 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Activity feed widget */}
-        {feedEntries.length > 0 && (
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-              <h2 style={{ color: '#d4a843', fontSize: 13, fontWeight: 'normal', letterSpacing: 1, textTransform: 'uppercase', margin: 0 }}>
-                📰 {tx.dashboardActivity}
-              </h2>
-              <Link href="/feed" style={{ color: '#8a7a60', fontSize: 12, textDecoration: 'none' }}>
-                {tx.dashboardViewAllActivity} →
-              </Link>
-            </div>
-            <ActivityList entries={feedEntries} lang={lang} compact />
           </div>
-        )}
-        {feedEntries.length === 0 && feedFollowCount === 0 && userProfile && (
-          <div style={{ marginBottom: 24 }}>
-            <div className="card" style={{ textAlign: 'center', padding: '20px 18px', borderColor: 'rgba(212,168,67,0.15)' }}>
-              <div style={{ fontSize: 26, marginBottom: 6 }}>🌍</div>
-              <p style={{ color: '#a09080', fontSize: 13, margin: '0 0 10px' }}>{tx.dashboardEmptyFeed}</p>
-              <Link href="/discover" style={{
-                display: 'inline-block',
-                padding: '8px 16px',
-                background: 'rgba(212,168,67,0.12)',
-                border: '1px solid rgba(212,168,67,0.4)',
-                color: '#d4a843',
-                textDecoration: 'none',
-                borderRadius: 4,
-                fontSize: 13,
-              }}>🌍 {tx.dashboardDiscoverCreators}</Link>
-            </div>
-          </div>
-        )}
+        </details>
 
         <DashboardDiscoverHighlights />
 
@@ -1127,11 +1224,6 @@ export default function Dashboard() {
             )}
           </div>
         ) : null}
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ margin: 0, color: '#d4a843', fontWeight: 'normal', fontSize: '18px' }}>{tx.yourArtists}</h2>
-          <button className="btn-gold" onClick={openCreate}>{tx.newArtist}</button>
-        </div>
 
         {/* Spotify claim collision modal */}
         {claimCollision && (
@@ -1580,8 +1672,10 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Artist grid */}
-        <section id="artists" className="dashboard-nav-section">
+        {/* Artist grid (full management) */}
+        <details className="dashboard-artist-grid-details card workspace-card" style={{ marginBottom: 24, padding: 16 }}>
+          <summary>{tx.yourArtists}</summary>
+        <section className="dashboard-nav-section">
         {loading ? (
           <p style={{ color: '#6a5a40' }}>{tx.loading}</p>
         ) : artists.length === 0 ? (
@@ -1666,6 +1760,13 @@ export default function Dashboard() {
           </div>
         )}
         </section>
+        </details>
+
+        <DashboardQuickActionBar
+          tx={tx as Record<string, string>}
+          firstArtistId={artists[0]?.id}
+          onNewArtist={openCreate}
+        />
       </div>
     </div>
   )
