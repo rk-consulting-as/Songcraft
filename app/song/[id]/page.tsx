@@ -14,6 +14,7 @@ import SongStudioOverview from '@/components/songStudio/SongStudioOverview'
 import SongStudioSettingsPanel from '@/components/songStudio/SongStudioSettingsPanel'
 import SongPromoteAssetsPanel from '@/components/songStudio/SongPromoteAssetsPanel'
 import SongStudioToast from '@/components/songStudio/SongStudioToast'
+import LyricsCharCounter from '@/components/songStudio/LyricsCharCounter'
 import WorkspaceEmptyState from '@/components/WorkspaceEmptyState'
 import {
   buildSongStudioHash,
@@ -29,6 +30,15 @@ import {
   type PublishPanel,
 } from '@/lib/songStudio/routes'
 import { cleanLyricsText } from '@/lib/lyricsCleanup'
+import {
+  SUNO_LYRICS_MAX,
+  SUNO_LYRICS_WARN,
+  buildLyricsGenerationSystem,
+  buildLyricsRefineSystem,
+  getLyricsCharCount,
+  isLyricsWithinSunoLimit,
+  SUNO_LYRICS_SHORTEN_SYSTEM,
+} from '@/lib/lyrics/sunoLength'
 import Link from 'next/link'
 import DistributionModal from '@/components/DistributionModal'
 import DistributionWorkflow from '@/components/DistributionWorkflow'
@@ -113,7 +123,7 @@ export default function SongPage() {
   const [publishContent, setPublishContent] = useState<Record<string, any>>({})
   const [showDistribution, setShowDistribution] = useState(false)
   const [title, setTitle] = useState('')
-  const [studioToast, setStudioToast] = useState<{ message: string; tone: 'success' | 'error' | 'info' } | null>(null)
+  const [studioToast, setStudioToast] = useState<{ message: string; tone: 'success' | 'error' | 'info' | 'warning' } | null>(null)
   const [featuredReleaseSaving, setFeaturedReleaseSaving] = useState(false)
   const [sunoCopied, setSunoCopied] = useState(false)
 
@@ -696,13 +706,43 @@ export default function SongPage() {
     const artistCtx = buildArtistContext()
     const msgs = [{ role: 'user', content: lyricsInstructions + artistCtx }]
     const sysLang = aiOutputLanguageName(aiOutputLang)
-    const result = await callAI(msgs,
-      `You are a creative songwriter. Write song lyrics based on the user's instructions. Write in ${sysLang}. Format with Verse 1, Verse 2, Chorus, Bridge etc.${artist?.song_structure && useProfileForLyrics ? ' Follow the song structure profile provided.' : ''} Output only the lyrics, no explanations.`,
-      'lyrics')
+    let result = await callAI(
+      msgs,
+      buildLyricsGenerationSystem(sysLang, !!(artist?.song_structure && useProfileForLyrics)),
+      'lyrics',
+    )
+    if (!result) return
+    result = await enforceSunoLyricsLength(result)
     const newHistory = [...msgs, { role: 'assistant', content: result }]
     setLyrics(result); setLyricsHistory(newHistory)
     await save({ lyrics_instructions: lyricsInstructions, lyrics_text: result, lyrics_history: newHistory, status: 'in_progress' })
     await computeAndSaveSongDna({ lyrics: result })
+  }
+
+  const enforceSunoLyricsLength = async (text: string): Promise<string> => {
+    if (getLyricsCharCount(text) <= SUNO_LYRICS_MAX) return text
+    const shortened = await callAI(
+      [{ role: 'user', content: `These lyrics are ${text.length} characters. Shorten for Suno:\n\n${text}` }],
+      SUNO_LYRICS_SHORTEN_SYSTEM,
+      'shorten_suno',
+    )
+    return shortened || text.slice(0, SUNO_LYRICS_MAX)
+  }
+
+  const shortenLyricsForSuno = async () => {
+    if (!lyrics.trim()) return
+    const result = await callAI(
+      [{ role: 'user', content: `Shorten these lyrics for Suno:\n\n${lyrics}` }],
+      SUNO_LYRICS_SHORTEN_SYSTEM,
+      'shorten_suno',
+    )
+    if (!result) return
+    const finalText = getLyricsCharCount(result) <= SUNO_LYRICS_MAX
+      ? result
+      : await enforceSunoLyricsLength(result)
+    setLyrics(finalText)
+    await save({ lyrics_text: finalText })
+    await computeAndSaveSongDna({ lyrics: finalText })
   }
 
   const generateBackstory = async () => {
@@ -729,9 +769,9 @@ export default function SongPage() {
   const refineLyrics = async () => {
     if (!lyricsChat.trim()) return
     const newHistory = [...lyricsHistory, { role: 'user', content: lyricsChat }]
-    const result = await callAI(newHistory,
-      'You are a creative songwriter. Adjust the lyrics based on the feedback. Output only the updated lyrics.',
-      'refine')
+    let result = await callAI(newHistory, buildLyricsRefineSystem(), 'refine')
+    if (!result) return
+    result = await enforceSunoLyricsLength(result)
     const updatedHistory = [...newHistory, { role: 'assistant', content: result }]
     setLyrics(result); setLyricsHistory(updatedHistory); setLyricsChat('')
     await save({ lyrics_text: result, lyrics_history: updatedHistory })
@@ -994,13 +1034,14 @@ export default function SongPage() {
   const hasArtistEpk = !!(artistEpk.short_bio || artistEpk.long_bio || artistEpk.release_highlight || artistEpk.public_enabled)
   const releaseReviewChecks = [
     { key: 'lyrics', label: tx.reviewCheckLyrics, points: 12, done: !!lyrics?.trim(), action: tx.reviewActionLyrics },
+    { key: 'lyrics_suno_limit', label: tx.reviewCheckLyricsSunoLimit, points: 8, done: !lyrics?.trim() || isLyricsWithinSunoLimit(lyrics), action: tx.reviewActionLyricsSunoLimit },
     { key: 'suno', label: tx.reviewCheckSuno, points: 8, done: !!sunoPrompt?.trim(), action: tx.reviewActionSuno },
     { key: 'backstory', label: tx.reviewCheckBackstory, points: 10, done: !!backstory?.trim(), action: tx.reviewActionBackstory },
     { key: 'cover', label: tx.reviewCheckCover, points: 10, done: coverReady, action: tx.reviewActionCover },
     { key: 'canvas', label: tx.reviewCheckCanvas, points: 8, done: !!canvasPrompt?.trim() || !!canvasUrl, action: tx.reviewActionCanvas },
     { key: 'media', label: tx.reviewCheckMedia, points: 10, done: !!song?.spotify_url || mediaLinks.length > 0, action: tx.reviewActionMedia },
     { key: 'public', label: tx.reviewCheckPublicPage, points: 8, done: !!publicArtistPath, action: tx.reviewActionPublicPage },
-    { key: 'share', label: tx.reviewCheckShareTools, points: 8, done: !!songId, action: tx.reviewActionShareTools },
+    { key: 'share', label: tx.reviewCheckShareTools, points: 0, done: !!songId, action: tx.reviewActionShareTools },
     { key: 'campaign', label: tx.reviewCheckCampaignAssets, points: 10, done: campaignAssetCount >= 4, action: tx.reviewActionCampaignAssets },
     { key: 'timeline', label: tx.reviewCheckTimeline, points: 8, done: campaignTimeline.length > 0, action: tx.reviewActionTimeline },
     { key: 'epk', label: tx.reviewCheckEpk, points: 8, done: hasArtistEpk, action: tx.reviewActionEpk },
@@ -1180,6 +1221,16 @@ export default function SongPage() {
   }
 
   const copy = (text: string) => navigator.clipboard.writeText(text)
+
+  const copyLyrics = async () => {
+    if (!lyrics) return
+    if (!isLyricsWithinSunoLimit(lyrics)) {
+      setStudioToast({ message: tx.lyricsSunoLimitCopyWarning, tone: 'warning' })
+    }
+    try {
+      await navigator.clipboard.writeText(lyrics)
+    } catch { /* ignore */ }
+  }
 
   const copySunoPrompt = () => {
     copy(activeSunoPrompt)
@@ -1412,7 +1463,19 @@ export default function SongPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: 8 }}>
                 <span style={{ color: '#d4a843', fontSize: '11px', letterSpacing: '1px' }}>{tx.lyricsLabel}</span>
                 {lyrics && (
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <div className="song-studio-lyrics-toolbar">
+                    {getLyricsCharCount(lyrics) > SUNO_LYRICS_WARN && (
+                      <button
+                        type="button"
+                        className="btn-outline song-studio-lyrics-toolbar__shorten"
+                        style={{ padding: '4px 12px', fontSize: '12px' }}
+                        onClick={shortenLyricsForSuno}
+                        disabled={aiLoading}
+                        title={tx.lyricsShortenForSunoHint}
+                      >
+                        {isLoading('shorten_suno') ? tx.generating : tx.lyricsShortenForSuno}
+                      </button>
+                    )}
                     {lyricsHistory.filter(m => m.role === 'assistant').length > 1 && (
                       <button
                         className="btn-outline"
@@ -1431,12 +1494,17 @@ export default function SongPage() {
                     >
                       📄 {tx.viewClean}
                     </button>
-                    <button className="btn-outline" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={() => copy(lyrics)}>
+                    <button className="btn-outline" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={copyLyrics}>
                       📋 {tx.copy}
                     </button>
                   </div>
                 )}
               </div>
+              <LyricsCharCounter
+                text={lyrics}
+                label={tx.lyricsSunoCounterLabel}
+                hint={tx.lyricsSunoCounterHint}
+              />
               <textarea
                 value={lyrics}
                 onChange={e => { setLyrics(e.target.value); save({ lyrics_text: e.target.value }) }}

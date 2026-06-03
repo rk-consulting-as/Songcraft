@@ -172,7 +172,7 @@ export default function SongStudioOverview({
           <p className="workspace-section-desc">{recommendedActions[0]?.action || tx.songStudioOverviewDesc}</p>
           <div className="song-studio-overview__actions">
             <button type="button" className="btn-gold quick-action-btn" onClick={() => onGoToPanel('campaign')}>{tx.songStudioOpenReleaseCampaign}</button>
-            <button type="button" className="btn-outline quick-action-btn" onClick={() => onGoToPanel(missingItems[0]?.key === 'lyrics' ? 'lyrics' : 'suno')}>{tx.songStudioContinueCreating}</button>
+            <button type="button" className="btn-outline quick-action-btn" onClick={() => onGoToPanel(missingItems[0]?.key === 'lyrics' || missingItems[0]?.key === 'lyrics_suno_limit' ? 'lyrics' : 'suno')}>{tx.songStudioContinueCreating}</button>
             {artistId && (
               <Link href={`/artist/${artistId}?storySong=${encodeURIComponent(songId)}#brand-stories`} className="btn-outline quick-action-btn" style={{ textDecoration: 'none', textAlign: 'center' }}>
                 {tx.storyGenerateBehindTheSong}

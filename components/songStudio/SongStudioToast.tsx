@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 
 type Props = {
   message: string
-  tone?: 'success' | 'error' | 'info'
+  tone?: 'success' | 'error' | 'info' | 'warning'
   onDismiss: () => void
   durationMs?: number
 }
