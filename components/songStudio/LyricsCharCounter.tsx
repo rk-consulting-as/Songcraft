@@ -1,11 +1,7 @@
 'use client'
 
-import {
-  SUNO_LYRICS_MAX,
-  formatLyricsCounter,
-  getLyricsCharCount,
-  getLyricsLengthState,
-} from '@/lib/lyrics/sunoLength'
+/** @deprecated Use ContentLimitCounter with platformId */
+import ContentLimitCounter from '@/components/songStudio/ContentLimitCounter'
 
 type Props = {
   text: string
@@ -13,22 +9,12 @@ type Props = {
   hint?: string
 }
 
-export default function LyricsCharCounter({ text, label, hint }: Props) {
-  const count = getLyricsCharCount(text)
-  const state = getLyricsLengthState(count)
-
+export default function LyricsCharCounter({ text }: Props) {
   return (
-    <div className="song-studio-lyrics-counter" aria-live="polite">
-      <div className="song-studio-lyrics-counter__row">
-        {label && <span className="song-studio-lyrics-counter__label">{label}</span>}
-        <span
-          className={`song-studio-lyrics-counter__value song-studio-lyrics-counter__value--${state}`}
-          aria-label={`${count} of ${SUNO_LYRICS_MAX} characters`}
-        >
-          {formatLyricsCounter(count)}
-        </span>
-      </div>
-      {hint && <p className="song-studio-lyrics-counter__hint">{hint}</p>}
-    </div>
+    <ContentLimitCounter
+      text={text}
+      contentType="lyrics"
+      platformId="suno"
+    />
   )
 }

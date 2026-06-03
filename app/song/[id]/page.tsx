@@ -14,7 +14,8 @@ import SongStudioOverview from '@/components/songStudio/SongStudioOverview'
 import SongStudioSettingsPanel from '@/components/songStudio/SongStudioSettingsPanel'
 import SongPromoteAssetsPanel from '@/components/songStudio/SongPromoteAssetsPanel'
 import SongStudioToast from '@/components/songStudio/SongStudioToast'
-import LyricsCharCounter from '@/components/songStudio/LyricsCharCounter'
+import ContentLimitCounter from '@/components/songStudio/ContentLimitCounter'
+import AiPlatformSelector from '@/components/songStudio/AiPlatformSelector'
 import WorkspaceEmptyState from '@/components/WorkspaceEmptyState'
 import {
   buildSongStudioHash,
@@ -31,14 +32,27 @@ import {
 } from '@/lib/songStudio/routes'
 import { cleanLyricsText } from '@/lib/lyricsCleanup'
 import {
-  SUNO_LYRICS_MAX,
-  SUNO_LYRICS_WARN,
+  buildAdaptLyricsSystem,
   buildLyricsGenerationSystem,
   buildLyricsRefineSystem,
-  getLyricsCharCount,
-  isLyricsWithinSunoLimit,
-  SUNO_LYRICS_SHORTEN_SYSTEM,
-} from '@/lib/lyrics/sunoLength'
+  buildStylePromptGenerationConstraints,
+  getContentLimit,
+  getPlatformProfile,
+  getTextCharCount,
+  isWithinHardLimit,
+  lyricsFitPlatform,
+  shouldShowAdaptAction,
+  stylePromptFitPlatform,
+} from '@/lib/aiPlatformProfiles/limits'
+import {
+  buildAdaptActionKey,
+  buildCopyLimitWarningKey,
+  buildReadinessLyricsLabelKey,
+  buildReadinessPromptLabelKey,
+  resolveSongAiPlatformSettings,
+} from '@/lib/aiPlatformProfiles/copy'
+import { normalizePlatformId } from '@/lib/aiPlatformProfiles/profiles'
+import type { CustomPlatformLimits, PlatformId } from '@/lib/aiPlatformProfiles/types'
 import Link from 'next/link'
 import DistributionModal from '@/components/DistributionModal'
 import DistributionWorkflow from '@/components/DistributionWorkflow'
@@ -123,7 +137,11 @@ export default function SongPage() {
   const [publishContent, setPublishContent] = useState<Record<string, any>>({})
   const [showDistribution, setShowDistribution] = useState(false)
   const [title, setTitle] = useState('')
-  const [studioToast, setStudioToast] = useState<{ message: string; tone: 'success' | 'error' | 'info' | 'warning' } | null>(null)
+  const [studioToast, setStudioToast] = useState<{
+    message: string
+    tone: 'success' | 'error' | 'info' | 'warning'
+    actions?: { label: string; onClick: () => void; variant?: 'gold' | 'outline' }[]
+  } | null>(null)
   const [featuredReleaseSaving, setFeaturedReleaseSaving] = useState(false)
   const [sunoCopied, setSunoCopied] = useState(false)
 
@@ -201,7 +219,15 @@ export default function SongPage() {
 
   const pickProvider = (p: AIProvider) => { setAiProvider(p); setStoredProvider(p) }
 
-  const tx = t[lang]
+  const tx = t[lang] as Record<string, string>
+  const { platformId: aiPlatformId, customLimits: aiPlatformCustomLimits } = resolveSongAiPlatformSettings(
+    publishContent,
+    artist?.page_settings,
+  )
+  const platformProfile = getPlatformProfile(aiPlatformId, aiPlatformCustomLimits)
+  const platformLabel = tx[platformProfile.labelKey] || platformProfile.id
+  const lyricsContentLimit = getContentLimit(aiPlatformId, 'lyrics', aiPlatformCustomLimits)
+  const adaptLyricsLabel = tx[buildAdaptActionKey(aiPlatformId)] || tx.aiAdaptForSuno
 
   const navigateToRoute = (route: SongStudioRoute) => {
     setStudioRoute(route)
@@ -708,38 +734,41 @@ export default function SongPage() {
     const sysLang = aiOutputLanguageName(aiOutputLang)
     let result = await callAI(
       msgs,
-      buildLyricsGenerationSystem(sysLang, !!(artist?.song_structure && useProfileForLyrics)),
+      buildLyricsGenerationSystem(sysLang, !!(artist?.song_structure && useProfileForLyrics), aiPlatformId, aiPlatformCustomLimits),
       'lyrics',
     )
     if (!result) return
-    result = await enforceSunoLyricsLength(result)
+    result = await enforcePlatformLyricsLength(result)
     const newHistory = [...msgs, { role: 'assistant', content: result }]
     setLyrics(result); setLyricsHistory(newHistory)
     await save({ lyrics_instructions: lyricsInstructions, lyrics_text: result, lyrics_history: newHistory, status: 'in_progress' })
     await computeAndSaveSongDna({ lyrics: result })
   }
 
-  const enforceSunoLyricsLength = async (text: string): Promise<string> => {
-    if (getLyricsCharCount(text) <= SUNO_LYRICS_MAX) return text
+  const enforcePlatformLyricsLength = async (text: string): Promise<string> => {
+    const limit = getContentLimit(aiPlatformId, 'lyrics', aiPlatformCustomLimits)
+    if (isWithinHardLimit(getTextCharCount(text), limit)) return text
     const shortened = await callAI(
-      [{ role: 'user', content: `These lyrics are ${text.length} characters. Shorten for Suno:\n\n${text}` }],
-      SUNO_LYRICS_SHORTEN_SYSTEM,
-      'shorten_suno',
+      [{ role: 'user', content: `These lyrics are ${text.length} characters. Adapt for ${platformLabel}:\n\n${text}` }],
+      buildAdaptLyricsSystem(aiPlatformId, aiPlatformCustomLimits),
+      'adapt_lyrics',
     )
-    return shortened || text.slice(0, SUNO_LYRICS_MAX)
+    if (!shortened) return limit.hardMax != null ? text.slice(0, limit.hardMax) : text
+    if (!isWithinHardLimit(getTextCharCount(shortened), limit)) {
+      return limit.hardMax != null ? shortened.slice(0, limit.hardMax) : shortened
+    }
+    return shortened
   }
 
-  const shortenLyricsForSuno = async () => {
+  const adaptLyricsForPlatform = async () => {
     if (!lyrics.trim()) return
     const result = await callAI(
-      [{ role: 'user', content: `Shorten these lyrics for Suno:\n\n${lyrics}` }],
-      SUNO_LYRICS_SHORTEN_SYSTEM,
-      'shorten_suno',
+      [{ role: 'user', content: `Adapt these lyrics for ${platformLabel}:\n\n${lyrics}` }],
+      buildAdaptLyricsSystem(aiPlatformId, aiPlatformCustomLimits),
+      'adapt_lyrics',
     )
     if (!result) return
-    const finalText = getLyricsCharCount(result) <= SUNO_LYRICS_MAX
-      ? result
-      : await enforceSunoLyricsLength(result)
+    const finalText = await enforcePlatformLyricsLength(result)
     setLyrics(finalText)
     await save({ lyrics_text: finalText })
     await computeAndSaveSongDna({ lyrics: finalText })
@@ -769,9 +798,9 @@ export default function SongPage() {
   const refineLyrics = async () => {
     if (!lyricsChat.trim()) return
     const newHistory = [...lyricsHistory, { role: 'user', content: lyricsChat }]
-    let result = await callAI(newHistory, buildLyricsRefineSystem(), 'refine')
+    let result = await callAI(newHistory, buildLyricsRefineSystem(aiPlatformId, aiPlatformCustomLimits), 'refine')
     if (!result) return
-    result = await enforceSunoLyricsLength(result)
+    result = await enforcePlatformLyricsLength(result)
     const updatedHistory = [...newHistory, { role: 'assistant', content: result }]
     setLyrics(result); setLyricsHistory(updatedHistory); setLyricsChat('')
     await save({ lyrics_text: result, lyrics_history: updatedHistory })
@@ -841,9 +870,14 @@ export default function SongPage() {
     const detailedRaw = await callAI(
       [{ role: 'user', content: `Song title: ${title}\n\nLyrics:\n\n${lyrics}` }],
       sunoSystemPromptForMode('detailed', langName),
-      'suno_detailed'
+      'suno_detailed',
     )
-    const { compact, detailed } = prepareSunoPromptPair(detailedRaw)
+    const compactLimits = buildStylePromptGenerationConstraints(aiPlatformId, 'compact', aiPlatformCustomLimits)
+    const { compact, detailed } = prepareSunoPromptPair(
+      detailedRaw,
+      compactLimits.hardMax ?? undefined,
+      compactLimits.targetMax,
+    )
     setSunoPromptDetailed(detailed)
     setSunoPrompt(compact)
     const dna = await computeAndSaveSongDna()
@@ -851,8 +885,13 @@ export default function SongPage() {
   }
 
   const updateSunoPromptField = (value: string) => {
+    const compactLimits = buildStylePromptGenerationConstraints(aiPlatformId, 'compact', aiPlatformCustomLimits)
     if (sunoPromptMode === 'compact') {
-      const next = compressSunoPrompt(value)
+      const next = compressSunoPrompt(
+        value,
+        compactLimits.targetMax,
+        compactLimits.hardMax ?? undefined,
+      )
       setSunoPrompt(next)
       save({ suno_prompt: next })
     } else {
@@ -1032,10 +1071,25 @@ export default function SongPage() {
   const campaignAssetCount = campaignAssets.filter(asset => !!publishContent[`campaign_${asset.key}`]).length
   const artistEpk = (artist?.page_settings || {}).epk || {}
   const hasArtistEpk = !!(artistEpk.short_bio || artistEpk.long_bio || artistEpk.release_highlight || artistEpk.public_enabled)
+  const lyricsFitTarget = !lyrics?.trim() || lyricsFitPlatform(lyrics, aiPlatformId, aiPlatformCustomLimits)
+  const promptFitTarget = !sunoPrompt?.trim() || stylePromptFitPlatform(sunoPrompt, aiPlatformId, aiPlatformCustomLimits, 'compact')
   const releaseReviewChecks = [
     { key: 'lyrics', label: tx.reviewCheckLyrics, points: 12, done: !!lyrics?.trim(), action: tx.reviewActionLyrics },
-    { key: 'lyrics_suno_limit', label: tx.reviewCheckLyricsSunoLimit, points: 8, done: !lyrics?.trim() || isLyricsWithinSunoLimit(lyrics), action: tx.reviewActionLyricsSunoLimit },
+    {
+      key: 'lyrics_platform',
+      label: tx[buildReadinessLyricsLabelKey(aiPlatformId, lyricsFitTarget && !!lyrics?.trim())],
+      points: 4,
+      done: lyricsFitTarget,
+      action: tx.reviewActionLyricsPlatform,
+    },
     { key: 'suno', label: tx.reviewCheckSuno, points: 8, done: !!sunoPrompt?.trim(), action: tx.reviewActionSuno },
+    {
+      key: 'prompt_platform',
+      label: tx[buildReadinessPromptLabelKey(aiPlatformId, promptFitTarget && !!sunoPrompt?.trim())],
+      points: 4,
+      done: promptFitTarget,
+      action: tx.reviewActionPromptPlatform,
+    },
     { key: 'backstory', label: tx.reviewCheckBackstory, points: 10, done: !!backstory?.trim(), action: tx.reviewActionBackstory },
     { key: 'cover', label: tx.reviewCheckCover, points: 10, done: coverReady, action: tx.reviewActionCover },
     { key: 'canvas', label: tx.reviewCheckCanvas, points: 8, done: !!canvasPrompt?.trim() || !!canvasUrl, action: tx.reviewActionCanvas },
@@ -1060,6 +1114,14 @@ export default function SongPage() {
     { id: 'release_day', offset: 0, title: tx.timelineTaskReleaseDay, pro: false },
     { id: 'follow_up', offset: 3, title: tx.timelineTaskFollowUp, pro: true },
   ]
+
+  const updateAiPlatform = (platformId: PlatformId) => {
+    void updatePublishContent({ ai_platform: platformId })
+  }
+
+  const updateAiPlatformCustomLimits = (limits: CustomPlatformLimits) => {
+    void updatePublishContent({ ai_platform_custom: limits })
+  }
 
   const updatePublishContent = async (updates: Record<string, any>) => {
     const updated = { ...publishContent, ...updates }
@@ -1224,8 +1286,32 @@ export default function SongPage() {
 
   const copyLyrics = async () => {
     if (!lyrics) return
-    if (!isLyricsWithinSunoLimit(lyrics)) {
-      setStudioToast({ message: tx.lyricsSunoLimitCopyWarning, tone: 'warning' })
+    const limit = getContentLimit(aiPlatformId, 'lyrics', aiPlatformCustomLimits)
+    if (!isWithinHardLimit(getTextCharCount(lyrics), limit)) {
+      const warningKey = buildCopyLimitWarningKey('lyrics')
+      setStudioToast({
+        message: (tx[warningKey] || tx.aiCopyLimitLyrics).replace('{platform}', platformLabel),
+        tone: 'warning',
+        actions: [
+          {
+            label: tx.aiCopyAnyway,
+            onClick: () => {
+              copy(lyrics)
+              setStudioToast(null)
+            },
+            variant: 'outline',
+          },
+          {
+            label: adaptLyricsLabel,
+            onClick: () => {
+              setStudioToast(null)
+              void adaptLyricsForPlatform()
+            },
+            variant: 'gold',
+          },
+        ],
+      })
+      return
     }
     try {
       await navigator.clipboard.writeText(lyrics)
@@ -1233,7 +1319,30 @@ export default function SongPage() {
   }
 
   const copySunoPrompt = () => {
-    copy(activeSunoPrompt)
+    const text = activeSunoPrompt
+    if (!text) return
+    const limit = getContentLimit(aiPlatformId, 'stylePrompt', aiPlatformCustomLimits)
+    if (sunoPromptMode === 'compact' && !isWithinHardLimit(getTextCharCount(text), limit)) {
+      const warningKey = buildCopyLimitWarningKey('stylePrompt')
+      setStudioToast({
+        message: (tx[warningKey] || tx.aiCopyLimitStylePrompt).replace('{platform}', platformLabel),
+        tone: 'warning',
+        actions: [
+          {
+            label: tx.aiCopyAnyway,
+            onClick: () => {
+              copy(text)
+              setSunoCopied(true)
+              window.setTimeout(() => setSunoCopied(false), 2000)
+              setStudioToast(null)
+            },
+            variant: 'outline',
+          },
+        ],
+      })
+      return
+    }
+    copy(text)
     setSunoCopied(true)
     window.setTimeout(() => setSunoCopied(false), 2000)
   }
@@ -1337,6 +1446,7 @@ export default function SongPage() {
         <SongStudioToast
           message={studioToast.message}
           tone={studioToast.tone}
+          actions={studioToast.actions}
           onDismiss={() => setStudioToast(null)}
         />
       )}
@@ -1425,6 +1535,16 @@ export default function SongPage() {
               <UpgradePrompt compact title={tx.upgradeAiTitle} description={tx.upgradeAiDesc} />
             )}
 
+            <div className="card workspace-card workspace-glass" style={{ marginBottom: 16, padding: 14 }}>
+              <AiPlatformSelector
+                platformId={normalizePlatformId(aiPlatformId)}
+                customLimits={aiPlatformCustomLimits}
+                onPlatformChange={updateAiPlatform}
+                onCustomLimitsChange={updateAiPlatformCustomLimits}
+                disabled={aiLoading}
+              />
+            </div>
+
             {/* Artist profile toggle */}
             {(artist?.genre || artist?.description || artist?.song_structure) && (
               <div style={{ background: useProfileForLyrics ? 'rgba(212,168,67,0.05)' : 'transparent', border: `1px solid ${useProfileForLyrics ? 'rgba(212,168,67,0.2)' : 'rgba(180,140,80,0.1)'}`, borderRadius: '6px', padding: '10px 14px', marginBottom: '14px' }}>
@@ -1464,16 +1584,16 @@ export default function SongPage() {
                 <span style={{ color: '#d4a843', fontSize: '11px', letterSpacing: '1px' }}>{tx.lyricsLabel}</span>
                 {lyrics && (
                   <div className="song-studio-lyrics-toolbar">
-                    {getLyricsCharCount(lyrics) > SUNO_LYRICS_WARN && (
+                    {shouldShowAdaptAction(getTextCharCount(lyrics), lyricsContentLimit) && (
                       <button
                         type="button"
                         className="btn-outline song-studio-lyrics-toolbar__shorten"
                         style={{ padding: '4px 12px', fontSize: '12px' }}
-                        onClick={shortenLyricsForSuno}
+                        onClick={adaptLyricsForPlatform}
                         disabled={aiLoading}
                         title={tx.lyricsShortenForSunoHint}
                       >
-                        {isLoading('shorten_suno') ? tx.generating : tx.lyricsShortenForSuno}
+                        {isLoading('adapt_lyrics') ? tx.generating : adaptLyricsLabel}
                       </button>
                     )}
                     {lyricsHistory.filter(m => m.role === 'assistant').length > 1 && (
@@ -1500,10 +1620,11 @@ export default function SongPage() {
                   </div>
                 )}
               </div>
-              <LyricsCharCounter
+              <ContentLimitCounter
                 text={lyrics}
-                label={tx.lyricsSunoCounterLabel}
-                hint={tx.lyricsSunoCounterHint}
+                contentType="lyrics"
+                platformId={aiPlatformId}
+                customLimits={aiPlatformCustomLimits}
               />
               <textarea
                 value={lyrics}
@@ -1819,8 +1940,17 @@ export default function SongPage() {
                   <SunoPromptToolbar
                     prompt={activeSunoPrompt}
                     mode={sunoPromptMode}
+                    platformId={aiPlatformId}
+                    customLimits={aiPlatformCustomLimits}
                     onModeChange={setSunoPromptMode}
                     onCopy={copySunoPrompt}
+                  />
+                  <ContentLimitCounter
+                    text={activeSunoPrompt}
+                    contentType="stylePrompt"
+                    platformId={aiPlatformId}
+                    customLimits={aiPlatformCustomLimits}
+                    showTarget={false}
                   />
                   <textarea
                     value={activeSunoPrompt}
@@ -2880,6 +3010,10 @@ export default function SongPage() {
             onAiProviderChange={pickProvider}
             aiOutputLang={aiOutputLang}
             onAiOutputLangChange={setAiOutputLang}
+            aiPlatformId={normalizePlatformId(aiPlatformId)}
+            aiPlatformCustomLimits={aiPlatformCustomLimits}
+            onAiPlatformChange={updateAiPlatform}
+            onAiPlatformCustomLimitsChange={updateAiPlatformCustomLimits}
             aiLoading={aiLoading}
             imageGenerating={imageGenerating}
           />

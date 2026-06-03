@@ -23,9 +23,9 @@ const REDUNDANT = [
 
 export type SunoCharStatus = 'green' | 'yellow' | 'red'
 
-export function sunoCharStatus(length: number): SunoCharStatus {
-  if (length > SUNO_HARD_MAX) return 'red'
-  if (length > 900) return 'yellow'
+export function sunoCharStatus(length: number, hardMax = SUNO_HARD_MAX, warnAt = 900): SunoCharStatus {
+  if (hardMax != null && length > hardMax) return 'red'
+  if (length > warnAt) return 'yellow'
   return 'green'
 }
 
@@ -80,23 +80,32 @@ export function compressSunoPrompt(text: string, target = SUNO_TARGET, hardMax =
   return out.slice(0, hardMax)
 }
 
-export function buildCompactSunoFromDetailed(detailed: string): string {
-  const compressed = compressSunoPrompt(detailed, SUNO_TARGET, SUNO_HARD_MAX)
+export function buildCompactSunoFromDetailed(detailed: string, hardMax = SUNO_HARD_MAX, target = SUNO_TARGET): string {
+  const compressed = compressSunoPrompt(detailed, target, hardMax)
   if (compressed.length >= SUNO_COMPACT_MIN) return compressed
-  return compressSunoPrompt(detailed, SUNO_COMPACT_MIN, SUNO_HARD_MAX)
+  return compressSunoPrompt(detailed, SUNO_COMPACT_MIN, hardMax)
 }
 
-export function exportPromptForMode(text: string, mode: SunoPromptMode): string {
-  if (mode === 'compact') return compressSunoPrompt(text, SUNO_TARGET, SUNO_HARD_MAX)
+export function exportPromptForMode(text: string, mode: SunoPromptMode, hardMax = SUNO_HARD_MAX, target = SUNO_TARGET): string {
+  if (mode === 'compact') return compressSunoPrompt(text, target, hardMax)
   return text.trim()
 }
 
-export function sunoSystemPromptForMode(mode: SunoPromptMode, langName: string): string {
+export function sunoSystemPromptForMode(
+  mode: SunoPromptMode,
+  langName: string,
+  styleLimit?: { targetMin: number; targetMax: number; hardMax: number | null },
+): string {
+  const targetMin = styleLimit?.targetMin ?? SUNO_COMPACT_MIN
+  const targetMax = styleLimit?.targetMax ?? SUNO_COMPACT_MAX
+  const hardMax = styleLimit?.hardMax ?? SUNO_HARD_MAX
   if (mode === 'compact') {
     return [
       'You are a Suno AI music prompt expert.',
       `Write a COMPACT Suno "Style of Music" prompt in ${langName}.`,
-      `Target length: ${SUNO_COMPACT_MIN}-${SUNO_COMPACT_MAX} characters (hard max ${SUNO_HARD_MAX}).`,
+      hardMax != null
+        ? `Target length: ${targetMin}-${targetMax} characters (hard max ${hardMax}).`
+        : `Target length: ${targetMin}-${targetMax} characters.`,
       'Include: genre, tempo, mood, key instruments, vocal style, production texture.',
       'Use concise [tag] clusters. No lyrics. No preamble.',
       'Prioritize genre, instrumentation, mood, and vocal direction.',

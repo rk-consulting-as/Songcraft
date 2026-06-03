@@ -8,9 +8,13 @@ import type { SunoPromptMode } from './types'
 
 export { compressSunoPrompt, exportPromptForMode, sunoSystemPromptForMode, buildCompactSunoFromDetailed }
 
-export function prepareSunoPromptPair(rawDetailed: string): { compact: string; detailed: string } {
+export function prepareSunoPromptPair(
+  rawDetailed: string,
+  hardMax?: number,
+  target?: number,
+): { compact: string; detailed: string } {
   const detailed = rawDetailed.trim()
-  const compact = buildCompactSunoFromDetailed(detailed)
+  const compact = buildCompactSunoFromDetailed(detailed, hardMax, target)
   return { compact, detailed }
 }
 

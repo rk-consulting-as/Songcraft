@@ -2,7 +2,12 @@
 
 import { useState } from 'react'
 import {
-  SUNO_HARD_MAX,
+  getContentLimit,
+  getLimitState,
+  getTextCharCount,
+} from '@/lib/aiPlatformProfiles/limits'
+import type { CustomPlatformLimits, PlatformId } from '@/lib/aiPlatformProfiles/types'
+import {
   sunoCharStatus,
   sunoCharStatusColor,
 } from '@/lib/songCreation/compressSunoPrompt'
@@ -13,16 +18,38 @@ import { t, useLang } from '@/lib/i18n'
 type Props = {
   prompt: string
   mode: SunoPromptMode
+  platformId: PlatformId | string
+  customLimits?: CustomPlatformLimits | null
   onModeChange: (mode: SunoPromptMode) => void
   onCopy: () => void
 }
 
-export default function SunoPromptToolbar({ prompt, mode, onModeChange, onCopy }: Props) {
+export default function SunoPromptToolbar({
+  prompt,
+  mode,
+  platformId,
+  customLimits,
+  onModeChange,
+  onCopy,
+}: Props) {
   const tx = t[useLang()] as Record<string, string>
   const [copied, setCopied] = useState(false)
   const len = prompt.length
-  const status = sunoCharStatus(mode === 'compact' ? len : len)
-  const counterColor = mode === 'compact' ? sunoCharStatusColor(status) : '#8a7a60'
+  const styleLimit = getContentLimit(platformId, 'stylePrompt', customLimits)
+  const showCompactCounter = mode === 'compact' && styleLimit.hardMax != null
+  const legacyStatus = sunoCharStatus(
+    len,
+    styleLimit.hardMax ?? undefined,
+    styleLimit.recommendedMax ?? 900,
+  )
+  const limitState = getLimitState(len, styleLimit)
+  const counterColor = mode === 'compact'
+    ? (limitState.className === 'error' || limitState.className === 'danger'
+      ? '#e07070'
+      : limitState.className === 'warning'
+        ? '#d4a843'
+        : sunoCharStatusColor(legacyStatus))
+    : '#8a7a60'
 
   const handleCopy = () => {
     onCopy()
@@ -51,9 +78,14 @@ export default function SunoPromptToolbar({ prompt, mode, onModeChange, onCopy }
         </button>
       </div>
       <div className="suno-prompt-toolbar__actions">
-        {mode === 'compact' && (
+        {showCompactCounter && (
           <span className="suno-prompt-toolbar__counter" style={{ color: counterColor }}>
-            {len} / {SUNO_HARD_MAX}
+            {len} / {styleLimit.hardMax}
+          </span>
+        )}
+        {mode === 'compact' && styleLimit.hardMax == null && (
+          <span className="suno-prompt-toolbar__counter" style={{ color: '#8a7a60' }}>
+            {len} {tx.aiLimitCharacters}
           </span>
         )}
         <button type="button" className="btn-outline" style={{ padding: '4px 12px', fontSize: 12 }} onClick={handleCopy}>

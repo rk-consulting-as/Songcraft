@@ -1,8 +1,10 @@
 'use client'
 
 import AIProviderPicker from '@/components/AIProviderPicker'
+import AiPlatformSelector from '@/components/songStudio/AiPlatformSelector'
 import SongPublicPageActions from '@/components/SongPublicPageActions'
 import { AI_OUTPUT_LANGUAGES, normalizeAIOutputLang, type AIOutputLang } from '@/lib/aiOutputLanguage'
+import type { CustomPlatformLimits, PlatformId } from '@/lib/aiPlatformProfiles/types'
 import type { AIProvider } from '@/lib/aiProvider'
 import { t, useLang } from '@/lib/i18n'
 
@@ -18,6 +20,10 @@ type Props = {
   onAiProviderChange: (p: AIProvider) => void
   aiOutputLang: AIOutputLang
   onAiOutputLangChange: (lang: AIOutputLang) => void
+  aiPlatformId: PlatformId
+  aiPlatformCustomLimits: CustomPlatformLimits
+  onAiPlatformChange: (platformId: PlatformId) => void
+  onAiPlatformCustomLimitsChange: (limits: CustomPlatformLimits) => void
   aiLoading?: boolean
   imageGenerating?: boolean
 }
@@ -34,6 +40,10 @@ export default function SongStudioSettingsPanel({
   onAiProviderChange,
   aiOutputLang,
   onAiOutputLangChange,
+  aiPlatformId,
+  aiPlatformCustomLimits,
+  onAiPlatformChange,
+  onAiPlatformCustomLimitsChange,
   aiLoading,
   imageGenerating,
 }: Props) {
@@ -83,6 +93,13 @@ export default function SongStudioSettingsPanel({
             ))}
           </select>
         </div>
+        <AiPlatformSelector
+          platformId={aiPlatformId}
+          customLimits={aiPlatformCustomLimits}
+          onPlatformChange={onAiPlatformChange}
+          onCustomLimitsChange={onAiPlatformCustomLimitsChange}
+          disabled={aiLoading}
+        />
       </div>
     </div>
   )
