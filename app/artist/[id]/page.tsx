@@ -19,6 +19,7 @@ import EpkSongSelector from '@/components/EpkSongSelector'
 import EpkSelectedSongsList from '@/components/EpkSelectedSongsList'
 import { resolveEpkSongsFromCatalog } from '@/lib/epkSongs'
 import { clientPublicUrl } from '@/lib/appUrl'
+import { epkPreviewPath, epkPublicPath } from '@/lib/epk/paths'
 import ArtistWorkspaceNav from '@/components/ArtistWorkspaceNav'
 import ArtistWorkspaceOverview from '@/components/ArtistWorkspaceOverview'
 import ArtistCampaignsSummary from '@/components/ArtistCampaignsSummary'
@@ -1053,6 +1054,13 @@ export default function ArtistPage() {
 
   const statusLabel = (s: string) => ({ draft: tx.draft, in_progress: tx.inProgress, complete: tx.complete, released: tx.released }[s] || s)
   const epkIsEmpty = !epk.tagline && !epk.short_bio && !epk.long_bio && !epk.release_highlight && (epk.selected_song_ids?.length || 0) === 0
+  const epkPreviewHref = epkPreviewPath(artist?.page_slug)
+  const epkPublicHref = epkPublicPath(artist?.page_slug)
+  const logEpkPreviewClick = () => {
+    if (epkPreviewHref && typeof window !== 'undefined') {
+      console.info('[ViaTone] EPK preview URL:', `${window.location.origin}${epkPreviewHref}`)
+    }
+  }
 
   return (
     <div className="artist-workspace" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0a0f 0%, #12071e 50%, #0a0f0a 100%)' }}>
@@ -1894,7 +1902,14 @@ export default function ArtistPage() {
                 📋 {tx.epkCopyAll}
               </button>
               {artist?.page_slug && (
-                <a href={`/epk/${artist.page_slug}`} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ padding: '7px 14px', fontSize: 12, textDecoration: 'none' }}>
+                <a
+                  href={epkPreviewHref ?? '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={logEpkPreviewClick}
+                  className="btn-outline"
+                  style={{ padding: '7px 14px', fontSize: 12, textDecoration: 'none' }}
+                >
                   {tx.epkPreview}
                 </a>
               )}
@@ -1984,9 +1999,9 @@ export default function ArtistPage() {
           <div style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(112,144,208,0.14)', borderRadius: 8, padding: 16, marginBottom: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
               <h3 style={{ color: '#a8b8e8', fontWeight: 'normal', fontSize: 14, margin: 0 }}>{tx.epkPreviewTitle}</h3>
-              {artist?.page_slug && (
+              {artist?.page_slug && epkPreviewHref && (
                 <span style={{ color: '#6a5a40', fontSize: 12, wordBreak: 'break-all' }}>
-                  {clientPublicUrl(`/epk/${artist.page_slug}`)}
+                  {clientPublicUrl(epkPreviewHref)}
                 </span>
               )}
             </div>
@@ -2010,9 +2025,9 @@ export default function ArtistPage() {
               />
               {tx.epkPublishPublic}
             </label>
-            {artist?.page_slug && planId === 'pro' && epk.public_enabled && (
-              <a href={`/epk/${artist.page_slug}`} target="_blank" rel="noopener noreferrer" style={{ color: '#d4a843', fontSize: 13, wordBreak: 'break-all' }}>
-                {clientPublicUrl(`/epk/${artist.page_slug}`)}
+            {artist?.page_slug && planId === 'pro' && epk.public_enabled && epkPublicHref && (
+              <a href={epkPublicHref} target="_blank" rel="noopener noreferrer" style={{ color: '#d4a843', fontSize: 13, wordBreak: 'break-all' }}>
+                {clientPublicUrl(epkPublicHref)}
               </a>
             )}
           </div>

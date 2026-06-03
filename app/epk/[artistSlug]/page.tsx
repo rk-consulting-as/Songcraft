@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { BRAND_NAME } from '@/lib/brand'
@@ -6,54 +5,18 @@ import { absoluteAppUrl } from '@/lib/appUrl'
 import PrintButton from '@/components/PrintButton'
 import EpkSelectedSongsList from '@/components/EpkSelectedSongsList'
 import PublicEmptyState from '@/components/public/PublicEmptyState'
-import { fetchEpkSelectedSongs } from '@/lib/epkSongs'
 import { resolveEpkHeroImage } from '@/lib/mediaLibrary/resolveImages'
-import { getUserPlan } from '@/lib/subscription'
 import ViaToneBranding from '@/components/platform/ViaToneBranding'
 import { t } from '@/lib/i18n'
+import { fetchEpkPage } from '@/lib/epk/fetchEpkPage'
+import { isEpkPreviewMode } from '@/lib/epk/paths'
+import type { EpkSong } from '@/lib/epkSongs'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 const FALLBACK_OG_IMAGE = '/icons/icon-512.svg'
 const tx = t.en as Record<string, string>
-
-const sb = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  { auth: { persistSession: false } }
-)
-
-async function userHasPro(userId: string) {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!serviceKey) return false
-  const service = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey, { auth: { persistSession: false } })
-  const plan = await getUserPlan(service, userId)
-  return plan.id === 'pro'
-}
-
-async function fetchEpk(slug: string) {
-  const { data: artist } = await sb
-    .from('artists')
-    .select('*')
-    .eq('page_slug', slug)
-    .eq('page_enabled', true)
-    .eq('admin_hidden', false)
-    .maybeSingle()
-  if (!artist) return null
-  const epk = artist.page_settings?.epk
-  if (!epk?.public_enabled) return null
-  if (!(await userHasPro(artist.user_id))) return null
-  const selectedIds = Array.isArray(epk.selected_song_ids) ? epk.selected_song_ids : []
-  const { songs } = await fetchEpkSelectedSongs(sb, {
-    artistId: artist.id,
-    userId: artist.user_id,
-    selectedIds,
-    publicOnly: true,
-    fallbackLimit: 4,
-  })
-  return { artist, epk, songs }
-}
 
 function stripMarkup(value: unknown) {
   return String(value || '')
@@ -71,12 +34,12 @@ function trimText(value: unknown, max: number) {
   return `${text.slice(0, max - 1).replace(/\s+\S*$/, '')}…`
 }
 
-function epkImage(artist: any, epk: any, songs: any[]) {
+function epkImage(artist: Record<string, unknown>, epk: Record<string, unknown>, songs: EpkSong[]) {
   const resolved = resolveEpkHeroImage(artist, epk, songs)
   return absoluteAppUrl(resolved || FALLBACK_OG_IMAGE)
 }
 
-function epkDescription(artist: any, epk: any) {
+function epkDescription(artist: Record<string, unknown>, epk: Record<string, unknown>) {
   return trimText(
     epk.short_bio ||
     epk.tagline ||
@@ -86,8 +49,15 @@ function epkDescription(artist: any, epk: any) {
   )
 }
 
-export async function generateMetadata({ params }: { params: { artistSlug: string } }): Promise<Metadata> {
-  const data = await fetchEpk(params.artistSlug)
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: { artistSlug: string }
+  searchParams: { preview?: string }
+}): Promise<Metadata> {
+  const preview = isEpkPreviewMode(searchParams)
+  const data = await fetchEpkPage(params.artistSlug, preview)
   if (!data) {
     return {
       title: 'EPK not found',
@@ -98,10 +68,11 @@ export async function generateMetadata({ params }: { params: { artistSlug: strin
   const title = trimText(`${artist.name} Electronic Press Kit`, 70)
   const description = epkDescription(artist, epk)
   const image = epkImage(artist, epk, songs)
-  const url = absoluteAppUrl(`/epk/${params.artistSlug}`)
+  const url = absoluteAppUrl(`/epk/${params.artistSlug}${preview ? '?preview=1' : ''}`)
   return {
-    title,
+    title: preview ? `${title} (Preview)` : title,
     description,
+    robots: preview ? { index: false, follow: false } : undefined,
     alternates: url.startsWith('http') ? { canonical: url } : undefined,
     openGraph: {
       siteName: BRAND_NAME,
@@ -109,7 +80,7 @@ export async function generateMetadata({ params }: { params: { artistSlug: strin
       description,
       url: url.startsWith('http') ? url : undefined,
       type: 'website',
-      images: [{ url: image, width: 1200, height: 630, alt: artist.name }],
+      images: [{ url: image, width: 1200, height: 630, alt: String(artist.name) }],
     },
     twitter: {
       card: 'summary_large_image',
@@ -120,41 +91,61 @@ export async function generateMetadata({ params }: { params: { artistSlug: strin
   }
 }
 
-export default async function EpkPage({ params }: { params: { artistSlug: string } }) {
-  const data = await fetchEpk(params.artistSlug)
+export default async function EpkPage({
+  params,
+  searchParams,
+}: {
+  params: { artistSlug: string }
+  searchParams: { preview?: string }
+}) {
+  const preview = isEpkPreviewMode(searchParams)
+  const data = await fetchEpkPage(params.artistSlug, preview)
   if (!data) notFound()
-  const { artist, epk, songs } = data
+
+  const { artist, epk, songs, mode } = data
+  const pageSlug = String(artist.page_slug || '')
   const cover = resolveEpkHeroImage(artist, epk, songs)
   const socialLinks = Object.entries(epk.social_links || {}).filter(([, url]) => !!url) as [string, string][]
 
   return (
     <main className="epk-page">
       <div className="epk-shell">
+        {mode === 'preview' && (
+          <div className="epk-preview-banner print-hide" role="status">
+            <p>{tx.epkPreviewBanner}</p>
+            {!epk.public_enabled && (
+              <p className="epk-preview-banner__hint">{tx.epkPreviewUnpublished}</p>
+            )}
+          </div>
+        )}
         <div className="print-hide epk-topbar">
-          <a href={`/p/${artist.page_slug}`} className="epk-topbar__brand">ViaTone EPK</a>
+          <a href={pageSlug ? `/p/${pageSlug}` : '/'} className="epk-topbar__brand">ViaTone EPK</a>
           <span className="print-button-wrap"><PrintButton /></span>
         </div>
 
         <section className="epk-hero">
           <div>
             {cover ? (
-              <img className="epk-cover" src={cover} alt={artist.name} width={220} height={220} loading="eager" />
+              <img className="epk-cover" src={cover} alt={String(artist.name)} width={220} height={220} loading="eager" />
             ) : (
               <div className="epk-cover-fallback" aria-hidden>♪</div>
             )}
           </div>
           <div>
             <p className="epk-kicker">Electronic Press Kit</p>
-            <h1 className="epk-title">{artist.name}</h1>
-            {artist.genre && <p className="epk-genre">{artist.genre}</p>}
-            {epk.tagline && <p className="epk-tagline">&ldquo;{epk.tagline}&rdquo;</p>}
-            {epk.short_bio && <p className="epk-short-bio">{epk.short_bio}</p>}
+            <h1 className="epk-title">{String(artist.name)}</h1>
+            {!!artist.genre && <p className="epk-genre">{String(artist.genre)}</p>}
+            {!!epk.tagline && <p className="epk-tagline">&ldquo;{String(epk.tagline)}&rdquo;</p>}
+            {!!epk.short_bio && <p className="epk-short-bio">{String(epk.short_bio)}</p>}
+            {!epk.short_bio && !epk.tagline && !epk.long_bio && (
+              <p className="epk-short-bio epk-short-bio--muted">{tx.epkPreviewEmptyHint}</p>
+            )}
           </div>
         </section>
 
         <section className="epk-body">
           <div>
-            {epk.long_bio && (
+            {!!epk.long_bio && (
               <div className="epk-block">
                 <h2 className="epk-section-title">Bio</h2>
                 {String(epk.long_bio).split(/\n\n+/).map((paragraph, index) => (
@@ -163,10 +154,10 @@ export default async function EpkPage({ params }: { params: { artistSlug: string
               </div>
             )}
 
-            {epk.release_highlight && (
+            {!!epk.release_highlight && (
               <div className="epk-block">
                 <h2 className="epk-section-title">Latest Release</h2>
-                <p className="epk-prose">{epk.release_highlight}</p>
+                <p className="epk-prose">{String(epk.release_highlight)}</p>
               </div>
             )}
 
@@ -188,7 +179,7 @@ export default async function EpkPage({ params }: { params: { artistSlug: string
             <div className="epk-side-card">
               <h2 className="epk-section-title">Contact</h2>
               {epk.contact_info ? (
-                <p className="epk-contact">{epk.contact_info}</p>
+                <p className="epk-contact">{String(epk.contact_info)}</p>
               ) : (
                 <p className="epk-contact-muted">{tx.epkContactFallback}</p>
               )}
@@ -201,7 +192,7 @@ export default async function EpkPage({ params }: { params: { artistSlug: string
                   {socialLinks.map(([platform, url]) => (
                     <a key={platform} href={url} target="_blank" rel="noopener noreferrer">{platform}</a>
                   ))}
-                  {artist.page_slug && <a href={`/p/${artist.page_slug}`}>Public artist page</a>}
+                  {pageSlug && <a href={`/p/${pageSlug}`}>Public artist page</a>}
                 </div>
               </div>
             )}

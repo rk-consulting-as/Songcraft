@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { clientPublicUrl } from '@/lib/appUrl'
+import { epkPreviewPath, epkPublicPath } from '@/lib/epk/paths'
 import { t, useLang } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase'
 import type { BrandPanel } from '@/lib/artistWorkspaceTabs'
@@ -74,7 +75,12 @@ export default function PublicPresenceBuilder({
   const storiesStatus: PresenceStatus = !pageEnabled ? 'disabled' : publishedStoriesCount > 0 ? 'active' : 'incomplete'
 
   const publicUrl = pageSlug ? clientPublicUrl(`/p/${pageSlug}`) : ''
-  const epkUrl = pageSlug && epkPublicEnabled ? clientPublicUrl(`/epk/${pageSlug}`) : ''
+  const epkPublicUrl = pageSlug && epkPublicEnabled ? clientPublicUrl(epkPublicPath(pageSlug) || '') : ''
+  const epkPreviewUrl = pageSlug ? clientPublicUrl(epkPreviewPath(pageSlug) || '') : ''
+
+  const logEpkPreviewClick = () => {
+    if (epkPreviewUrl) console.info('[ViaTone] EPK preview URL:', epkPreviewUrl)
+  }
 
   const copyUrl = async (url: string, kind: 'public' | 'epk') => {
     if (!url) return
@@ -107,8 +113,15 @@ export default function PublicPresenceBuilder({
               {tx.publicBuilderPreviewSite} ↗
             </a>
           )}
-          {epkUrl && (
-            <a href={epkUrl} target="_blank" rel="noopener noreferrer" className="btn-outline quick-action-btn" style={{ textDecoration: 'none' }}>
+          {epkPreviewUrl && (
+            <a
+              href={epkPreviewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={logEpkPreviewClick}
+              className="btn-outline quick-action-btn"
+              style={{ textDecoration: 'none' }}
+            >
               {tx.publicBuilderPreviewEpk} ↗
             </a>
           )}
@@ -117,8 +130,8 @@ export default function PublicPresenceBuilder({
               {copied === 'public' ? tx.copied : tx.publicBuilderCopyPublicUrl}
             </button>
           )}
-          {epkUrl && (
-            <button type="button" className="btn-outline quick-action-btn" onClick={() => copyUrl(epkUrl, 'epk')}>
+          {epkPublicUrl && (
+            <button type="button" className="btn-outline quick-action-btn" onClick={() => copyUrl(epkPublicUrl, 'epk')}>
               {copied === 'epk' ? tx.copied : tx.publicBuilderCopyEpkUrl}
             </button>
           )}

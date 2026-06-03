@@ -3825,6 +3825,26 @@ body.artist-workspace-page button[title="Open chat"] {
   box-shadow: 0 24px 80px rgba(80, 55, 20, 0.12);
   overflow: hidden;
 }
+.epk-preview-banner {
+  padding: 12px 22px;
+  background: rgba(138, 106, 32, 0.12);
+  border-bottom: 1px solid rgba(138, 106, 32, 0.25);
+}
+.epk-preview-banner p {
+  margin: 0;
+  font-size: 13px;
+  color: #5a4520;
+  line-height: 1.45;
+}
+.epk-preview-banner__hint {
+  margin-top: 6px !important;
+  font-size: 12px !important;
+  color: #7a6530 !important;
+}
+.epk-short-bio--muted {
+  color: #8a7a60;
+  font-style: italic;
+}
 .epk-topbar {
   display: flex;
   justify-content: space-between;
