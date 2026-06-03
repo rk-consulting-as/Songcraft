@@ -1,6 +1,12 @@
 import type { Lang } from '@/lib/i18n'
 import type { UserParticipationSummary } from '@/lib/playlistCommunities/participationSummary'
 import type { PlaybookEngineResult } from '@/lib/playbook/computeEngine'
+import type { CreatorStage, PersonalizedHero } from './creatorStage'
+import type { DiscoverOpportunity } from './discoverOpportunities'
+import type { QuickWinItem } from './quickWins'
+import type { SmartInsightCard } from './smartInsights'
+import type { TodayAction } from './todayActions'
+import type { ArtistHealthLabel } from './artistHealthScore'
 
 export type CommandAction = {
   id: string
@@ -21,6 +27,9 @@ export type ArtistStripItem = {
   statusLabel: string
   song_count: number
   page_enabled?: boolean
+  healthScore?: number
+  healthLabel?: ArtistHealthLabel
+  healthLabelText?: string
 }
 
 export type ActiveReleaseItem = {
@@ -42,6 +51,13 @@ export type GrowthOpportunityItem = {
   impact: 'low' | 'medium' | 'high'
 }
 
+export type CommunityMomentum = {
+  dailyStreak: number
+  weeklyStreak: number
+  proofStreak: number
+  participationStreak: number
+}
+
 export type DashboardInsightsData = {
   artistCount: number
   songCount: number
@@ -53,7 +69,8 @@ export type DashboardInsightsData = {
 }
 
 export type CommandCenterSnapshot = {
-  actions: CommandAction[]
+  actions: CommandAction[] | TodayAction[]
+  allActions?: CommandAction[]
   actionCount: number
   releasesInProgress: number
   communityItems: number
@@ -68,6 +85,14 @@ export type CommandCenterSnapshot = {
   growthOpportunities: GrowthOpportunityItem[]
   insights: DashboardInsightsData
   playbook: PlaybookEngineResult | null
+  /** Phase 53B adaptive */
+  stage?: CreatorStage
+  hero?: PersonalizedHero
+  todayActions?: TodayAction[]
+  quickWins?: QuickWinItem[]
+  smartInsights?: SmartInsightCard[]
+  discoverOpportunities?: DiscoverOpportunity[]
+  communityMomentum?: CommunityMomentum
 }
 
 export type DashboardSongRow = {
@@ -96,6 +121,8 @@ export type DashboardArtistRow = {
   spotify_image_url?: string | null
   page_enabled?: boolean
   page_slug?: string | null
+  page_settings?: Record<string, unknown> | null
+  spotify_url?: string | null
   song_count?: number
 }
 

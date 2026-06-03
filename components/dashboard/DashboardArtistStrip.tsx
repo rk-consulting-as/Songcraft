@@ -39,9 +39,13 @@ export default function DashboardArtistStrip({ artists, tx, onCreateArtist }: Pr
                     <h3 className="dashboard-artist-card__name">{artist.name}</h3>
                     {artist.genre && <p className="dashboard-artist-card__genre">{artist.genre}</p>}
                     <div className="dashboard-artist-card__meta">
-                      <span className="dashboard-artist-card__score">{artist.growthScore}%</span>
-                      <span className={`dashboard-artist-card__badge dashboard-artist-card__badge--${artist.statusKey}`}>
-                        {artist.statusLabel}
+                      {artist.healthScore != null && (
+                        <span className="dashboard-artist-card__health" title={artist.healthLabelText}>
+                          {artist.healthScore}%
+                        </span>
+                      )}
+                      <span className={`dashboard-artist-card__badge dashboard-artist-card__badge--${artist.healthLabel || artist.statusKey}`}>
+                        {artist.healthLabelText || artist.statusLabel}
                       </span>
                     </div>
                   </div>

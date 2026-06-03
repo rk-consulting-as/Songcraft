@@ -15,13 +15,18 @@ import GrowthHubDashboardCard from '@/components/growth/GrowthHubDashboardCard'
 import DashboardDiscoverHighlights from '@/components/DashboardDiscoverHighlights'
 import ViewerAdSlot from '@/components/ads/ViewerAdSlot'
 import DashboardCommandCenterHero from '@/components/dashboard/DashboardCommandCenterHero'
+import DashboardTodayPanel from '@/components/dashboard/DashboardTodayPanel'
+import DashboardQuickWins from '@/components/dashboard/DashboardQuickWins'
 import DashboardArtistStrip from '@/components/dashboard/DashboardArtistStrip'
 import DashboardActiveReleases from '@/components/dashboard/DashboardActiveReleases'
 import DashboardCommunityPanel from '@/components/dashboard/DashboardCommunityPanel'
 import DashboardGrowthOpportunities from '@/components/dashboard/DashboardGrowthOpportunities'
+import DashboardDiscoverOpportunities from '@/components/dashboard/DashboardDiscoverOpportunities'
 import DashboardInsights from '@/components/dashboard/DashboardInsights'
 import DashboardQuickActionBar from '@/components/dashboard/DashboardQuickActionBar'
 import { buildCommandCenter } from '@/lib/dashboard/buildCommandCenter'
+import { enrichCommandCenterSnapshot } from '@/lib/dashboard/buildAdaptive'
+import { fetchParticipationStreaks } from '@/lib/passiveParticipation/streaks'
 import type { CommandCenterSnapshot, DashboardSongRow } from '@/lib/dashboard/types'
 import { fetchPlaybookContext } from '@/lib/playbook/fetchContext'
 import { computePlaybookEngine } from '@/lib/playbook/computeEngine'
@@ -483,7 +488,19 @@ export default function Dashboard() {
         const songRows = (allSongs || []) as DashboardSongRow[]
         setDashboardSongs(songRows)
 
-        const [participation, playbookCtx, storiesRes, ownedCampaigns, pendingMembersRes, newestSub, newestStoryRes] = await Promise.all([
+        const [
+          participation,
+          playbookCtx,
+          storiesRes,
+          ownedCampaigns,
+          pendingMembersRes,
+          newestSub,
+          newestStoryRes,
+          publishedStoriesRes,
+          joinedCampaignsRes,
+          publicCampaignsRes,
+          streaks,
+        ] = await Promise.all([
           fetchUserParticipationSummary(supabase, user.id).catch(() => null),
           fetchPlaybookContext(artistRows[0]?.id).catch(() => null),
           supabase.from('artist_stories').select('id, title, slug, artist_id, status').eq('user_id', user.id).in('status', ['draft', 'scheduled']).order('updated_at', { ascending: false }).limit(8),
@@ -491,6 +508,10 @@ export default function Dashboard() {
           supabase.from('playlist_campaigns').select('id').eq('user_id', user.id),
           supabase.from('newsletter_subscribers').select('email, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
           supabase.from('artist_stories').select('id, title, slug, artist_id').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+          supabase.from('artist_stories').select('id, artist_id').eq('user_id', user.id).eq('status', 'published'),
+          supabase.from('playlist_campaign_members').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('status', 'approved'),
+          supabase.from('playlist_campaigns').select('id, title, genre, mood').eq('visibility', 'public').in('status', ['open', 'active']).eq('admin_hidden', false).limit(30),
+          fetchParticipationStreaks(supabase, user.id).catch(() => null),
         ])
 
         let pendingMemberCount = 0
@@ -510,18 +531,28 @@ export default function Dashboard() {
         )[0]
         const topArtistRow = [...artistRows].sort((a, b) => (b.songs?.[0]?.count ?? 0) - (a.songs?.[0]?.count ?? 0))[0]
 
-        const snapshot = buildCommandCenter({
+        const publishedStories = (publishedStoriesRes.data || []) as { id: string; artist_id: string }[]
+        const storyCountByArtist: Record<string, number> = {}
+        for (const s of publishedStories) {
+          storyCountByArtist[s.artist_id] = (storyCountByArtist[s.artist_id] || 0) + 1
+        }
+        const ownCampaignIds = (pendingMembersRes.data || []).map((c: { id: string }) => c.id)
+        const artistPayload = artistRows.map((a: any) => ({
+          id: a.id,
+          name: a.name,
+          genre: a.genre || '',
+          avatar_url: a.avatar_url || null,
+          spotify_image_url: a.spotify_image_url,
+          page_enabled: a.page_enabled,
+          page_slug: a.page_slug,
+          page_settings: a.page_settings || null,
+          spotify_url: a.spotify_url || null,
+          song_count: a.songs?.[0]?.count ?? 0,
+        }))
+        const txMap = t[lang] as Record<string, string>
+        const baseInput = {
           lang,
-          artists: artistRows.map((a: any) => ({
-            id: a.id,
-            name: a.name,
-            genre: a.genre || '',
-            avatar_url: a.avatar_url || null,
-            spotify_image_url: a.spotify_image_url,
-            page_enabled: a.page_enabled,
-            page_slug: a.page_slug,
-            song_count: a.songs?.[0]?.count ?? 0,
-          })),
+          artists: artistPayload,
           songs: songRows,
           participation,
           playbook,
@@ -548,9 +579,27 @@ export default function Dashboard() {
               artist_id: newestStoryRes.data.artist_id,
             } : null,
           },
-          tx: t[lang] as Record<string, string>,
+          tx: txMap,
+        }
+        const snapshot = buildCommandCenter(baseInput)
+        const enriched = enrichCommandCenterSnapshot(snapshot, {
+          ...baseInput,
+          allActions: snapshot.allActions || [],
+          displayName: userProfile?.display_name,
+          publishedStoryCount: publishedStories.length,
+          joinedCampaignCount: joinedCampaignsRes.count || 0,
+          subscriberCount: playbookCtx?.subscriberCount ?? 0,
+          storyCountByArtist,
+          publicCampaigns: (publicCampaignsRes.data || []).map((c: { id: string; title: string; genre?: string }) => ({
+            id: c.id,
+            title: c.title,
+            genre: c.genre,
+          })),
+          ownCampaignIds,
+          streaks,
+          proofStreakDays: participation?.weekApprovedCount,
         })
-        setCommandSnapshot(snapshot)
+        setCommandSnapshot(enriched)
       } catch (e) {
         console.warn('[dashboard] command center build failed', e)
       }
@@ -885,19 +934,38 @@ export default function Dashboard() {
               snapshot={commandSnapshot}
               displayName={userProfile?.display_name}
               tx={tx as Record<string, string>}
+              onCreateArtist={openCreate}
             />
+            {commandSnapshot.todayActions && commandSnapshot.todayActions.length > 0 && (
+              <DashboardTodayPanel actions={commandSnapshot.todayActions} tx={tx as Record<string, string>} />
+            )}
+            {commandSnapshot.quickWins && commandSnapshot.quickWins.length > 0 && (
+              <DashboardQuickWins wins={commandSnapshot.quickWins} tx={tx as Record<string, string>} />
+            )}
             <DashboardArtistStrip
               artists={commandSnapshot.artists}
               tx={tx as Record<string, string>}
               onCreateArtist={openCreate}
             />
-            <DashboardActiveReleases releases={commandSnapshot.activeReleases} tx={tx as Record<string, string>} />
-            <DashboardCommunityPanel snapshot={commandSnapshot} tx={tx as Record<string, string>} />
+            <DashboardActiveReleases
+              releases={commandSnapshot.activeReleases}
+              tx={tx as Record<string, string>}
+              stage={commandSnapshot.stage}
+              firstArtistId={artists[0]?.id}
+            />
+            <DashboardCommunityPanel
+              snapshot={commandSnapshot}
+              tx={tx as Record<string, string>}
+              firstArtistId={artists[0]?.id}
+            />
             <section className="dashboard-nav-section">
               <GrowthHubDashboardCard artistId={artists[0]?.id} />
             </section>
             <DashboardGrowthOpportunities opportunities={commandSnapshot.growthOpportunities} tx={tx as Record<string, string>} />
-            <DashboardInsights insights={commandSnapshot.insights} tx={tx as Record<string, string>} />
+            {commandSnapshot.discoverOpportunities && commandSnapshot.discoverOpportunities.length > 0 && (
+              <DashboardDiscoverOpportunities opportunities={commandSnapshot.discoverOpportunities} tx={tx as Record<string, string>} />
+            )}
+            <DashboardInsights insights={commandSnapshot.insights} snapshot={commandSnapshot} tx={tx as Record<string, string>} />
           </div>
         )}
 

@@ -2,14 +2,31 @@
 
 import Link from 'next/link'
 import type { ActiveReleaseItem } from '@/lib/dashboard/types'
+import type { CreatorStage } from '@/lib/dashboard/creatorStage'
+import { getIntelligentEmptyState } from '@/lib/dashboard/emptyStates'
 
 type Props = {
   releases: ActiveReleaseItem[]
   tx: Record<string, string>
+  stage?: CreatorStage
+  firstArtistId?: string
 }
 
-export default function DashboardActiveReleases({ releases, tx }: Props) {
-  if (releases.length === 0) return null
+export default function DashboardActiveReleases({ releases, tx, stage = 'starter', firstArtistId }: Props) {
+  if (releases.length === 0) {
+    const empty = getIntelligentEmptyState('releases', tx, stage, firstArtistId)
+    return (
+      <section id="songs" className="dashboard-section dashboard-active-releases">
+        <h2 className="dashboard-section__title">{tx.cmdActiveReleases}</h2>
+        <div className="card workspace-card workspace-glass">
+          <p className="workspace-section-desc">{empty.message}</p>
+          <Link href={empty.href} className="btn-outline quick-action-btn" style={{ textDecoration: 'none' }}>
+            {empty.cta} →
+          </Link>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section id="songs" className="dashboard-section dashboard-active-releases">

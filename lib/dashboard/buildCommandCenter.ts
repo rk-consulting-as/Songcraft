@@ -274,6 +274,7 @@ export function buildCommandCenter(input: BuildCommandCenterInput): CommandCente
 
   return {
     actions: topActions,
+    allActions: actions,
     actionCount: actions.length,
     releasesInProgress,
     communityItems,
