@@ -29,6 +29,9 @@ type CatalogSong = {
   id: string
   title: string
   status?: string | null
+  created_at?: string
+  spotify_release_date?: string | null
+  proposal_meta?: { genre?: string; mood?: string } | null
   lyrics_instructions?: string | null
   lyrics_text?: string | null
   backstory?: string | null
@@ -45,6 +48,77 @@ type Props = {
   onAiOutputLangChange: (lang: AIOutputLang) => void
   onClose: () => void
   onSaved: (newSongs: CatalogSong[]) => void
+}
+
+function statusLabel(status: string | null | undefined, tx: Record<string, string>): string {
+  const map: Record<string, string> = {
+    draft: tx.draft,
+    in_progress: tx.inProgress,
+    complete: tx.complete,
+    released: tx.released,
+  }
+  return map[status || ''] || status || ''
+}
+
+function songChipMeta(song: CatalogSong, tx: Record<string, string>): string {
+  const parts: string[] = []
+  if (song.spotify_release_date) {
+    parts.push(song.spotify_release_date.slice(0, 4))
+  } else if (song.created_at) {
+    parts.push(String(new Date(song.created_at).getFullYear()))
+  }
+  if (song.status) parts.push(statusLabel(song.status, tx))
+  const pm = song.proposal_meta
+  if (pm?.genre) parts.push(pm.genre)
+  if (pm?.mood) parts.push(pm.mood)
+  return parts.join(' · ')
+}
+
+function ContextCard({
+  id,
+  title,
+  hint,
+  summary,
+  checked,
+  onChange,
+}: {
+  id: string
+  title: string
+  hint: string
+  summary: string
+  checked: boolean
+  onChange: (v: boolean) => void
+}) {
+  return (
+    <label
+      htmlFor={id}
+      className={`song-creation-context-card${checked ? ' is-selected' : ''}`}
+    >
+      <input
+        id={id}
+        type="checkbox"
+        className="song-creation-context-card__input"
+        checked={checked}
+        onChange={e => onChange(e.target.checked)}
+      />
+      <span className="song-creation-context-card__indicator" aria-hidden="true">
+        {checked ? '✓' : ''}
+      </span>
+      <span className="song-creation-context-card__body">
+        <span className="song-creation-context-card__title">{title}</span>
+        <span className="song-creation-context-card__hint">{hint}</span>
+        {summary && <span className="song-creation-context-card__summary">{summary}</span>}
+      </span>
+    </label>
+  )
+}
+
+function StepHeading({ id, label }: { id: string; label: string }) {
+  return (
+    <h3 id={id} className="song-creation-step__title">
+      {label}
+    </h3>
+  )
 }
 
 export default function SongCreationStudio({
@@ -77,13 +151,30 @@ export default function SongCreationStudio({
     [artist, songs]
   )
 
+  const profileSummary = useMemo(() => {
+    const parts: string[] = []
+    if (artist.genre?.trim()) parts.push(artist.genre.trim())
+    if (artist.description?.trim()) {
+      const d = artist.description.trim()
+      parts.push(d.length > 72 ? `${d.slice(0, 72)}…` : d)
+    }
+    if (artist.song_structure?.trim()) parts.push(artist.song_structure.trim())
+    return parts.join(' · ')
+  }, [artist])
+
+  const productionSummary = useMemo(
+    () => [...productionProfile.genres, ...productionProfile.traits].slice(0, 8).join(' · '),
+    [productionProfile]
+  )
+
+  const hasProfileContext = !!(artist.genre || artist.description || artist.song_structure)
   const inspirationSongs = songs.filter(s => inspirationIds.has(s.id))
 
-  const toggleInspiration = (id: string, checked: boolean) => {
+  const toggleInspiration = (id: string) => {
     setInspirationIds(prev => {
       const next = new Set(prev)
-      if (checked) next.add(id)
-      else next.delete(id)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
   }
@@ -198,133 +289,219 @@ export default function SongCreationStudio({
   ]
 
   return (
-    <div className="card song-creation-studio" style={{ marginBottom: 32, borderColor: 'rgba(212,168,67,0.4)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h2 style={{ margin: 0, color: '#d4a843', fontWeight: 'normal', fontSize: 18 }}>{tx.createNewSong}</h2>
-        <button type="button" className="btn-outline" style={{ fontSize: 12, padding: '4px 12px' }} onClick={onClose}>{tx.close}</button>
-      </div>
+    <div className="card song-creation-studio workspace-card workspace-glass">
+      <header className="song-creation-studio__header">
+        <div>
+          <h2 className="song-creation-studio__heading">{tx.createNewSong}</h2>
+          <p className="song-creation-studio__subheading">{tx.aiGenerator}</p>
+        </div>
+        <button type="button" className="btn-outline song-creation-studio__close" onClick={onClose}>
+          {tx.close}
+        </button>
+      </header>
 
       {planId === 'free' && <UpgradePrompt compact title={tx.upgradeAiTitle} description={tx.upgradeAiDesc} />}
 
-      {(artist.genre || artist.description || artist.song_structure) && (
-        <div className="song-creation-studio__toggle" style={{ background: useProfile ? 'rgba(212,168,67,0.06)' : 'rgba(255,255,255,0.02)', border: `1px solid ${useProfile ? 'rgba(212,168,67,0.25)' : 'rgba(180,140,80,0.1)'}`, borderRadius: 6, padding: '12px 16px', marginBottom: 16 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-            <input type="checkbox" checked={useProfile} onChange={e => setUseProfile(e.target.checked)} style={{ accentColor: '#d4a843' }} />
-            <span style={{ color: useProfile ? '#d4a843' : '#6a5a40', fontSize: 13 }}>{tx.useArtistProfile}</span>
-          </label>
+      <section className="song-creation-step" aria-labelledby="song-creation-step-1">
+        <StepHeading id="song-creation-step-1" label={tx.songCreationStep1} />
+        <div className={`song-creation-context-grid${hasProfileContext ? '' : ' song-creation-context-grid--single'}`}>
+          {hasProfileContext && (
+            <ContextCard
+              id="song-creation-use-profile"
+              title={tx.songCreationArtistProfileCard}
+              hint={tx.useArtistProfileHint}
+              summary={profileSummary}
+              checked={useProfile}
+              onChange={setUseProfile}
+            />
+          )}
+          <ContextCard
+            id="song-creation-use-production-dna"
+            title={tx.songCreationProductionDnaCard}
+            hint={tx.useProductionDnaHint}
+            summary={productionSummary || productionProfile.label}
+            checked={useProductionDna}
+            onChange={setUseProductionDna}
+          />
         </div>
-      )}
+      </section>
 
-      <div className="song-creation-studio__toggle" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(180,140,80,0.12)', borderRadius: 6, padding: '12px 16px', marginBottom: 16 }}>
-        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
-          <input type="checkbox" checked={useProductionDna} onChange={e => setUseProductionDna(e.target.checked)} style={{ accentColor: '#d4a843', marginTop: 3 }} />
-          <span>
-            <span style={{ color: '#d4a843', fontSize: 13 }}>{tx.useProductionDna}</span>
-            <span style={{ display: 'block', color: '#5a4a30', fontSize: 11, marginTop: 4 }}>
-              {[...productionProfile.genres, ...productionProfile.traits].slice(0, 6).join(' · ')}
-            </span>
-          </span>
+      <section className="song-creation-step" aria-labelledby="song-creation-step-2">
+        <StepHeading id="song-creation-step-2" label={tx.songCreationStep2} />
+        {songs.length === 0 ? (
+          <p className="song-creation-empty">{tx.songCreationEmptyInspiration}</p>
+        ) : (
+          <>
+            <div className="song-creation-inspiration__toolbar">
+              <button type="button" className="btn-outline quick-action-btn" onClick={selectAllInspiration}>
+                {tx.inspirationSelectAll}
+              </button>
+              <button type="button" className="btn-outline quick-action-btn" onClick={clearInspiration}>
+                {tx.inspirationClearSelection}
+              </button>
+              <span className="song-creation-inspiration__count">
+                {tx.songCreationSelectedCount.replace('{n}', String(inspirationIds.size))}
+              </span>
+            </div>
+            <div className="song-creation-inspiration__grid" role="group" aria-label={tx.inspirationSourcesTitle}>
+              {songs.map(s => {
+                const selected = inspirationIds.has(s.id)
+                const meta = songChipMeta(s, tx)
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    className={`song-creation-inspiration-chip${selected ? ' is-selected' : ''}`}
+                    aria-pressed={selected}
+                    onClick={() => toggleInspiration(s.id)}
+                  >
+                    <span className="song-creation-inspiration-chip__check" aria-hidden="true">
+                      {selected ? '✓' : ''}
+                    </span>
+                    <span className="song-creation-inspiration-chip__text">
+                      <span className="song-creation-inspiration-chip__title">{s.title}</span>
+                      {meta && <span className="song-creation-inspiration-chip__meta">{meta}</span>}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            {inspirationIds.size > 0 && (
+              <div className="song-creation-inspiration__controls">
+                <p className="song-creation-inspiration__controls-label">{tx.inspirationAnalyzeLabel}</p>
+                <div className="song-creation-inspiration__controls-grid">
+                  {controlLabels.map(({ key, labelKey }) => (
+                    <label key={key} className="song-creation-control-chip">
+                      <input
+                        type="checkbox"
+                        checked={inspirationControls[key]}
+                        onChange={() => toggleControl(key)}
+                      />
+                      <span>{tx[labelKey]}</span>
+                    </label>
+                  ))}
+                </div>
+                <label className="song-creation-song-dna-toggle">
+                  <input
+                    type="checkbox"
+                    checked={useSongDna}
+                    onChange={e => setUseSongDna(e.target.checked)}
+                  />
+                  <span>{tx.useSongDna}</span>
+                </label>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
+      <section className="song-creation-step" aria-labelledby="song-creation-step-3">
+        <StepHeading id="song-creation-step-3" label={tx.songCreationStep3} />
+        <label className="song-creation-idea-label" htmlFor="song-creation-prompt">
+          {tx.describeTheme}
         </label>
-      </div>
+        <textarea
+          id="song-creation-prompt"
+          className="song-creation-idea-input"
+          value={prompt}
+          onChange={e => setPrompt(e.target.value)}
+          placeholder={tx.themePlaceholder}
+          rows={4}
+        />
+      </section>
 
-      {songs.length > 0 && (
-        <section className="song-creation-studio__section" style={{ marginBottom: 16 }}>
-          <h3 style={{ margin: '0 0 10px', color: '#d4a843', fontSize: 14, fontWeight: 'normal' }}>{tx.inspirationSourcesTitle}</h3>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-            <button type="button" className="btn-outline" style={{ fontSize: 11 }} onClick={selectAllInspiration}>{tx.inspirationSelectAll}</button>
-            <button type="button" className="btn-outline" style={{ fontSize: 11 }} onClick={clearInspiration}>{tx.inspirationClearSelection}</button>
-          </div>
-          <div className="song-creation-studio__inspiration-list">
-            {songs.map(s => (
-              <label key={s.id} className="song-creation-studio__inspiration-item">
-                <input type="checkbox" checked={inspirationIds.has(s.id)} onChange={e => toggleInspiration(s.id, e.target.checked)} />
-                <span>{s.title}</span>
-              </label>
-            ))}
-          </div>
-          {inspirationIds.size > 0 && (
-            <>
-              <p style={{ color: '#8a7a60', fontSize: 11, margin: '12px 0 8px', letterSpacing: 1, textTransform: 'uppercase' }}>{tx.inspirationAnalyzeLabel}</p>
-              <div className="song-creation-studio__controls">
-                {controlLabels.map(({ key, labelKey }) => (
-                  <label key={key} className="song-creation-studio__control-item">
-                    <input type="checkbox" checked={inspirationControls[key]} onChange={() => toggleControl(key)} />
-                    <span>{tx[labelKey]}</span>
-                  </label>
+      <section className="song-creation-step song-creation-step--generate" aria-labelledby="song-creation-step-4">
+        <StepHeading id="song-creation-step-4" label={tx.songCreationStep4} />
+        <div className="song-creation-generate-card">
+          <div className="song-creation-generate-card__settings">
+            <span className="song-creation-generate-card__settings-label">{tx.songCreationGenerateSettings}</span>
+            <div className="song-creation-count-row">
+              <span className="song-creation-count-label">{tx.numberOfSongs}</span>
+              <div className="song-creation-count-picker" role="group" aria-label={tx.numberOfSongs}>
+                {[1, 2, 3, 4, 5, 6, 8, 10].map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    className={`song-creation-count-btn${count === n ? ' is-active' : ''}`}
+                    aria-pressed={count === n}
+                    onClick={() => setCount(n)}
+                  >
+                    {n}
+                  </button>
                 ))}
               </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, fontSize: 13, color: '#8a7a60', cursor: 'pointer' }}>
-                <input type="checkbox" checked={useSongDna} onChange={e => setUseSongDna(e.target.checked)} style={{ accentColor: '#d4a843' }} />
-                {tx.useSongDna}
+            </div>
+            <div className="song-creation-generate-card__provider-row">
+              <AIProviderPicker value={aiProvider} onChange={onPickProvider} disabled={generating} />
+              <label className="song-creation-lang-label">
+                <span className="visually-hidden">{tx.aiOutputLangHint}</span>
+                <select
+                  value={aiOutputLang}
+                  onChange={e => onAiOutputLangChange(normalizeAIOutputLang(e.target.value))}
+                  disabled={generating}
+                  className="song-creation-lang-select"
+                >
+                  {AI_OUTPUT_LANGUAGES.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
               </label>
-            </>
-          )}
-        </section>
-      )}
-
-      <div style={{ marginBottom: 16 }}>
-        <label style={{ display: 'block', color: '#8a7a60', fontSize: 11, letterSpacing: 1, marginBottom: 8 }}>{tx.describeTheme}</label>
-        <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder={tx.themePlaceholder} rows={4} />
-      </div>
-
-      <div style={{ marginBottom: 20 }}>
-        <label style={{ display: 'block', color: '#8a7a60', fontSize: 11, letterSpacing: 1, marginBottom: 10 }}>{tx.numberOfSongs}</label>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {[1, 2, 3, 4, 5, 6, 8, 10].map(n => (
-            <button key={n} type="button" onClick={() => setCount(n)} style={{
-              width: 42, height: 42, borderRadius: 4, cursor: 'pointer',
-              border: count === n ? '1px solid #d4a843' : '1px solid rgba(180,140,80,0.2)',
-              background: count === n ? 'rgba(212,168,67,0.15)' : 'transparent',
-              color: count === n ? '#d4a843' : '#6a5a40',
-              fontSize: 14, fontWeight: count === n ? 'bold' : 'normal',
-            }}>{n}</button>
-          ))}
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn-gold song-creation-generate-btn"
+            onClick={generateBatch}
+            disabled={generating || !prompt.trim()}
+          >
+            {generating ? tx.planningText.replace('{n}', String(count)) : tx.generateProposals.replace('{n}', String(count))}
+          </button>
         </div>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: generatedSongs.length > 0 ? 28 : 0 }}>
-        <button type="button" className="btn-gold" onClick={generateBatch} disabled={generating || !prompt.trim()}>
-          {generating ? tx.planningText.replace('{n}', String(count)) : tx.generateProposals.replace('{n}', String(count))}
-        </button>
-        <AIProviderPicker value={aiProvider} onChange={onPickProvider} disabled={generating} />
-        <select value={aiOutputLang} onChange={e => onAiOutputLangChange(normalizeAIOutputLang(e.target.value))} disabled={generating} style={{ width: 'auto', minWidth: 145, padding: '6px 9px', fontSize: 12 }}>
-          {AI_OUTPUT_LANGUAGES.map(option => (
-            <option key={option.value} value={option.value}>{option.label}</option>
-          ))}
-        </select>
-      </div>
+      </section>
 
       {generating && (
-        <div style={{ marginTop: 20 }}>
+        <div className="song-creation-skeletons" aria-busy="true">
           {Array.from({ length: count }).map((_, i) => (
-            <div key={i} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(180,140,80,0.1)', borderRadius: 6, padding: 16, marginBottom: 10, opacity: 0.4 }}>
-              <div style={{ height: 14, background: 'rgba(212,168,67,0.15)', borderRadius: 3, width: '40%', marginBottom: 10 }} />
-              <div style={{ height: 10, background: 'rgba(255,255,255,0.05)', borderRadius: 3, width: '90%' }} />
-            </div>
+            <div key={i} className="song-creation-skeleton" />
           ))}
         </div>
       )}
 
       {generatedSongs.length > 0 && (
-        <div>
-          <p style={{ color: '#8a7a60', fontSize: 12, letterSpacing: 1, marginBottom: 14 }}>{tx.proposalPreviewTitle}</p>
+        <section className="song-creation-proposals">
+          <p className="song-creation-proposals__label">{tx.proposalPreviewTitle}</p>
           {generatedSongs.map((s, i) => (
-            <div key={i} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(212,168,67,0.2)', borderRadius: 8, padding: 18, marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <span style={{ color: '#d4a843', fontSize: 13, fontWeight: 'bold', minWidth: 24 }}>#{i + 1}</span>
-                <input value={s.title} onChange={e => updateGenerated(i, 'title', e.target.value)} style={{ fontSize: 15, flex: 1 }} />
+            <article key={i} className="song-creation-proposal card workspace-card">
+              <div className="song-creation-proposal__head">
+                <span className="song-creation-proposal__index">#{i + 1}</span>
+                <label className="visually-hidden" htmlFor={`proposal-title-${i}`}>{tx.songTitle}</label>
+                <input
+                  id={`proposal-title-${i}`}
+                  value={s.title}
+                  onChange={e => updateGenerated(i, 'title', e.target.value)}
+                  className="song-creation-proposal__title-input"
+                />
               </div>
               <SongDNAProposalSummary dna={s.dna} genre={s.genre} mood={s.mood} />
-              <textarea value={s.instructions} onChange={e => updateGenerated(i, 'instructions', e.target.value)} rows={4} style={{ fontSize: 13, color: '#a09080', marginTop: 12, width: '100%' }} />
-            </div>
+              <label className="visually-hidden" htmlFor={`proposal-instructions-${i}`}>{tx.instructions}</label>
+              <textarea
+                id={`proposal-instructions-${i}`}
+                value={s.instructions}
+                onChange={e => updateGenerated(i, 'instructions', e.target.value)}
+                rows={4}
+                className="song-creation-proposal__instructions"
+              />
+            </article>
           ))}
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div className="song-creation-proposals__actions">
             <button type="button" className="btn-gold" onClick={saveAll} disabled={saving}>
               {saving ? tx.saving : tx.saveAll.replace('{n}', String(generatedSongs.length))}
             </button>
-            <button type="button" className="btn-outline" onClick={generateBatch} disabled={generating}>{tx.regenerate}</button>
+            <button type="button" className="btn-outline" onClick={generateBatch} disabled={generating}>
+              {tx.regenerate}
+            </button>
           </div>
-        </div>
+        </section>
       )}
     </div>
   )
