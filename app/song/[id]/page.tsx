@@ -1331,6 +1331,7 @@ export default function SongPage() {
             publicPageAvailable={songPublicPageAvailable}
             distributionStatus={distributionStatusLabel}
             campaignTimelineCount={campaignTimeline.length}
+            artistId={artist?.id}
             onGoToPanel={navigateToPanel}
           />
         )}

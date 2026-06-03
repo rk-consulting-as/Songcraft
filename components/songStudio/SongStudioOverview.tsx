@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import WorkspaceEmptyState from '@/components/WorkspaceEmptyState'
 import { useSongEngagementStats } from '@/lib/songStudio/useSongEngagementStats'
 import { t, useLang } from '@/lib/i18n'
@@ -17,6 +18,7 @@ type Props = {
   publicPageAvailable?: boolean
   distributionStatus?: string | null
   campaignTimelineCount?: number
+  artistId?: string | null
   onGoToPanel: (panel: string) => void
 }
 
@@ -31,6 +33,7 @@ export default function SongStudioOverview({
   publicPageAvailable,
   distributionStatus,
   campaignTimelineCount = 0,
+  artistId,
   onGoToPanel,
 }: Props) {
   const tx = t[useLang()] as Record<string, string>
@@ -139,6 +142,11 @@ export default function SongStudioOverview({
           <div className="song-studio-overview__actions">
             <button type="button" className="btn-gold quick-action-btn" onClick={() => onGoToPanel('campaign')}>{tx.songStudioOpenReleaseCampaign}</button>
             <button type="button" className="btn-outline quick-action-btn" onClick={() => onGoToPanel(missingItems[0]?.key === 'lyrics' ? 'lyrics' : 'suno')}>{tx.songStudioContinueCreating}</button>
+            {artistId && (
+              <Link href={`/artist/${artistId}?storySong=${encodeURIComponent(songId)}#brand-stories`} className="btn-outline quick-action-btn" style={{ textDecoration: 'none', textAlign: 'center' }}>
+                {tx.storyGenerateBehindTheSong}
+              </Link>
+            )}
           </div>
         </div>
       )}

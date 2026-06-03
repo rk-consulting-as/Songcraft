@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState, useRef, useMemo } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { t, useLang, type Lang } from '@/lib/i18n'
 import { type AIProvider, getStoredProvider, setStoredProvider } from '@/lib/aiProvider'
@@ -37,8 +37,12 @@ import ArtistWorkspaceContentHub from '@/components/workspace/ArtistWorkspaceCon
 import ArtistWorkspacePromotionHub from '@/components/workspace/ArtistWorkspacePromotionHub'
 import ArtistWorkspaceBrandHub from '@/components/workspace/ArtistWorkspaceBrandHub'
 import ArtistWorkspaceDistributionSummary from '@/components/workspace/ArtistWorkspaceDistributionSummary'
-import ArtistWorkspaceStoriesPlaceholder from '@/components/workspace/ArtistWorkspaceStoriesPlaceholder'
 import PublicPresenceBuilder from '@/components/workspace/PublicPresenceBuilder'
+import ArtistStoriesManager from '@/components/artistStories/ArtistStoriesManager'
+import ArtistSiteHomepageControls from '@/components/artistSite/ArtistSiteHomepageControls'
+import ArtistSiteThemePanel from '@/components/artistSite/ArtistSiteThemePanel'
+import ArtistSiteSeoPanel from '@/components/artistSite/ArtistSiteSeoPanel'
+import ArtistSiteSharingPanel from '@/components/artistSite/ArtistSiteSharingPanel'
 import {
   buildArtistPageDescription,
   buildArtistPageTitle,
@@ -60,6 +64,7 @@ import type { SocialLinksMap } from '@/lib/socialLinks'
 
 type Song = {
   id: string; title: string; status: string; created_at: string; lyrics_instructions: string
+  lyrics_text?: string | null
   backstory?: string | null
   publish_content?: any
   album_id?: string | null
@@ -168,6 +173,8 @@ const STATUS_COLORS: Record<string, string> = {
 export default function ArtistPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const initialStorySongId = searchParams.get('storySong')
   const artistId = params.id as string
   const [lang, setLangState] = useState<Lang>('en')
   const [aiOutputLang, setAiOutputLang] = useState<AIOutputLang>('en')
@@ -762,7 +769,7 @@ export default function ArtistPage() {
     [songs, epk.selected_song_ids]
   )
 
-  const [workspaceRoute, setWorkspaceRoute] = useState<WorkspaceRoute>({ area: 'overview', contentPanel: 'songs', promotionPanel: 'campaigns', brandPanel: 'presence' })
+  const [workspaceRoute, setWorkspaceRoute] = useState<WorkspaceRoute>({ area: 'overview', contentPanel: 'songs', promotionPanel: 'campaigns', brandPanel: 'overview' })
   const [ownedCampaignCount, setOwnedCampaignCount] = useState(0)
   const [creatorPlaylistCount, setCreatorPlaylistCount] = useState(0)
 
@@ -798,7 +805,11 @@ export default function ArtistPage() {
   const workspaceArea = workspaceRoute.area
   const contentPanel = workspaceRoute.contentPanel || 'songs'
   const promotionPanel = workspaceRoute.promotionPanel || 'campaigns'
-  const brandPanel = workspaceRoute.brandPanel || 'presence'
+  const brandPanelRaw = workspaceRoute.brandPanel || 'overview'
+  const brandPanel: BrandPanel =
+    brandPanelRaw === 'presence' ? 'overview'
+      : brandPanelRaw === 'public' ? 'sharing'
+        : brandPanelRaw
 
   const applyWorkspaceRoute = (route: WorkspaceRoute) => {
     setWorkspaceRoute(route)
@@ -1665,7 +1676,20 @@ export default function ArtistPage() {
               </div>
             )}
 
-            {contentPanel === 'stories' && <ArtistWorkspaceStoriesPlaceholder />}
+            {contentPanel === 'stories' && artist && (
+              <div className="workspace-section">
+                <WorkspaceEmptyState
+                  icon="📖"
+                  title={tx.artistSiteStoriesMovedTitle}
+                  description={tx.artistSiteStoriesMovedDesc}
+                  action={
+                    <button type="button" className="btn-gold quick-action-btn" onClick={() => changeBrandPanel('stories')}>
+                      {tx.artistSiteStudioStories}
+                    </button>
+                  }
+                />
+              </div>
+            )}
           </ArtistWorkspaceContentHub>
         )}
 
@@ -1775,7 +1799,7 @@ export default function ArtistPage() {
 
         {workspaceArea === 'brand' && artist && (
           <ArtistWorkspaceBrandHub active={brandPanel} onChange={changeBrandPanel}>
-            {brandPanel === 'presence' && (
+            {brandPanel === 'overview' && (
               <PublicPresenceBuilder
                 artistId={artist.id}
                 artistName={artist.name}
@@ -1789,49 +1813,68 @@ export default function ArtistPage() {
                 previewTitle={buildArtistPageTitle(artist.name)}
                 previewDescription={buildArtistPageDescription({ artist, songs, albums, featuredAsset: null })}
                 previewImage={resolveArtistOgImageForPage({ artist, songs, albums, featuredAsset: null })}
-                onOpenPanel={changeBrandPanel}
+                onOpenPanel={(panel) => {
+                  if (panel === 'public') changeBrandPanel('sharing')
+                  else if (panel === 'presence') changeBrandPanel('overview')
+                  else changeBrandPanel(panel)
+                }}
               />
             )}
 
-            {brandPanel === 'public' && (
-              <div className="workspace-section">
-                {artist.page_enabled && artist.page_slug ? (
-                  <>
-                    <div className="card workspace-card workspace-glass">
-                      <h2 className="workspace-section-title">{tx.publicPage}</h2>
-                      <p style={{ color: '#8a7a60', fontSize: 13, margin: '0 0 12px', wordBreak: 'break-all' }}>
-                        {clientPublicUrl(`/p/${artist.page_slug}`)}
-                      </p>
-                      <a href={`/p/${artist.page_slug}`} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ textDecoration: 'none', display: 'inline-block' }}>
-                        {tx.workspaceActionPublicPage} ↗
-                      </a>
-                    </div>
-                    <QRCodeCard path={`/p/${artist.page_slug}`} title={tx.qrArtistHint} artistId={artist.id} saveLabel={artist.name} />
-                    <ArtistFeaturedReleasePicker
-                      artistId={artist.id}
-                      pageSettings={artist.page_settings}
-                      songs={songs}
-                      albums={albums}
-                      onSaved={settings => setArtist({ ...artist, page_settings: settings })}
-                    />
-                    {planId === 'free' && (
-                      <UpgradePrompt compact title={tx.upgradeQrTitle} description={tx.upgradeQrDesc} />
-                    )}
-                  </>
-                ) : (
-                  <div className="card workspace-card workspace-glass">
-                    <WorkspaceEmptyState
-                      icon="🌐"
-                      title={tx.publicPageSlugRequired}
-                      action={
-                        <button type="button" className="btn-outline" onClick={() => changeWorkspaceArea('settings')}>
-                          {tx.workspaceTabSettings}
-                        </button>
-                      }
-                    />
-                  </div>
-                )}
-              </div>
+            {brandPanel === 'theme' && (
+              <ArtistSiteThemePanel
+                artistId={artist.id}
+                pageTemplate={(artist as { page_template?: string }).page_template}
+                accentColor={(artist.page_settings as { accent_color?: string })?.accent_color}
+                planId={planId}
+                pageSettings={artist.page_settings as Record<string, unknown>}
+                onSaved={patch => setArtist({ ...artist, ...patch, page_settings: patch.page_settings || artist.page_settings })}
+              />
+            )}
+
+            {brandPanel === 'homepage' && (
+              <ArtistSiteHomepageControls
+                artistId={artist.id}
+                pageSettings={artist.page_settings}
+                onSaved={settings => setArtist({ ...artist, page_settings: settings })}
+              />
+            )}
+
+            {brandPanel === 'stories' && (
+              <ArtistStoriesManager
+                artistId={artist.id}
+                artistName={artist.name}
+                pageSlug={artist.page_slug}
+                pageEnabled={!!artist.page_enabled}
+                planId={planId}
+                songs={songs.map(s => ({ id: s.id, title: s.title, lyrics_text: s.lyrics_text, backstory: s.backstory }))}
+                artistGenre={artist.genre}
+                artistDescription={artist.description}
+                initialSongId={initialStorySongId}
+              />
+            )}
+
+            {brandPanel === 'seo' && (
+              <ArtistSiteSeoPanel
+                previewTitle={buildArtistPageTitle(artist.name)}
+                previewDescription={buildArtistPageDescription({ artist, songs, albums, featuredAsset: null })}
+                previewImage={resolveArtistOgImageForPage({ artist, songs, albums, featuredAsset: null })}
+                publicUrl={artist.page_slug && artist.page_enabled ? clientPublicUrl(`/p/${artist.page_slug}`) : ''}
+              />
+            )}
+
+            {brandPanel === 'sharing' && (
+              <ArtistSiteSharingPanel
+                artistId={artist.id}
+                artistName={artist.name}
+                pageEnabled={!!artist.page_enabled}
+                pageSlug={artist.page_slug}
+                pageSettings={artist.page_settings}
+                songs={songs}
+                albums={albums}
+                planId={planId}
+                onSavedSettings={settings => setArtist({ ...artist, page_settings: settings })}
+              />
             )}
 
             {brandPanel === 'epk' && (

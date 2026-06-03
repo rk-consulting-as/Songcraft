@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { clientPublicUrl } from '@/lib/appUrl'
 import { t, useLang } from '@/lib/i18n'
+import { createClient } from '@/lib/supabase'
 import type { BrandPanel } from '@/lib/artistWorkspaceTabs'
 import PublicSocialPreviewCard from './PublicSocialPreviewCard'
 import PublicSitePreviewFrame from './PublicSitePreviewFrame'
@@ -49,6 +50,16 @@ export default function PublicPresenceBuilder({
 }: Props) {
   const tx = t[useLang()] as Record<string, string>
   const [copied, setCopied] = useState<'public' | 'epk' | null>(null)
+  const [publishedStoriesCount, setPublishedStoriesCount] = useState(0)
+
+  useEffect(() => {
+    createClient()
+      .from('artist_stories')
+      .select('id', { count: 'exact', head: true })
+      .eq('artist_id', artistId)
+      .eq('status', 'published')
+      .then(({ count }) => setPublishedStoriesCount(count || 0))
+  }, [artistId])
 
   const statusLabel = (status: PresenceStatus) => {
     if (status === 'active') return tx.publicPresenceStatusActive
@@ -60,6 +71,7 @@ export default function PublicPresenceBuilder({
   const epkStatus: PresenceStatus = epkPublicEnabled ? 'active' : epkHasContent ? 'incomplete' : 'disabled'
   const featuredStatus: PresenceStatus = featuredReleaseSet ? 'active' : pageEnabled ? 'incomplete' : 'disabled'
   const newsletterStatus: PresenceStatus = newsletterEnabled && pageEnabled ? 'active' : pageEnabled ? 'incomplete' : 'disabled'
+  const storiesStatus: PresenceStatus = !pageEnabled ? 'disabled' : publishedStoriesCount > 0 ? 'active' : 'incomplete'
 
   const publicUrl = pageSlug ? clientPublicUrl(`/p/${pageSlug}`) : ''
   const epkUrl = pageSlug && epkPublicEnabled ? clientPublicUrl(`/epk/${pageSlug}`) : ''
@@ -74,9 +86,10 @@ export default function PublicPresenceBuilder({
   }
 
   const rows: { key: string; label: string; status: PresenceStatus; panel: BrandPanel }[] = [
-    { key: 'public', label: tx.publicPresencePublicPage, status: publicPageStatus, panel: 'public' },
+    { key: 'public', label: tx.publicPresencePublicPage, status: publicPageStatus, panel: 'sharing' },
     { key: 'epk', label: tx.publicPresenceEpk, status: epkStatus, panel: 'epk' },
-    { key: 'featured', label: tx.publicPresenceFeaturedRelease, status: featuredStatus, panel: 'public' },
+    { key: 'featured', label: tx.publicPresenceFeaturedRelease, status: featuredStatus, panel: 'sharing' },
+    { key: 'stories', label: tx.publicPresenceStories, status: storiesStatus, panel: 'stories' },
     { key: 'newsletter', label: tx.publicPresenceNewsletter, status: newsletterStatus, panel: 'fanhub' },
     { key: 'fanhub', label: tx.workspaceTabFanHub, status: (pageEnabled ? 'active' : 'disabled') as PresenceStatus, panel: 'fanhub' },
     { key: 'events', label: tx.eventsTitle, status: (pageEnabled ? 'active' : 'disabled') as PresenceStatus, panel: 'events' },
@@ -153,7 +166,7 @@ export default function PublicPresenceBuilder({
             )
           })}
         </div>
-        <button type="button" className="btn-outline quick-action-btn" style={{ marginTop: 12 }} onClick={() => onOpenPanel('public')}>
+        <button type="button" className="btn-outline quick-action-btn" style={{ marginTop: 12 }} onClick={() => onOpenPanel('theme')}>
           {tx.publicBuilderEditInPublicPanel}
         </button>
       </div>

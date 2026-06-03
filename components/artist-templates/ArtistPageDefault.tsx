@@ -13,6 +13,8 @@ import PublicFeaturedReleaseBlock from '@/components/public/PublicFeaturedReleas
 import PublicLatestSongsGrid from '@/components/public/PublicLatestSongsGrid'
 import PublicEpkTeaserSection from '@/components/public/PublicEpkTeaserSection'
 import PublicPlaylistCommunitySection from '@/components/public/PublicPlaylistCommunitySection'
+import PublicStoriesSection from '@/components/public/PublicStoriesSection'
+import type { ArtistStory } from '@/lib/artistStories/types'
 import PublicHeroListenCta from '@/components/public/PublicHeroListenCta'
 import PublicArtistJsonLd from '@/components/public/PublicArtistJsonLd'
 import PublicOwnerAdSlot from '@/components/ads/PublicOwnerAdSlot'
@@ -22,7 +24,7 @@ import { resolvePublicArtistImages } from '@/lib/mediaLibrary/resolveImages'
 import { buildMusicGroupJsonLd } from '@/lib/publicArtist/metadata'
 import { t } from '@/lib/i18n'
 
-type PageSections = {
+  type PageSections = {
   hero?: boolean
   spotify?: boolean
   youtube?: boolean
@@ -32,6 +34,9 @@ type PageSections = {
   social?: boolean
   events?: boolean
   newsletter?: boolean
+  stories?: boolean
+  epk?: boolean
+  playlists?: boolean
 }
 
 type PageSettings = {
@@ -60,6 +65,7 @@ type Props = {
   albums: any[]
   events: any[]
   campaigns?: CampaignRow[]
+  stories?: Pick<ArtistStory, 'title' | 'slug' | 'excerpt' | 'cover_image_url' | 'story_type' | 'published_at'>[]
 }
 
 function youtubeId(url: string): string | null {
@@ -76,12 +82,12 @@ function youtubeId(url: string): string | null {
   return null
 }
 
-export default function ArtistPageDefault({ artist, songs, albums, events, campaigns = [] }: Props) {
+export default function ArtistPageDefault({ artist, songs, albums, events, campaigns = [], stories = [] }: Props) {
   const tx = t.en as Record<string, string>
   const settings: PageSettings = artist.page_settings || {}
   const pageSettings = settings as CreatorPageSettings
   const s: PageSections = {
-    hero: true, spotify: true, youtube: true, albums: true, songs: true, bio: true, social: true, events: true, newsletter: true,
+    hero: true, spotify: true, youtube: true, albums: true, songs: true, bio: true, social: true, events: true, newsletter: true, stories: true, epk: true, playlists: true,
     ...(settings.sections || {}),
   }
   const accent = settings.accent_color || '#d4a843'
@@ -201,13 +207,23 @@ export default function ArtistPageDefault({ artist, songs, albums, events, campa
           </section>
         )}
 
+        {s.stories !== false && stories.length > 0 && artist.page_slug && (
+          <PublicStoriesSection
+            stories={stories}
+            pageSlug={artist.page_slug}
+            accent={accent}
+            title={tx.publicStoriesLatest}
+            viewAllLabel={tx.publicStoriesViewAll}
+          />
+        )}
+
         {s.newsletter !== false && (
           <section className="public-section public-newsletter-section">
             <NewsletterSignup artistId={artist.id} sourcePage={`/p/${artist.page_slug}`} accent={accent} />
           </section>
         )}
 
-        {campaigns.length > 0 && (
+        {s.playlists !== false && campaigns.length > 0 && (
           <PublicPlaylistCommunitySection
             campaigns={campaigns}
             accent={accent}
@@ -223,7 +239,7 @@ export default function ArtistPageDefault({ artist, songs, albums, events, campa
           <PublicEventsList events={events} accent={accent} />
         )}
 
-        {epkPublic && epkSettings && (
+        {s.epk !== false && epkPublic && epkSettings && (
           <PublicEpkTeaserSection
             artistName={artist.name}
             pageSlug={artist.page_slug}

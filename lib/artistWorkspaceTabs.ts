@@ -8,7 +8,19 @@ export type ArtistWorkspaceArea =
 
 export type ContentPanel = 'songs' | 'albums' | 'media' | 'stories'
 export type PromotionPanel = 'campaigns' | 'distribution' | 'playlists'
-export type BrandPanel = 'presence' | 'public' | 'epk' | 'fanhub' | 'events' | 'analytics'
+export type BrandPanel =
+  | 'overview'
+  | 'theme'
+  | 'homepage'
+  | 'stories'
+  | 'seo'
+  | 'sharing'
+  | 'epk'
+  | 'fanhub'
+  | 'events'
+  | 'analytics'
+  | 'presence'
+  | 'public'
 
 export type WorkspaceRoute = {
   area: ArtistWorkspaceArea
@@ -39,7 +51,8 @@ const LEGACY_HASH: Record<string, WorkspaceRoute> = {
   playlists: { area: 'promotion', promotionPanel: 'playlists' },
   growth: { area: 'growth' },
   epk: { area: 'brand', brandPanel: 'epk' },
-  public: { area: 'brand', brandPanel: 'public' },
+  public: { area: 'brand', brandPanel: 'sharing' },
+  presence: { area: 'brand', brandPanel: 'overview' },
   fanhub: { area: 'brand', brandPanel: 'fanhub' },
   analytics: { area: 'brand', brandPanel: 'analytics' },
   events: { area: 'brand', brandPanel: 'events' },
@@ -61,7 +74,7 @@ export function parseWorkspaceHash(hash: string): WorkspaceRoute {
     return { area: 'promotion', promotionPanel: isPromotionPanel(panelPart) ? panelPart : 'campaigns' }
   }
   if (areaPart === 'brand') {
-    return { area: 'brand', brandPanel: isBrandPanel(panelPart) ? panelPart : 'presence' }
+    return { area: 'brand', brandPanel: isBrandPanel(panelPart) ? panelPart : 'overview' }
   }
   return { area: areaPart }
 }
@@ -69,7 +82,7 @@ export function parseWorkspaceHash(hash: string): WorkspaceRoute {
 export function buildWorkspaceHash(route: WorkspaceRoute): string {
   if (route.area === 'content') return `content-${route.contentPanel || 'songs'}`
   if (route.area === 'promotion') return `promotion-${route.promotionPanel || 'campaigns'}`
-  if (route.area === 'brand') return `brand-${route.brandPanel || 'presence'}`
+  if (route.area === 'brand') return `brand-${route.brandPanel || 'overview'}`
   return route.area
 }
 
@@ -90,7 +103,9 @@ function isPromotionPanel(v?: string): v is PromotionPanel {
 }
 
 function isBrandPanel(v?: string): v is BrandPanel {
-  return v === 'presence' || v === 'public' || v === 'epk' || v === 'fanhub' || v === 'events' || v === 'analytics'
+  return v === 'overview' || v === 'theme' || v === 'homepage' || v === 'stories' || v === 'seo' || v === 'sharing'
+    || v === 'epk' || v === 'fanhub' || v === 'events' || v === 'analytics'
+    || v === 'presence' || v === 'public'
 }
 
 /** Map legacy tab id (from overview stats etc.) to workspace route */

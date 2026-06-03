@@ -54,6 +54,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const artistIds = (artists || []).map(a => a.id)
   let songRoutes: MetadataRoute.Sitemap = []
+  let storyRoutes: MetadataRoute.Sitemap = []
   if (artistIds.length > 0) {
     const { data: songs } = await sb
       .from('songs')
@@ -69,7 +70,40 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly' as const,
       priority: 0.65,
     }))
+
+    const slugByArtist = Object.fromEntries((artists || []).map(a => [a.id, a.page_slug]))
+    const { data: stories } = await sb
+      .from('artist_stories')
+      .select('slug, artist_id, published_at, updated_at')
+      .in('artist_id', artistIds)
+      .eq('status', 'published')
+      .eq('public_hidden', false)
+      .eq('admin_hidden', false)
+      .limit(5000)
+
+    storyRoutes = (stories || [])
+      .map(st => {
+        const slug = slugByArtist[st.artist_id]
+        if (!slug) return null
+        return {
+          url: absoluteAppUrl(`/p/${slug}/stories/${st.slug}`),
+          lastModified: new Date(st.published_at || st.updated_at),
+          changeFrequency: 'weekly' as const,
+          priority: 0.6,
+        }
+      })
+      .filter(Boolean) as MetadataRoute.Sitemap
+
+    const storyIndexRoutes: MetadataRoute.Sitemap = (artists || [])
+      .filter(a => (stories || []).some(st => st.artist_id === a.id))
+      .map(a => ({
+        url: absoluteAppUrl(`/p/${a.page_slug}/stories`),
+        lastModified: a.created_at ? new Date(a.created_at) : now,
+        changeFrequency: 'weekly' as const,
+        priority: 0.58,
+      }))
+    storyRoutes = [...storyRoutes, ...storyIndexRoutes]
   }
 
-  return [...staticRoutes, ...artistRoutes, ...epkRoutes, ...songRoutes]
+  return [...staticRoutes, ...artistRoutes, ...epkRoutes, ...songRoutes, ...storyRoutes]
 }

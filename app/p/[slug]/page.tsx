@@ -28,7 +28,7 @@ async function fetchPageData(slug: string) {
   if (artistErr) console.error('[public-page] artist query error:', artistErr)
   if (!artist) return null
 
-  const [{ data: songs, error: songsErr }, { data: albums, error: albumsErr }, { data: events, error: eventsErr }, { data: featuredAsset }, { data: campaignRows }] = await Promise.all([
+  const [{ data: songs, error: songsErr }, { data: albums, error: albumsErr }, { data: events, error: eventsErr }, { data: featuredAsset }, { data: campaignRows }, { data: storyRows }] = await Promise.all([
     sb.from('songs').select('*').eq('artist_id', artist.id).eq('public_hidden', false)
       .order('position', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false }),
@@ -50,6 +50,13 @@ async function fetchPageData(slug: string) {
       .eq('admin_hidden', false)
       .order('created_at', { ascending: false })
       .limit(3),
+    sb.from('artist_stories').select('title, slug, excerpt, cover_image_url, story_type, published_at')
+      .eq('artist_id', artist.id)
+      .eq('status', 'published')
+      .eq('public_hidden', false)
+      .eq('admin_hidden', false)
+      .order('published_at', { ascending: false })
+      .limit(6),
   ])
 
   if (songsErr) console.error('[public-page] songs query error:', songsErr)
@@ -71,7 +78,7 @@ async function fetchPageData(slug: string) {
     }))
   }
 
-  return { artist, songs: songs || [], albums: albums || [], events: events || [], featuredAsset: featuredAsset || null, campaigns }
+  return { artist, songs: songs || [], albums: albums || [], events: events || [], featuredAsset: featuredAsset || null, campaigns, stories: storyRows || [] }
 }
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
@@ -108,7 +115,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export default async function ArtistPublicPage({ params }: { params: { slug: string } }) {
   const data = await fetchPageData(params.slug)
   if (!data) notFound()
-  const { artist, songs, albums, events, campaigns } = data
+  const { artist, songs, albums, events, campaigns, stories } = data
 
   const template = (artist as { page_template?: string }).page_template || 'default'
   if (template === 'minimal') {
@@ -125,6 +132,7 @@ export default async function ArtistPublicPage({ params }: { params: { slug: str
       albums={albums}
       events={events}
       campaigns={campaigns}
+      stories={stories}
     />
   )
 }
