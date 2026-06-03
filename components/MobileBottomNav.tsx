@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { t, useLang, type Lang } from '@/lib/i18n'
 import { parseWorkspaceHash } from '@/lib/artistWorkspaceTabs'
 import { parseSongStudioHash } from '@/lib/songStudio/routes'
+import { SONG_STUDIO_SHEET_OPEN_EVENT } from '@/lib/songStudio/areaMeta'
 
 function resolveNavHrefs(pathname: string) {
   const artistMatch = pathname.match(/^\/artist\/([^/]+)/)
@@ -64,22 +65,38 @@ export default function MobileBottomNav() {
     const base = pathname
     const route = parseSongStudioHash(`#${hash}`)
     const area = route.area
+    const hiddenAreas = area === 'promote' || area === 'publish' || area === 'settings'
     const items = [
-      { href: `${base}#overview`, icon: '⌂', label: tx.songStudioOverview, active: area === 'overview' || !hash },
-      { href: `${base}#lyrics`, icon: '✎', label: tx.songStudioWrite, active: area === 'write' },
-      { href: `${base}#suno`, icon: '♫', label: tx.songStudioProduce, active: area === 'produce' },
-      { href: `${base}#campaign`, icon: '↗', label: tx.songStudioRelease, active: area === 'release' },
-      { href: `${base}#promote-assets`, icon: '☰', label: tx.mobileNavMore, active: area === 'promote' || area === 'publish' || area === 'settings' },
+      { href: `${base}#overview`, icon: '⌂', label: tx.songStudioOverview, active: area === 'overview' || !hash, kind: 'link' as const },
+      { href: `${base}#lyrics`, icon: '✎', label: tx.songStudioWrite, active: area === 'write', kind: 'link' as const },
+      { href: `${base}#suno`, icon: '♫', label: tx.songStudioProduce, active: area === 'produce', kind: 'link' as const },
+      { href: `${base}#campaign`, icon: '↗', label: tx.songStudioRelease, active: area === 'release', kind: 'link' as const },
+      { icon: '☰', label: tx.mobileNavMore, active: hiddenAreas, kind: 'more' as const },
     ]
 
     return (
       <nav className="mobile-bottom-nav" aria-label={tx.mobileNavLabel}>
-        {items.map(item => (
-          <Link key={item.label} href={item.href} className={item.active ? 'active' : ''}>
-            <span aria-hidden="true">{item.icon}</span>
-            <small>{item.label}</small>
-          </Link>
-        ))}
+        {items.map(item => {
+          if (item.kind === 'more') {
+            return (
+              <button
+                key={item.label}
+                type="button"
+                className={item.active ? 'active' : ''}
+                onClick={() => window.dispatchEvent(new CustomEvent(SONG_STUDIO_SHEET_OPEN_EVENT))}
+              >
+                <span aria-hidden="true">{item.icon}</span>
+                <small>{item.label}</small>
+              </button>
+            )
+          }
+          return (
+            <Link key={item.label} href={item.href!} className={item.active ? 'active' : ''}>
+              <span aria-hidden="true">{item.icon}</span>
+              <small>{item.label}</small>
+            </Link>
+          )
+        })}
       </nav>
     )
   }

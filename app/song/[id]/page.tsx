@@ -8,6 +8,7 @@ import ZoomableImage from '@/components/ZoomableImage'
 import SongStudioShell from '@/components/songStudio/SongStudioShell'
 import SongStudioHero from '@/components/songStudio/SongStudioHero'
 import SongStudioNav from '@/components/songStudio/SongStudioNav'
+import SongStudioMobileNavigator from '@/components/songStudio/SongStudioMobileNavigator'
 import SongStudioSubNav from '@/components/songStudio/SongStudioSubNav'
 import SongStudioOverview from '@/components/songStudio/SongStudioOverview'
 import SongStudioSettingsPanel from '@/components/songStudio/SongStudioSettingsPanel'
@@ -1317,6 +1318,7 @@ export default function SongPage() {
               sunoCopied={sunoCopied}
             />
             <SongStudioNav active={studioRoute.area} onChange={navigateToArea} />
+            <SongStudioMobileNavigator active={studioRoute.area} onChange={navigateToArea} />
             <SongStudioSubNav
               items={subNavConfig.items}
               active={subNavConfig.active}
