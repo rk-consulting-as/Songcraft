@@ -54,8 +54,8 @@ export default function PlaybookGrowthCoach({ artistId }: Props) {
             {tx.playbookContinue} →
           </Link>
         )}
-        <Link href="/playbook?tab=growth" className="btn-outline" style={{ textDecoration: 'none', fontSize: 13 }}>
-          {tx.growthCoachOpenEngine}
+        <Link href="/playbook?tab=growth" className="btn-outline quick-action-btn" style={{ textDecoration: 'none', fontSize: 13 }}>
+          {tx.continueGrowthJourney} →
         </Link>
       </div>
     </div>

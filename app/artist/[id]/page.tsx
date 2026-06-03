@@ -31,7 +31,30 @@ import ArtistFeaturedReleasePicker from '@/components/ArtistFeaturedReleasePicke
 import SongCreationStudio from '@/components/songCreation/SongCreationStudio'
 import ArtistSettingsPanel from '@/components/ArtistSettingsPanel'
 import SongPublicPageActions from '@/components/SongPublicPageActions'
-import { tabFromHash, type ArtistWorkspaceTab } from '@/lib/artistWorkspaceTabs'
+import ArtistWorkspaceShell from '@/components/workspace/ArtistWorkspaceShell'
+import ArtistWorkspaceHero from '@/components/workspace/ArtistWorkspaceHero'
+import ArtistWorkspaceContentHub from '@/components/workspace/ArtistWorkspaceContentHub'
+import ArtistWorkspacePromotionHub from '@/components/workspace/ArtistWorkspacePromotionHub'
+import ArtistWorkspaceBrandHub from '@/components/workspace/ArtistWorkspaceBrandHub'
+import ArtistWorkspaceDistributionSummary from '@/components/workspace/ArtistWorkspaceDistributionSummary'
+import ArtistWorkspaceStoriesPlaceholder from '@/components/workspace/ArtistWorkspaceStoriesPlaceholder'
+import PublicPresenceBuilder from '@/components/workspace/PublicPresenceBuilder'
+import {
+  buildArtistPageDescription,
+  buildArtistPageTitle,
+  resolveArtistOgImageForPage,
+} from '@/lib/publicArtist/metadata'
+import { fetchCampaigns, fetchCreatorPlaylists } from '@/lib/playlistCommunities/client'
+import {
+  buildWorkspaceHash,
+  legacyTabToRoute,
+  parseWorkspaceHash,
+  type ArtistWorkspaceArea,
+  type BrandPanel,
+  type ContentPanel,
+  type PromotionPanel,
+  type WorkspaceRoute,
+} from '@/lib/artistWorkspaceTabs'
 
 import type { SocialLinksMap } from '@/lib/socialLinks'
 
@@ -65,12 +88,14 @@ type Album = {
 type Artist = {
   id: string; name: string; genre: string; description: string; song_structure: string
   avatar_url?: string | null
+  spotify_image_url?: string | null
   spotify_id?: string | null
   spotify_url?: string | null; spotify_verified?: boolean
   social_links?: SocialLinksMap | null
   page_enabled?: boolean
   page_slug?: string | null
   page_settings?: any
+  page_template?: string | null
   admin_hidden?: boolean | null
 }
 
@@ -737,20 +762,74 @@ export default function ArtistPage() {
     [songs, epk.selected_song_ids]
   )
 
-  const [workspaceTab, setWorkspaceTab] = useState<ArtistWorkspaceTab>('overview')
+  const [workspaceRoute, setWorkspaceRoute] = useState<WorkspaceRoute>({ area: 'overview', contentPanel: 'songs', promotionPanel: 'campaigns', brandPanel: 'presence' })
+  const [ownedCampaignCount, setOwnedCampaignCount] = useState(0)
+  const [creatorPlaylistCount, setCreatorPlaylistCount] = useState(0)
 
   useEffect(() => {
     document.body.classList.add('artist-workspace-page')
-    const fromHash = tabFromHash(window.location.hash)
-    if (fromHash) setWorkspaceTab(fromHash)
-    return () => document.body.classList.remove('artist-workspace-page')
+    setWorkspaceRoute(parseWorkspaceHash(window.location.hash))
+    const onHashChange = () => setWorkspaceRoute(parseWorkspaceHash(window.location.hash))
+    window.addEventListener('hashchange', onHashChange)
+    return () => {
+      document.body.classList.remove('artist-workspace-page')
+      window.removeEventListener('hashchange', onHashChange)
+    }
   }, [])
 
-  const changeWorkspaceTab = (tab: ArtistWorkspaceTab) => {
-    setWorkspaceTab(tab)
+  useEffect(() => {
+    if (!artistId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const [owned, pl] = await Promise.all([
+          fetchCampaigns({ artistId, scope: 'owned' }),
+          fetchCreatorPlaylists(artistId),
+        ])
+        if (!cancelled) {
+          setOwnedCampaignCount(owned?.campaigns?.length || 0)
+          setCreatorPlaylistCount(pl?.playlists?.length || 0)
+        }
+      } catch { /* ignore */ }
+    })()
+    return () => { cancelled = true }
+  }, [artistId])
+
+  const workspaceArea = workspaceRoute.area
+  const contentPanel = workspaceRoute.contentPanel || 'songs'
+  const promotionPanel = workspaceRoute.promotionPanel || 'campaigns'
+  const brandPanel = workspaceRoute.brandPanel || 'presence'
+
+  const applyWorkspaceRoute = (route: WorkspaceRoute) => {
+    setWorkspaceRoute(route)
     if (typeof window !== 'undefined') {
-      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${tab}`)
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${buildWorkspaceHash(route)}`)
     }
+  }
+
+  const changeWorkspaceArea = (area: ArtistWorkspaceArea) => {
+    applyWorkspaceRoute({
+      area,
+      contentPanel: workspaceRoute.contentPanel || 'songs',
+      promotionPanel: workspaceRoute.promotionPanel || 'campaigns',
+      brandPanel: workspaceRoute.brandPanel || 'presence',
+    })
+  }
+
+  const changeContentPanel = (panel: ContentPanel) => {
+    applyWorkspaceRoute({ area: 'content', contentPanel: panel })
+  }
+
+  const changePromotionPanel = (panel: PromotionPanel) => {
+    applyWorkspaceRoute({ area: 'promotion', promotionPanel: panel })
+  }
+
+  const changeBrandPanel = (panel: BrandPanel) => {
+    applyWorkspaceRoute({ area: 'brand', brandPanel: panel })
+  }
+
+  const openWorkspaceFromLegacyTab = (tab: string) => {
+    applyWorkspaceRoute(legacyTabToRoute(tab))
   }
 
   const generateEpk = async () => {
@@ -967,94 +1046,39 @@ export default function ArtistPage() {
   return (
     <div className="artist-workspace" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0a0f 0%, #12071e 50%, #0a0f0a 100%)' }}>
       <div className="artist-workspace-sticky">
-      <div className="app-header artist-workspace-header" data-header="page" style={{ padding: '20px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <Link href="/dashboard" style={{ color: '#6a5a40', textDecoration: 'none', fontSize: '13px' }}>← {tx.dashboard}</Link>
-          <Link href={`/playbook?artist=${artistId}`} style={{ color: '#6a5a40', textDecoration: 'none', fontSize: '13px' }}>🧭 {tx.playbookNavLink}</Link>
-          <span style={{ color: '#3a3530' }}>|</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {artist?.avatar_url ? (
-              <img src={artist.avatar_url} alt={artist.name} style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(212,168,67,0.3)' }} />
-            ) : (
-              <span style={{ fontSize: '24px' }}>🎤</span>
-            )}
-            <div>
-              <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 'normal', color: '#d4a843', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {artist?.name}
-                {artist?.spotify_verified && artist?.spotify_url && (
-                  <a
-                    href={artist.spotify_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title={lang === 'no' ? 'Åpne i Spotify' : 'Open in Spotify'}
-                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', background: '#1ed760', color: '#000', fontSize: '12px', textDecoration: 'none', fontWeight: 'bold' }}
-                  >
-                    ♪
-                  </a>
-                )}
-                {artist?.social_links?.youtube?.url && (
-                  <a
-                    href={artist.social_links.youtube.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title={lang === 'no' ? 'Åpne på YouTube' : 'Open on YouTube'}
-                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', background: '#ff0000', color: '#fff', fontSize: '11px', textDecoration: 'none', fontWeight: 'bold' }}
-                  >
-                    ▶
-                  </a>
-                )}
-                {artist?.social_links?.instagram?.url && (
-                  <a
-                    href={artist.social_links.instagram.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title={lang === 'no' ? 'Åpne på Instagram' : 'Open on Instagram'}
-                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', background: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)', color: '#fff', fontSize: '12px', textDecoration: 'none', fontWeight: 'bold' }}
-                  >
-                    ◎
-                  </a>
-                )}
-              </h1>
-              {artist?.genre && <p style={{ margin: 0, fontSize: '11px', color: '#6a5a40', letterSpacing: '1px' }}>{artist.genre.toUpperCase()}</p>}
-              {artist?.page_enabled && artist?.page_slug && (
-                <a
-                  href={`/p/${artist.page_slug}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={lang === 'no' ? 'Åpne offentlig artistside' : 'Open public artist page'}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, color: '#d4a843', fontSize: 11, textDecoration: 'none', fontWeight: 500, padding: '2px 8px', borderRadius: 12, background: 'rgba(212,168,67,0.1)', border: '1px solid rgba(212,168,67,0.3)' }}
-                >
-                  🌐 /p/{artist.page_slug} ↗
-                </a>
-              )}
-            </div>
-          </div>
-        </div>
-        {workspaceTab === 'songs' && (
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            {artist?.spotify_id && (
-              <button
-                onClick={openImport}
-                style={{ background: 'rgba(30,215,96,0.12)', border: '1px solid rgba(30,215,96,0.4)', color: '#1ed760', padding: '10px 18px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}
-              >
-                {tx.importFromSpotify}
-              </button>
-            )}
-            <button className="btn-gold" onClick={() => { setShowGenerator(true) }}>{tx.createNewSong}</button>
-          </div>
+        {artist && (
+          <ArtistWorkspaceHero
+            artistId={artistId}
+            name={artist.name}
+            genre={artist.genre}
+            avatarUrl={artist.avatar_url}
+            coverUrl={artist.spotify_image_url || artist.avatar_url}
+            pageEnabled={artist.page_enabled}
+            pageSlug={artist.page_slug}
+            stats={{
+              songs: songs.length,
+              followers: subscribers.length,
+              campaigns: ownedCampaignCount,
+              playlists: creatorPlaylistCount,
+            }}
+            onCreateSong={() => { changeContentPanel('songs'); setShowGenerator(true) }}
+            onCreateReleaseCampaign={() => changePromotionPanel('campaigns')}
+          />
         )}
       </div>
 
-      <ArtistWorkspaceNav active={workspaceTab} onChange={changeWorkspaceTab} />
-      </div>
-
+      <ArtistWorkspaceShell
+        activeArea={workspaceArea}
+        onAreaChange={changeWorkspaceArea}
+        nav={<ArtistWorkspaceNav active={workspaceArea} onChange={changeWorkspaceArea} />}
+      >
       <div className="artist-workspace-body">
-        {workspaceTab === 'overview' && artist && (
+        {workspaceArea === 'overview' && artist && (
           <>
             <MobileQuickActions
               title={tx.mobileQuickActions}
               actions={[
-                { label: tx.mobileCreateSong, icon: '+', onClick: () => { changeWorkspaceTab('songs'); setShowGenerator(true) } },
+                { label: tx.mobileCreateSong, icon: '+', onClick: () => { changeContentPanel('songs'); setShowGenerator(true) } },
                 { label: tx.mobileOpenPublicPage, icon: '↗', href: artist?.page_enabled && artist?.page_slug ? `/p/${artist.page_slug}` : undefined, disabled: !artist?.page_enabled || !artist?.page_slug },
                 { label: tx.mobileCopyShareLink, icon: '⧉', onClick: () => {
                   if (artist?.page_slug) navigator.clipboard.writeText(`${window.location.origin}/p/${artist.page_slug}`)
@@ -1067,13 +1091,33 @@ export default function ArtistPage() {
               subscriberCount={subscribers.length}
               publicPageViews={publicPageViews.length}
               newsletterSignups={newsletterConversions}
-              onOpenTab={tab => changeWorkspaceTab(tab as ArtistWorkspaceTab)}
+              epkPublicEnabled={!!epk.public_enabled}
+              epkHasContent={!!(epk.short_bio || epk.tagline || epk.long_bio || (epk.selected_song_ids?.length ?? 0) > 0)}
+              featuredReleaseSet={!!artist.page_settings?.featured_release?.id}
+              newsletterEnabled={(artist.page_settings?.sections?.newsletter ?? true) !== false}
+              onOpenTab={openWorkspaceFromLegacyTab}
             />
           </>
         )}
 
-        {workspaceTab === 'songs' && (
+        {workspaceArea === 'content' && (
+          <ArtistWorkspaceContentHub active={contentPanel} onChange={changeContentPanel}>
+            {contentPanel === 'songs' && (
           <>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+          <h2 className="workspace-section-title" style={{ margin: 0 }}>{tx.workspaceShellSongs}</h2>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            {artist?.spotify_id && (
+              <button
+                onClick={openImport}
+                style={{ background: 'rgba(30,215,96,0.12)', border: '1px solid rgba(30,215,96,0.4)', color: '#1ed760', padding: '10px 18px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}
+              >
+                {tx.importFromSpotify}
+              </button>
+            )}
+            <button className="btn-gold" onClick={() => setShowGenerator(true)}>{tx.createNewSong}</button>
+          </div>
+        </div>
         {showGenerator && artist && (
           <SongCreationStudio
             artist={artist}
@@ -1272,224 +1316,6 @@ export default function ArtistPage() {
                 </div>
               </>
             )}
-          </div>
-        )}
-
-        {/* Albums section */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', marginTop: '8px' }}>
-          <h2 style={{ margin: 0, color: '#d4a843', fontWeight: 'normal', fontSize: '16px' }}>
-            {tx.albums} ({albums.length})
-          </h2>
-          <button
-            onClick={openAlbumCreate}
-            style={{ background: 'rgba(212,168,67,0.08)', border: '1px solid rgba(212,168,67,0.25)', color: '#d4a843', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
-          >
-            {tx.newAlbum}
-          </button>
-        </div>
-
-        {albums.length > 0 ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', marginBottom: '28px' }}>
-            {albums.map(al => {
-              const albumSongs = songs.filter(s => s.album_id === al.id)
-              return (
-                <div key={al.id} className="card" style={{ padding: '12px', cursor: 'pointer', position: 'relative' }} onClick={() => openAlbumEdit(al)}>
-                  {al.cover_url ? (
-                    <ZoomableImage
-                      src={al.cover_url}
-                      alt={al.title}
-                      caption={al.title}
-                      style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '4px', marginBottom: '10px' }}
-                    />
-                  ) : (
-                    <div style={{ width: '100%', aspectRatio: '1 / 1', borderRadius: '4px', background: 'rgba(212,168,67,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px', marginBottom: '10px' }}>💿</div>
-                  )}
-                  <div style={{ color: '#e8e0d0', fontSize: '14px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{al.title}</div>
-                  <div style={{ color: '#6a5a40', fontSize: '11px', marginTop: '2px' }}>
-                    {albumSongs.length} {albumSongs.length === 1 ? tx.song : tx.songs}
-                    {al.release_date ? ' · ' + al.release_date.slice(0, 4) : ''}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        ) : (
-          <p style={{ color: '#5a4a30', fontSize: '12px', marginBottom: '24px' }}>{tx.noAlbums}</p>
-        )}
-
-        {/* Album form modal */}
-        {showAlbumForm && (
-          <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', overflowY: 'auto' }}>
-            <div className="card" style={{ width: '100%', maxWidth: '520px', maxHeight: '92vh', overflowY: 'auto', borderColor: 'rgba(212,168,67,0.4)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h3 style={{ margin: 0, color: '#d4a843', fontWeight: 'normal', fontSize: '18px' }}>
-                  {editingAlbum ? tx.editAlbum : tx.newAlbum}
-                </h3>
-                <button onClick={() => setShowAlbumForm(false)} style={{ background: 'none', border: 'none', color: '#6a5a40', cursor: 'pointer', fontSize: '22px' }}>×</button>
-              </div>
-
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.albumTitle.toUpperCase()} *</label>
-                <input value={albumForm.title} onChange={e => setAlbumForm({ ...albumForm, title: e.target.value })} placeholder={tx.albumTitlePlaceholder} />
-              </div>
-
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.albumReleaseDate.toUpperCase()}</label>
-                <input type="date" value={albumForm.release_date} onChange={e => setAlbumForm({ ...albumForm, release_date: e.target.value })} />
-              </div>
-
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.albumCoverUrl.toUpperCase()}</label>
-                <input value={albumForm.cover_url} onChange={e => setAlbumForm({ ...albumForm, cover_url: e.target.value })} placeholder="https://..." />
-
-                <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-                  <input
-                    type="file"
-                    ref={albumCoverFileRef}
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    onChange={e => {
-                      const f = e.target.files?.[0]
-                      if (f) uploadAlbumCoverFile(f)
-                      // reset so selecting the same file again still triggers onChange
-                      if (e.target) e.target.value = ''
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="btn-outline"
-                    style={{ padding: '6px 14px', fontSize: 12 }}
-                    onClick={() => albumCoverFileRef.current?.click()}
-                    disabled={albumCoverUploading}
-                  >
-                    {albumCoverUploading ? tx.saving : '📁 ' + tx.albumCoverUpload}
-                  </button>
-                  {albumForm.cover_url && (
-                    <button
-                      type="button"
-                      className="btn-outline"
-                      style={{ padding: '6px 14px', fontSize: 12, color: '#c05050', borderColor: 'rgba(200,80,80,0.25)' }}
-                      onClick={() => setAlbumForm(f => ({ ...f, cover_url: '' }))}
-                    >
-                      {tx.albumCoverRemove}
-                    </button>
-                  )}
-                </div>
-
-                {/* Spotify album fetch */}
-                <div style={{ marginTop: 10, background: 'rgba(30,215,96,0.04)', border: '1px solid rgba(30,215,96,0.2)', borderRadius: 6, padding: 10 }}>
-                  <p style={{ margin: '0 0 6px', color: '#1ed760', fontSize: 10, letterSpacing: 1 }}>
-                    {tx.albumCoverFromSpotify}
-                  </p>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <input
-                      value={albumSpotifyUrl}
-                      onChange={e => setAlbumSpotifyUrl(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); fetchSpotifyAlbum() } }}
-                      placeholder={tx.albumCoverFromSpotifyPlaceholder}
-                      style={{ flex: '1 1 200px', minWidth: 0, padding: '6px 10px', fontSize: 12 }}
-                    />
-                    <button
-                      type="button"
-                      onClick={fetchSpotifyAlbum}
-                      disabled={albumSpotifyLoading || !albumSpotifyUrl.trim()}
-                      style={{ background: 'rgba(30,215,96,0.15)', border: '1px solid rgba(30,215,96,0.4)', color: '#1ed760', padding: '6px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
-                    >
-                      {albumSpotifyLoading ? '...' : tx.albumCoverFromSpotifyFetch}
-                    </button>
-                  </div>
-                  {albumSpotifyError && (
-                    <div style={{ background: 'rgba(200,80,80,0.08)', border: '1px solid rgba(200,80,80,0.3)', color: '#c05050', padding: '5px 8px', borderRadius: 4, fontSize: 11, marginTop: 6 }}>
-                      {albumSpotifyError}
-                    </div>
-                  )}
-                </div>
-
-                {albumForm.cover_url && (
-                  <div style={{ marginTop: 10 }}>
-                    <ZoomableImage
-                      src={albumForm.cover_url}
-                      alt={albumForm.title || 'cover'}
-                      caption={albumForm.title || undefined}
-                      style={{ width: '120px', height: '120px', objectFit: 'cover', borderRadius: '4px', display: 'block' }}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* AI cover generation for the album */}
-              <div style={{ marginBottom: '16px', padding: '12px 14px', borderRadius: '6px', background: 'rgba(160,100,200,0.06)', border: '1px solid rgba(160,100,200,0.25)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
-                  <span style={{ color: '#c07bd0', fontSize: 11, letterSpacing: 1 }}>{tx.albumCoverAi.toUpperCase()}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ color: '#5a4a30', fontSize: 10 }}>AI:</span>
-                    <AIProviderPicker value={aiProvider} onChange={pickProvider} disabled={albumPromptLoading || albumImageLoading} />
-                    <select
-                      value={aiOutputLang}
-                      onChange={e => setAiOutputLang(normalizeAIOutputLang(e.target.value))}
-                      disabled={albumPromptLoading || albumImageLoading}
-                      style={{ width: 'auto', minWidth: 130, padding: '5px 8px', fontSize: 11 }}
-                    >
-                      {AI_OUTPUT_LANGUAGES.map(option => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <textarea
-                  value={albumForm.cover_prompt}
-                  onChange={e => setAlbumForm({ ...albumForm, cover_prompt: e.target.value })}
-                  placeholder={tx.albumCoverPromptPlaceholder}
-                  rows={4}
-                  style={{ marginBottom: 8 }}
-                />
-
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    onClick={generateAlbumCoverPrompt}
-                    disabled={albumPromptLoading || !albumForm.title.trim()}
-                    style={{ background: 'rgba(212,168,67,0.12)', border: '1px solid rgba(212,168,67,0.3)', color: '#d4a843', padding: '7px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
-                  >
-                    {albumPromptLoading ? tx.generating : tx.albumCoverPromptGenerate}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={generateAlbumCoverImage}
-                    disabled={albumImageLoading || !albumForm.cover_prompt.trim()}
-                    style={{ background: 'linear-gradient(135deg, #c07bd0, #9060c0)', border: '1px solid #9060c0', color: '#fff', padding: '7px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 12, fontWeight: 500 }}
-                  >
-                    {albumImageLoading ? tx.coverImageGenerating : (albumForm.cover_url ? tx.coverImageRegenerate : tx.coverImageGenerate)}
-                  </button>
-                </div>
-
-                {albumImageError && (
-                  <div style={{ background: 'rgba(200,80,80,0.08)', border: '1px solid rgba(200,80,80,0.3)', color: '#c05050', padding: '6px 10px', borderRadius: 4, fontSize: 12, marginTop: 8 }}>
-                    {albumImageError}
-                  </div>
-                )}
-              </div>
-
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.albumDescription.toUpperCase()}</label>
-                <textarea value={albumForm.description} onChange={e => setAlbumForm({ ...albumForm, description: e.target.value })} placeholder={tx.albumDescriptionPlaceholder} rows={3} />
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button className="btn-gold" onClick={saveAlbum} disabled={savingAlbum || !albumForm.title.trim()}>
-                    {savingAlbum ? tx.saving : tx.save}
-                  </button>
-                  <button className="btn-outline" onClick={() => setShowAlbumForm(false)}>{tx.cancel}</button>
-                </div>
-                {editingAlbum && (
-                  <button onClick={() => deleteAlbum(editingAlbum)} style={{ background: 'none', border: '1px solid rgba(200,80,80,0.3)', color: '#c05050', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>
-                    {tx.deleteAlbum}
-                  </button>
-                )}
-              </div>
-            </div>
           </div>
         )}
 
@@ -1777,23 +1603,238 @@ export default function ArtistPage() {
         )}
 
           </>
+            )}
+
+            {contentPanel === 'albums' && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <h2 className="workspace-section-title" style={{ margin: 0 }}>
+                    {tx.albums} ({albums.length})
+                  </h2>
+                  <button
+                    onClick={openAlbumCreate}
+                    className="btn-outline"
+                    style={{ padding: '6px 14px', fontSize: '12px' }}
+                  >
+                    {tx.newAlbum}
+                  </button>
+                </div>
+                {albums.length > 0 ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+                    {albums.map(al => {
+                      const albumSongs = songs.filter(s => s.album_id === al.id)
+                      return (
+                        <div key={al.id} className="card workspace-glass" style={{ padding: '12px', cursor: 'pointer' }} onClick={() => openAlbumEdit(al)}>
+                          {al.cover_url ? (
+                            <ZoomableImage
+                              src={al.cover_url}
+                              alt={al.title}
+                              caption={al.title}
+                              style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: '4px', marginBottom: '10px' }}
+                            />
+                          ) : (
+                            <div style={{ width: '100%', aspectRatio: '1 / 1', borderRadius: '4px', background: 'rgba(212,168,67,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px', marginBottom: '10px' }}>💿</div>
+                          )}
+                          <div style={{ color: '#e8e0d0', fontSize: '14px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{al.title}</div>
+                          <div style={{ color: '#6a5a40', fontSize: '11px', marginTop: '2px' }}>
+                            {albumSongs.length} {albumSongs.length === 1 ? tx.song : tx.songs}
+                            {al.release_date ? ' · ' + al.release_date.slice(0, 4) : ''}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="card workspace-card workspace-glass">
+                    <WorkspaceEmptyState
+                      icon="💿"
+                      title={tx.noAlbums}
+                      description={tx.noAlbums}
+                      action={
+                        <button type="button" className="btn-gold" onClick={openAlbumCreate}>{tx.newAlbum}</button>
+                      }
+                    />
+                  </div>
+                )}
+              </>
+            )}
+
+            {contentPanel === 'media' && artist && (
+              <div className="workspace-section">
+                <ArtistWorkspaceMedia artist={artist} />
+              </div>
+            )}
+
+            {contentPanel === 'stories' && <ArtistWorkspaceStoriesPlaceholder />}
+          </ArtistWorkspaceContentHub>
         )}
 
-        {workspaceTab === 'campaigns' && <ArtistCampaignsSummary songs={songs} />}
-
-        {workspaceTab === 'analytics' && artist?.id && (
-          <ArtistWorkspaceAnalytics
-            artistId={artist.id}
-            planId={planId}
-            analyticsRange={analyticsRange}
-            onRangeChange={setAnalyticsRange}
-            analyticsLoading={analyticsLoading}
-            analyticsEvents={analyticsEvents}
-            songs={songs.map(s => ({ id: s.id, title: s.title }))}
-          />
+        {workspaceArea === 'content' && showAlbumForm && (
+          <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', overflowY: 'auto' }}>
+            <div className="card" style={{ width: '100%', maxWidth: '520px', maxHeight: '92vh', overflowY: 'auto', borderColor: 'rgba(212,168,67,0.4)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h3 style={{ margin: 0, color: '#d4a843', fontWeight: 'normal', fontSize: '18px' }}>
+                  {editingAlbum ? tx.editAlbum : tx.newAlbum}
+                </h3>
+                <button onClick={() => setShowAlbumForm(false)} style={{ background: 'none', border: 'none', color: '#6a5a40', cursor: 'pointer', fontSize: '22px' }}>×</button>
+              </div>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.albumTitle.toUpperCase()} *</label>
+                <input value={albumForm.title} onChange={e => setAlbumForm({ ...albumForm, title: e.target.value })} placeholder={tx.albumTitlePlaceholder} />
+              </div>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.albumReleaseDate.toUpperCase()}</label>
+                <input type="date" value={albumForm.release_date} onChange={e => setAlbumForm({ ...albumForm, release_date: e.target.value })} />
+              </div>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.albumCoverUrl.toUpperCase()}</label>
+                <input value={albumForm.cover_url} onChange={e => setAlbumForm({ ...albumForm, cover_url: e.target.value })} placeholder="https://..." />
+                <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                  <input type="file" ref={albumCoverFileRef} accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadAlbumCoverFile(f); if (e.target) e.target.value = '' }} />
+                  <button type="button" className="btn-outline" style={{ padding: '6px 14px', fontSize: 12 }} onClick={() => albumCoverFileRef.current?.click()} disabled={albumCoverUploading}>
+                    {albumCoverUploading ? tx.saving : '📁 ' + tx.albumCoverUpload}
+                  </button>
+                  {albumForm.cover_url && (
+                    <button type="button" className="btn-outline" style={{ padding: '6px 14px', fontSize: 12, color: '#c05050', borderColor: 'rgba(200,80,80,0.25)' }} onClick={() => setAlbumForm(f => ({ ...f, cover_url: '' }))}>
+                      {tx.albumCoverRemove}
+                    </button>
+                  )}
+                </div>
+                <div style={{ marginTop: 10, background: 'rgba(30,215,96,0.04)', border: '1px solid rgba(30,215,96,0.2)', borderRadius: 6, padding: 10 }}>
+                  <p style={{ margin: '0 0 6px', color: '#1ed760', fontSize: 10, letterSpacing: 1 }}>{tx.albumCoverFromSpotify}</p>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <input value={albumSpotifyUrl} onChange={e => setAlbumSpotifyUrl(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); fetchSpotifyAlbum() } }} placeholder={tx.albumCoverFromSpotifyPlaceholder} style={{ flex: '1 1 200px', minWidth: 0, padding: '6px 10px', fontSize: 12 }} />
+                    <button type="button" onClick={fetchSpotifyAlbum} disabled={albumSpotifyLoading || !albumSpotifyUrl.trim()} style={{ background: 'rgba(30,215,96,0.15)', border: '1px solid rgba(30,215,96,0.4)', color: '#1ed760', padding: '6px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>
+                      {albumSpotifyLoading ? '...' : tx.albumCoverFromSpotifyFetch}
+                    </button>
+                  </div>
+                  {albumSpotifyError && <div style={{ background: 'rgba(200,80,80,0.08)', border: '1px solid rgba(200,80,80,0.3)', color: '#c05050', padding: '5px 8px', borderRadius: 4, fontSize: 11, marginTop: 6 }}>{albumSpotifyError}</div>}
+                </div>
+                {albumForm.cover_url && (
+                  <div style={{ marginTop: 10 }}>
+                    <ZoomableImage src={albumForm.cover_url} alt={albumForm.title || 'cover'} caption={albumForm.title || undefined} style={{ width: '120px', height: '120px', objectFit: 'cover', borderRadius: '4px', display: 'block' }} />
+                  </div>
+                )}
+              </div>
+              <div style={{ marginBottom: '16px', padding: '12px 14px', borderRadius: '6px', background: 'rgba(160,100,200,0.06)', border: '1px solid rgba(160,100,200,0.25)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+                  <span style={{ color: '#c07bd0', fontSize: 11, letterSpacing: 1 }}>{tx.albumCoverAi.toUpperCase()}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ color: '#5a4a30', fontSize: 10 }}>AI:</span>
+                    <AIProviderPicker value={aiProvider} onChange={pickProvider} disabled={albumPromptLoading || albumImageLoading} />
+                    <select value={aiOutputLang} onChange={e => setAiOutputLang(normalizeAIOutputLang(e.target.value))} disabled={albumPromptLoading || albumImageLoading} style={{ width: 'auto', minWidth: 130, padding: '5px 8px', fontSize: 11 }}>
+                      {AI_OUTPUT_LANGUAGES.map(option => (<option key={option.value} value={option.value}>{option.label}</option>))}
+                    </select>
+                  </div>
+                </div>
+                <textarea value={albumForm.cover_prompt} onChange={e => setAlbumForm({ ...albumForm, cover_prompt: e.target.value })} placeholder={tx.albumCoverPromptPlaceholder} rows={4} style={{ marginBottom: 8 }} />
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button type="button" onClick={generateAlbumCoverPrompt} disabled={albumPromptLoading || !albumForm.title.trim()} style={{ background: 'rgba(212,168,67,0.12)', border: '1px solid rgba(212,168,67,0.3)', color: '#d4a843', padding: '7px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>
+                    {albumPromptLoading ? tx.generating : tx.albumCoverPromptGenerate}
+                  </button>
+                  <button type="button" onClick={generateAlbumCoverImage} disabled={albumImageLoading || !albumForm.cover_prompt.trim()} style={{ background: 'linear-gradient(135deg, #c07bd0, #9060c0)', border: '1px solid #9060c0', color: '#fff', padding: '7px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>
+                    {albumImageLoading ? tx.coverImageGenerating : (albumForm.cover_url ? tx.coverImageRegenerate : tx.coverImageGenerate)}
+                  </button>
+                </div>
+                {albumImageError && <div style={{ background: 'rgba(200,80,80,0.08)', border: '1px solid rgba(200,80,80,0.3)', color: '#c05050', padding: '6px 10px', borderRadius: 4, fontSize: 12, marginTop: 8 }}>{albumImageError}</div>}
+              </div>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', color: '#8a7a60', fontSize: '11px', letterSpacing: '1px', marginBottom: '6px' }}>{tx.albumDescription.toUpperCase()}</label>
+                <textarea value={albumForm.description} onChange={e => setAlbumForm({ ...albumForm, description: e.target.value })} placeholder={tx.albumDescriptionPlaceholder} rows={3} />
+              </div>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button className="btn-gold" onClick={saveAlbum} disabled={savingAlbum || !albumForm.title.trim()}>{savingAlbum ? tx.saving : tx.save}</button>
+                  <button className="btn-outline" onClick={() => setShowAlbumForm(false)}>{tx.cancel}</button>
+                </div>
+                {editingAlbum && (
+                  <button onClick={() => deleteAlbum(editingAlbum)} style={{ background: 'none', border: '1px solid rgba(200,80,80,0.3)', color: '#c05050', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>{tx.deleteAlbum}</button>
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
-        {workspaceTab === 'epk' && (
+        {workspaceArea === 'promotion' && (
+          <ArtistWorkspacePromotionHub active={promotionPanel} onChange={changePromotionPanel}>
+            {promotionPanel === 'campaigns' && <ArtistCampaignsSummary songs={songs} />}
+            {promotionPanel === 'distribution' && <ArtistWorkspaceDistributionSummary songs={songs} />}
+            {promotionPanel === 'playlists' && artist && (
+              <div className="workspace-section">
+                <ArtistWorkspacePlaylistCommunities artistId={artist.id} artistName={artist.name} songs={songs} />
+              </div>
+            )}
+          </ArtistWorkspacePromotionHub>
+        )}
+
+        {workspaceArea === 'growth' && artist && (
+          <div className="workspace-section">
+            <ArtistWorkspaceGrowth artistId={artist.id} />
+          </div>
+        )}
+
+        {workspaceArea === 'brand' && artist && (
+          <ArtistWorkspaceBrandHub active={brandPanel} onChange={changeBrandPanel}>
+            {brandPanel === 'presence' && (
+              <PublicPresenceBuilder
+                artistId={artist.id}
+                artistName={artist.name}
+                pageEnabled={!!artist.page_enabled}
+                pageSlug={artist.page_slug}
+                pageTemplate={(artist as { page_template?: string }).page_template || 'default'}
+                epkPublicEnabled={!!epk.public_enabled}
+                epkHasContent={!!(epk.short_bio || epk.tagline || epk.long_bio || (epk.selected_song_ids?.length ?? 0) > 0)}
+                featuredReleaseSet={!!artist.page_settings?.featured_release?.id}
+                newsletterEnabled={(artist.page_settings?.sections?.newsletter ?? true) !== false}
+                previewTitle={buildArtistPageTitle(artist.name)}
+                previewDescription={buildArtistPageDescription({ artist, songs, albums, featuredAsset: null })}
+                previewImage={resolveArtistOgImageForPage({ artist, songs, albums, featuredAsset: null })}
+                onOpenPanel={changeBrandPanel}
+              />
+            )}
+
+            {brandPanel === 'public' && (
+              <div className="workspace-section">
+                {artist.page_enabled && artist.page_slug ? (
+                  <>
+                    <div className="card workspace-card workspace-glass">
+                      <h2 className="workspace-section-title">{tx.publicPage}</h2>
+                      <p style={{ color: '#8a7a60', fontSize: 13, margin: '0 0 12px', wordBreak: 'break-all' }}>
+                        {clientPublicUrl(`/p/${artist.page_slug}`)}
+                      </p>
+                      <a href={`/p/${artist.page_slug}`} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ textDecoration: 'none', display: 'inline-block' }}>
+                        {tx.workspaceActionPublicPage} ↗
+                      </a>
+                    </div>
+                    <QRCodeCard path={`/p/${artist.page_slug}`} title={tx.qrArtistHint} artistId={artist.id} saveLabel={artist.name} />
+                    <ArtistFeaturedReleasePicker
+                      artistId={artist.id}
+                      pageSettings={artist.page_settings}
+                      songs={songs}
+                      albums={albums}
+                      onSaved={settings => setArtist({ ...artist, page_settings: settings })}
+                    />
+                    {planId === 'free' && (
+                      <UpgradePrompt compact title={tx.upgradeQrTitle} description={tx.upgradeQrDesc} />
+                    )}
+                  </>
+                ) : (
+                  <div className="card workspace-card workspace-glass">
+                    <WorkspaceEmptyState
+                      icon="🌐"
+                      title={tx.publicPageSlugRequired}
+                      action={
+                        <button type="button" className="btn-outline" onClick={() => changeWorkspaceArea('settings')}>
+                          {tx.workspaceTabSettings}
+                        </button>
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {brandPanel === 'epk' && (
         <div className="card workspace-card" style={{ borderColor: 'rgba(112,144,208,0.28)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
             <div>
@@ -1933,55 +1974,37 @@ export default function ArtistPage() {
             )}
           </div>
         </div>
-        )}
+            )}
 
-        {workspaceTab === 'growth' && artist && (
-          <div className="workspace-section">
-            <ArtistWorkspaceGrowth artistId={artist.id} />
-          </div>
-        )}
-
-        {workspaceTab === 'playlists' && artist && (
-          <div className="workspace-section">
-            <ArtistWorkspacePlaylistCommunities artistId={artist.id} artistName={artist.name} songs={songs} />
-          </div>
-        )}
-
-        {workspaceTab === 'media' && artist && (
-          <div className="workspace-section">
-            <ArtistWorkspaceMedia artist={artist} />
-          </div>
-        )}
-
-        {workspaceTab === 'fanhub' && artist && (
-          <div className="workspace-section">
-            {subscribers.length === 0 && (
-              <div className="card workspace-card">
-                <WorkspaceEmptyState
-                  icon="✉"
-                  title={tx.workspaceEmptyNoSubscribers}
-                  description={tx.workspaceEmptyNoSubscribersDesc}
-                  action={
-                    <button type="button" className="btn-outline" onClick={() => changeWorkspaceTab('public')}>
-                      {tx.workspaceTabPublic}
-                    </button>
-                  }
+            {brandPanel === 'fanhub' && (
+              <div className="workspace-section">
+                {subscribers.length === 0 && (
+                  <div className="card workspace-card workspace-glass">
+                    <WorkspaceEmptyState
+                      icon="✉"
+                      title={tx.workspaceEmptyNoSubscribers}
+                      description={tx.workspaceEmptyNoSubscribersDesc}
+                      action={
+                        <button type="button" className="btn-outline" onClick={() => changeBrandPanel('public')}>
+                          {tx.workspaceTabPublic}
+                        </button>
+                      }
+                    />
+                  </div>
+                )}
+                <FanHubPanel
+                  artist={artist}
+                  songs={songs}
+                  subscribers={subscribers}
+                  newsletterSources={newsletterSources}
+                  planId={planId}
+                  aiProvider={aiProvider}
                 />
               </div>
             )}
-            <FanHubPanel
-              artist={artist}
-              songs={songs}
-              subscribers={subscribers}
-              newsletterSources={newsletterSources}
-              planId={planId}
-              aiProvider={aiProvider}
-            />
-          </div>
-        )}
 
-        {workspaceTab === 'events' && (
-        <div className="card workspace-card" style={{ borderColor: 'rgba(212,168,67,0.25)' }}>
+            {brandPanel === 'events' && (
+        <div className="card workspace-card workspace-glass" style={{ borderColor: 'rgba(212,168,67,0.25)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: 16, letterSpacing: 1, textTransform: 'uppercase', margin: 0 }}>
               {tx.eventsTitle}
@@ -2071,48 +2094,27 @@ export default function ArtistPage() {
             </div>
           )}
         </div>
-        )}
-
-        {workspaceTab === 'public' && (
-          <div className="workspace-section">
-            {artist?.page_enabled && artist?.page_slug ? (
-              <>
-                <div className="card workspace-card">
-                  <h2 className="workspace-section-title">{tx.publicPage}</h2>
-                  <p style={{ color: '#8a7a60', fontSize: 13, margin: '0 0 12px', wordBreak: 'break-all' }}>
-                    {clientPublicUrl(`/p/${artist.page_slug}`)}
-                  </p>
-                  <a href={`/p/${artist.page_slug}`} target="_blank" rel="noopener noreferrer" className="btn-outline" style={{ textDecoration: 'none', display: 'inline-block' }}>
-                    {tx.workspaceActionPublicPage} ↗
-                  </a>
-                </div>
-                <QRCodeCard path={`/p/${artist.page_slug}`} title={tx.qrArtistHint} artistId={artist.id} saveLabel={artist.name} />
-                <ArtistFeaturedReleasePicker
-                  artistId={artist.id}
-                  pageSettings={artist.page_settings}
-                  songs={songs}
-                  albums={albums}
-                  onSaved={settings => setArtist({ ...artist, page_settings: settings })}
-                />
-                {planId === 'free' && (
-                  <UpgradePrompt compact title={tx.upgradeQrTitle} description={tx.upgradeQrDesc} />
-                )}
-              </>
-            ) : (
-              <div className="card workspace-card">
-                <p style={{ color: '#8a7a60', fontSize: 13, margin: 0, lineHeight: 1.55 }}>{tx.publicPageSlugRequired}</p>
-                <button type="button" className="btn-outline" style={{ marginTop: 12 }} onClick={() => changeWorkspaceTab('settings')}>
-                  {tx.workspaceTabSettings}
-                </button>
-              </div>
             )}
-          </div>
+
+            {brandPanel === 'analytics' && (
+              <ArtistWorkspaceAnalytics
+                artistId={artist.id}
+                planId={planId}
+                analyticsRange={analyticsRange}
+                onRangeChange={setAnalyticsRange}
+                analyticsLoading={analyticsLoading}
+                analyticsEvents={analyticsEvents}
+                songs={songs.map(s => ({ id: s.id, title: s.title }))}
+              />
+            )}
+          </ArtistWorkspaceBrandHub>
         )}
 
-        {workspaceTab === 'settings' && artist && (
+        {workspaceArea === 'settings' && artist && (
           <ArtistSettingsPanel artist={artist} planId={planId} onSaved={setArtist} />
         )}
       </div>
+      </ArtistWorkspaceShell>
     </div>
   )
 }

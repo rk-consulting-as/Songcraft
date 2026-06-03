@@ -61,8 +61,8 @@ export default function PlaybookPage() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Link href="/onboarding" className="btn-outline" style={{ textDecoration: 'none' }}>{tx.playbookQuickSetup}</Link>
           {progress.primaryArtist && (
-            <Link href={`/artist/${progress.primaryArtist.id}#growth`} className="btn-outline" style={{ textDecoration: 'none' }}>
-              {tx.playbookOpenArtist}
+            <Link href={`/growth?artist=${progress.primaryArtist.id}`} className="btn-outline" style={{ textDecoration: 'none' }}>
+              {tx.growthHubOpen}
             </Link>
           )}
         </div>

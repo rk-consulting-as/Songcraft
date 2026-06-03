@@ -4,31 +4,50 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { t, useLang, type Lang } from '@/lib/i18n'
 import { type AIProvider, getStoredProvider, setStoredProvider } from '@/lib/aiProvider'
-import AIProviderPicker from '@/components/AIProviderPicker'
 import ZoomableImage from '@/components/ZoomableImage'
+import SongStudioShell from '@/components/songStudio/SongStudioShell'
+import SongStudioHero from '@/components/songStudio/SongStudioHero'
+import SongStudioNav from '@/components/songStudio/SongStudioNav'
+import SongStudioSubNav from '@/components/songStudio/SongStudioSubNav'
+import SongStudioOverview from '@/components/songStudio/SongStudioOverview'
+import SongStudioSettingsPanel from '@/components/songStudio/SongStudioSettingsPanel'
+import SongPromoteAssetsPanel from '@/components/songStudio/SongPromoteAssetsPanel'
+import SongStudioToast from '@/components/songStudio/SongStudioToast'
+import WorkspaceEmptyState from '@/components/WorkspaceEmptyState'
+import {
+  buildSongStudioHash,
+  defaultPanelForArea,
+  getActivePanel,
+  legacyPanelToRoute,
+  parseSongStudioHash,
+  type SongStudioArea,
+  type SongStudioRoute,
+  type WritePanel,
+  type ProducePanel,
+  type ReleasePanel,
+  type PublishPanel,
+} from '@/lib/songStudio/routes'
 import { cleanLyricsText } from '@/lib/lyricsCleanup'
 import Link from 'next/link'
 import DistributionModal from '@/components/DistributionModal'
 import DistributionWorkflow from '@/components/DistributionWorkflow'
 import ClickStats from '@/components/ClickStats'
 import QRCodeCard from '@/components/QRCodeCard'
-import CampaignMediaSection from '@/components/media/CampaignMediaSection'
 import AssetPicker from '@/components/media/AssetPicker'
-import { getCampaignMedia } from '@/lib/mediaLibrary/epkSettings'
 import { saveUrlToMediaLibrary } from '@/lib/mediaLibrary/saveToLibrary'
 import { trackMediaUsage } from '@/lib/mediaLibrary/usage'
 import type { MediaAsset } from '@/lib/mediaLibrary/types'
 import UpgradePrompt from '@/components/UpgradePrompt'
 import EmbedCodeGenerator from '@/components/EmbedCodeGenerator'
 import MobileQuickActions from '@/components/MobileQuickActions'
-import SongPublicPageActions, { isSongPublicPageAvailable } from '@/components/SongPublicPageActions'
+import { isSongPublicPageAvailable } from '@/components/SongPublicPageActions'
 import { clientPublicUrl } from '@/lib/appUrl'
 import { canUseFeature, getMonthlyAiUsage, getUserPlan } from '@/lib/subscription'
 import { AI_OUTPUT_LANGUAGES, aiOutputLanguageDirective, aiOutputLanguageName, normalizeAIOutputLang, type AIOutputLang } from '@/lib/aiOutputLanguage'
 import { generateSongDNA } from '@/lib/songDNA/generateSongDNA'
 import { normalizeSongDNA, type SongDNA } from '@/lib/songDNA/types'
 import { compressSunoPrompt } from '@/lib/songCreation/compressSunoPrompt'
-import { prepareSunoPromptPair, sunoSystemPromptForMode } from '@/lib/songCreation/exportPrompt'
+import { prepareSunoPromptPair, SUNO_CREATE_URL, sunoSystemPromptForMode } from '@/lib/songCreation/exportPrompt'
 import type { SunoPromptMode } from '@/lib/songCreation/types'
 import SongDNAPanel from '@/components/songCreation/SongDNAPanel'
 import SunoPromptToolbar from '@/components/songCreation/SunoPromptToolbar'
@@ -41,7 +60,7 @@ export default function SongPage() {
   const router = useRouter()
   const songId = params.id as string
   const [lang, setLangState] = useState<Lang>('en')
-  const [tab, setTab] = useState('lyrics')
+  const [studioRoute, setStudioRoute] = useState<SongStudioRoute>({ area: 'overview' })
   const [song, setSong] = useState<any>(null)
   const [artist, setArtist] = useState<any>(null)
   const [planId, setPlanId] = useState<'free' | 'pro'>('free')
@@ -89,6 +108,9 @@ export default function SongPage() {
   const [publishContent, setPublishContent] = useState<Record<string, any>>({})
   const [showDistribution, setShowDistribution] = useState(false)
   const [title, setTitle] = useState('')
+  const [studioToast, setStudioToast] = useState<{ message: string; tone: 'success' | 'error' | 'info' } | null>(null)
+  const [featuredReleaseSaving, setFeaturedReleaseSaving] = useState(false)
+  const [sunoCopied, setSunoCopied] = useState(false)
 
   // AI provider (persisted in localStorage)
   const [aiProvider, setAiProvider] = useState<AIProvider>('anthropic')
@@ -156,26 +178,28 @@ export default function SongPage() {
   }, [songId])
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.location.hash === '#campaign') setTab('campaign')
+    const syncFromHash = () => setStudioRoute(parseSongStudioHash(window.location.hash))
+    syncFromHash()
+    window.addEventListener('hashchange', syncFromHash)
+    return () => window.removeEventListener('hashchange', syncFromHash)
   }, [])
 
   const pickProvider = (p: AIProvider) => { setAiProvider(p); setStoredProvider(p) }
 
   const tx = t[lang]
 
-  const TAB_LABELS: Record<string, string> = {
-    lyrics: `🎵 ${tx.lyrics}`,
-    dna: `🧬 ${tx.songDnaTab}`,
-    backstory: `📖 ${tx.backstory}`,
-    suno: `🤖 ${tx.suno}`,
-    captions: `📱 ${tx.captions}`,
-    cover: `🖼️ ${tx.cover}`,
-    canvas: `🎬 ${tx.canvas}`,
-    media: `🔗 ${tx.media}`,
-    campaign: `📣 ${tx.campaign}`,
-    distribution: `📤 ${tx.distributionTab}`,
-    publish: `📢 ${tx.publish}`,
+  const navigateToRoute = (route: SongStudioRoute) => {
+    setStudioRoute(route)
+    if (typeof window === 'undefined') return
+    const hash = buildSongStudioHash(route)
+    const next = hash ? `#${hash}` : ''
+    if (window.location.hash !== next) {
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${next}`)
+    }
   }
+  const navigateToArea = (area: SongStudioArea) => navigateToRoute(defaultPanelForArea(area))
+  const navigateToPanel = (panel: string) => navigateToRoute(legacyPanelToRoute(panel))
+  const panel = getActivePanel(studioRoute)
 
   const fetchSong = async () => {
     const supabase = createClient()
@@ -921,6 +945,10 @@ export default function SongPage() {
     { key: 'newsletter_announcement', label: tx.campaignNewsletterAnnouncement, rows: 8 },
   ]
 
+  const promoteCampaignAssets = campaignAssets.filter(asset =>
+    ['tiktok_caption', 'instagram_caption', 'youtube_shorts_caption', 'facebook_post', 'newsletter_announcement'].includes(asset.key),
+  )
+
   const campaignChecklist = [
     { key: 'cover_ready', label: tx.campaignChecklistCover },
     { key: 'canvas_ready', label: tx.campaignChecklistCanvas },
@@ -1134,6 +1162,12 @@ export default function SongPage() {
 
   const copy = (text: string) => navigator.clipboard.writeText(text)
 
+  const copySunoPrompt = () => {
+    copy(activeSunoPrompt)
+    setSunoCopied(true)
+    window.setTimeout(() => setSunoCopied(false), 2000)
+  }
+
   const isLoading = (key: string) => aiLoading && aiTarget === key
 
   if (loading) return <div style={{ color: '#6a5a40', padding: '40px' }}>{tx.loading}</div>
@@ -1144,77 +1178,174 @@ export default function SongPage() {
     { value: 'complete', label: tx.complete },
   ]
 
+  const featuredReleaseSet =
+    artist?.page_settings?.featured_release?.type === 'song' &&
+    artist?.page_settings?.featured_release?.id === songId
+
+  const setFeaturedRelease = async () => {
+    if (!artist?.id || featuredReleaseSaving) return
+    setFeaturedReleaseSaving(true)
+    const supabase = createClient()
+    const pageSettings = {
+      ...(artist.page_settings || {}),
+      featured_release: { type: 'song' as const, id: songId },
+    }
+    const { error } = await supabase.from('artists').update({ page_settings: pageSettings }).eq('id', artist.id)
+    setFeaturedReleaseSaving(false)
+    if (!error) {
+      setArtist({ ...artist, page_settings: pageSettings })
+      setStudioToast({ message: tx.songStudioFeaturedSuccess, tone: 'success' })
+    } else {
+      setStudioToast({ message: tx.songStudioFeaturedError, tone: 'error' })
+    }
+  }
+
+  const heroCoverUrl = coverImageUrl || song?.spotify_cover_url || song?.cover_image_url || null
+  const statusLabel = statusOptions.find(o => o.value === (song?.status || 'draft'))?.label
+  const hasSpotifyLink = !!(spotifyUrl.trim() || song?.spotify_url)
+  const distributionStatusLabel = song?.distribution_status
+    ? String(song.distribution_status).replace(/_/g, ' ')
+    : null
+
+  const subNavConfig = (() => {
+    switch (studioRoute.area) {
+      case 'write':
+        return {
+          items: [
+            { id: 'lyrics', label: tx.lyrics },
+            { id: 'backstory', label: tx.backstory },
+            { id: 'dna', label: tx.songDnaTab },
+          ],
+          active: studioRoute.writePanel || 'lyrics',
+          onChange: (id: string) => navigateToRoute({ area: 'write', writePanel: id as WritePanel }),
+        }
+      case 'produce':
+        return {
+          items: [
+            { id: 'suno', label: tx.suno },
+            { id: 'cover', label: tx.cover },
+            { id: 'canvas', label: tx.canvas },
+          ],
+          active: studioRoute.producePanel || 'suno',
+          onChange: (id: string) => navigateToRoute({ area: 'produce', producePanel: id as ProducePanel }),
+        }
+      case 'promote':
+        return {
+          items: [
+            { id: 'captions', label: tx.captions },
+            { id: 'assets', label: tx.songStudioCampaignAssets },
+          ],
+          active: studioRoute.promotePanel === 'assets' ? 'assets' : 'captions',
+          onChange: (id: string) => navigateToRoute({ area: 'promote', promotePanel: id === 'assets' ? 'assets' : 'captions' }),
+        }
+      case 'release':
+        return {
+          items: [
+            { id: 'campaign', label: tx.campaignTitle },
+            { id: 'distribution', label: tx.distributionTab },
+          ],
+          active: studioRoute.releasePanel || 'campaign',
+          onChange: (id: string) => navigateToRoute({ area: 'release', releasePanel: id as ReleasePanel }),
+        }
+      case 'publish':
+        return {
+          items: [
+            { id: 'media', label: tx.media },
+            { id: 'publish', label: tx.publish },
+          ],
+          active: studioRoute.publishPanel || 'media',
+          onChange: (id: string) => navigateToRoute({ area: 'publish', publishPanel: id as PublishPanel }),
+        }
+      default:
+        return { items: [] as { id: string; label: string }[], active: '', onChange: (_id: string) => {} }
+    }
+  })()
+
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0a0f 0%, #12071e 50%, #0a0f0a 100%)' }}>
-      {/* Header */}
-      <div className="app-header" data-header="page" style={{ borderBottom: '1px solid rgba(180,140,80,0.2)', padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            <Link href={`/artist/${artist?.id}`} style={{ color: '#6a5a40', textDecoration: 'none', fontSize: '13px' }}>← {artist?.name}</Link>
-            <span style={{ color: '#3a3530' }}>|</span>
-            <input value={title} onChange={e => updateTitle(e.target.value)}
-              style={{ background: 'none', border: 'none', color: '#e8e0d0', fontSize: '16px', outline: 'none', width: '220px', maxWidth: '100%', padding: '4px 0' }} />
-          </div>
-          <div className="song-page-public-bar">
-            <SongPublicPageActions
-              songId={songId}
-              artistPageEnabled={!!artist?.page_enabled}
-              artistAdminHidden={!!artist?.admin_hidden}
-              songPublicHidden={!!song?.public_hidden}
+    <div className="song-studio-page" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0a0f 0%, #12071e 50%, #0a0f0a 100%)' }}>
+      {studioToast && (
+        <SongStudioToast
+          message={studioToast.message}
+          tone={studioToast.tone}
+          onDismiss={() => setStudioToast(null)}
+        />
+      )}
+      <SongStudioShell
+        activeArea={studioRoute.area}
+        nav={(
+          <>
+            <SongStudioHero
+              artistId={artist?.id}
+              artistName={artist?.name}
+              title={title}
+              onTitleChange={updateTitle}
+              coverUrl={heroCoverUrl}
+              status={song?.status}
+              statusLabel={statusLabel}
+              publicPageAvailable={songPublicPageAvailable}
+              publicPageHidden={!!song?.public_hidden}
+              hasSpotifyLink={hasSpotifyLink}
+              hasMediaLinks={mediaLinks.length > 0}
+              readinessScore={releaseReadinessScore}
+              onCopySunoPrompt={sunoPrompt ? copySunoPrompt : undefined}
+              onOpenSuno={() => window.open(SUNO_CREATE_URL, '_blank', 'noopener,noreferrer')}
+              onViewPublicSong={songPublicPageAvailable && !song?.public_hidden
+                ? () => window.open(clientPublicUrl(`/s/${songId}`), '_blank', 'noopener,noreferrer')
+                : undefined}
+              onSetFeaturedRelease={artist?.id ? setFeaturedRelease : undefined}
+              onOpenReleaseCampaign={() => navigateToPanel('campaign')}
+              featuredReleaseSet={featuredReleaseSet}
+              featuredReleaseSaving={featuredReleaseSaving}
+              sunoCopied={sunoCopied}
             />
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <span style={{ color: '#5a4a30', fontSize: 11, letterSpacing: 1 }}>{tx.aiProviderLabel}</span>
-          <AIProviderPicker value={aiProvider} onChange={pickProvider} disabled={aiLoading || imageGenerating} />
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#6a5a40', fontSize: 11 }}>
-            {lang === 'no' ? 'AI-språk' : 'AI output'}
-            <select
-              value={aiOutputLang}
-              onChange={e => setAiOutputLang(normalizeAIOutputLang(e.target.value))}
-              disabled={aiLoading}
-              title={tx.aiOutputLangHint}
-              style={{ width: 'auto', minWidth: 145, padding: '6px 9px', fontSize: 12 }}
-            >
-              {AI_OUTPUT_LANGUAGES.map(option => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-          </label>
-          <select value={song?.status || 'draft'} onChange={e => updateStatus(e.target.value)}
-            style={{ width: 'auto', padding: '6px 10px', fontSize: '12px' }}>
-            {statusOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div style={{ display: 'flex', padding: '16px 32px', gap: '6px', borderBottom: '1px solid rgba(180,140,80,0.1)', flexWrap: 'wrap' }}>
-        {Object.entries(TAB_LABELS).map(([key, label]) => (
-          <button key={key} onClick={() => setTab(key)} style={{
-            padding: '8px 16px', borderRadius: '4px', fontSize: '13px', cursor: 'pointer',
-            border: key === tab ? '1px solid #d4a843' : '1px solid rgba(180,140,80,0.15)',
-            background: key === tab ? 'rgba(212,168,67,0.12)' : 'transparent',
-            color: key === tab ? '#d4a843' : '#6a5a40',
-          }}>{label}</button>
-        ))}
-      </div>
-
-      <div className="page-pad" style={{ padding: '32px', maxWidth: '800px', margin: '0 auto' }}>
+            <SongStudioNav active={studioRoute.area} onChange={navigateToArea} />
+            <SongStudioSubNav
+              items={subNavConfig.items}
+              active={subNavConfig.active}
+              onChange={subNavConfig.onChange}
+              ariaLabel={tx.songStudioSubNavLabel}
+            />
+          </>
+        )}
+      >
+        <div className="song-studio-body">
         <MobileQuickActions
           title={tx.mobileQuickActions}
           actions={[
-            { label: tx.mobileGenerateCaption, icon: '✦', onClick: () => { setTab('captions'); generateCaption('TikTok') }, disabled: aiLoading || !lyrics },
+            { label: tx.mobileGenerateCaption, icon: '✦', onClick: () => { navigateToPanel('captions'); generateCaption('TikTok') }, disabled: aiLoading || !lyrics },
             { label: tx.mobileCopyCampaign, icon: '⧉', onClick: copyAllCampaign },
             { label: tx.mobileOpenPublicPage, icon: '↗', href: publicArtistPath || undefined, disabled: !publicArtistPath },
             { label: tx.mobileCopyShareLink, icon: '⌁', onClick: () => copy(clientPublicUrl(`/s/${songId}`)), disabled: !songPublicPageAvailable },
           ]}
         />
 
-        {/* LYRICS TAB */}
-        {tab === 'lyrics' && (
+        {panel === 'overview' && (
+          <SongStudioOverview
+            songId={songId}
+            internalPlayCount={song?.internal_play_count}
+            embedClickCount={song?.embed_click_count}
+            readinessScore={releaseReadinessScore}
+            missingItems={releaseMissingItems}
+            recommendedActions={releaseRecommendedActions}
+            statusLabel={statusLabel}
+            publicPageAvailable={songPublicPageAvailable}
+            distributionStatus={distributionStatusLabel}
+            campaignTimelineCount={campaignTimeline.length}
+            onGoToPanel={navigateToPanel}
+          />
+        )}
+
+        {/* LYRICS */}
+        {panel === 'lyrics' && (
           <div>
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>{tx.lyrics}</h2>
+            {!lyrics && !lyricsInstructions && (
+              <WorkspaceEmptyState
+                icon="✎"
+                title={tx.songStudioEmptyLyrics}
+                description={tx.songStudioEmptyLyricsDesc}
+              />
+            )}
             {planId === 'free' && (
               <UpgradePrompt compact title={tx.upgradeAiTitle} description={tx.upgradeAiDesc} />
             )}
@@ -1418,7 +1549,7 @@ export default function SongPage() {
         )}
 
         {/* BACKSTORY TAB */}
-        {tab === 'backstory' && (
+        {panel === 'backstory' && (
           <div>
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>📖 {tx.backstoryTitle}</h2>
             <p style={{ color: '#8a7a60', fontSize: 13, marginTop: 6 }}>{tx.backstoryDesc}</p>
@@ -1476,7 +1607,7 @@ export default function SongPage() {
         )}
 
         {/* SUNO TAB */}
-        {tab === 'suno' && (
+        {panel === 'suno' && (
           <div>
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>{tx.sunoTitle}</h2>
 
@@ -1587,7 +1718,7 @@ export default function SongPage() {
                     prompt={activeSunoPrompt}
                     mode={sunoPromptMode}
                     onModeChange={setSunoPromptMode}
-                    onCopy={() => copy(activeSunoPrompt)}
+                    onCopy={copySunoPrompt}
                   />
                   <textarea
                     value={activeSunoPrompt}
@@ -1606,7 +1737,7 @@ export default function SongPage() {
           </div>
         )}
 
-        {tab === 'dna' && (
+        {panel === 'dna' && (
           <SongDNAPanel
             dna={songDna}
             genre={proposalMeta?.genre}
@@ -1617,7 +1748,7 @@ export default function SongPage() {
         )}
 
         {/* CAPTIONS TAB */}
-        {tab === 'captions' && (
+        {panel === 'captions' && (
           <div>
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>{tx.captionsTitle}</h2>
             {!lyrics && <p style={{ color: '#e07070', fontSize: '13px' }}>{tx.sunoNoLyrics}</p>}
@@ -1685,10 +1816,34 @@ export default function SongPage() {
           </div>
         )}
 
+        {panel === 'promote-assets' && (
+          <SongPromoteAssetsPanel
+            assets={promoteCampaignAssets}
+            publishContent={publishContent}
+            artistId={artist?.id}
+            songId={songId}
+            aiLoading={aiLoading}
+            isLoading={isLoading}
+            onGenerate={generateCampaignAsset}
+            onCopy={copy}
+            onUpdateAsset={updateCampaignAsset}
+            onUpdateMedia={media => updatePublishContent({ campaign_media: media })}
+            onOpenReleaseCampaign={() => navigateToPanel('campaign')}
+            canGenerate={!!(lyrics || lyricsInstructions || backstory || sunoPrompt)}
+          />
+        )}
+
         {/* COVER TAB */}
-        {tab === 'cover' && (
+        {panel === 'cover' && (
           <div>
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>{tx.coverTitle}</h2>
+            {!coverImageUrl && !song?.spotify_cover_url && (
+              <WorkspaceEmptyState
+                icon="🖼️"
+                title={tx.songStudioEmptyCover}
+                description={tx.songStudioEmptyCoverDesc}
+              />
+            )}
             <div className="card" style={{ marginBottom: '24px' }}>
               <p style={{ color: '#8a7a60', fontSize: '12px', letterSpacing: '1px', marginTop: 0 }}>{tx.uploadCover}</p>
               {coverImageUrl && (
@@ -1849,7 +2004,7 @@ export default function SongPage() {
         )}
 
         {/* CANVAS TAB */}
-        {tab === 'canvas' && (
+        {panel === 'canvas' && (
           <div>
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>{tx.canvasTitle}</h2>
 
@@ -2133,7 +2288,7 @@ export default function SongPage() {
         )}
 
         {/* MEDIA TAB */}
-        {tab === 'media' && (
+        {panel === 'media' && (
           <div>
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>{tx.mediaTitle}</h2>
             <div className="card song-streaming-links" style={{ marginBottom: 24 }}>
@@ -2168,7 +2323,13 @@ export default function SongPage() {
               </div>
               <button className="btn-gold" onClick={addMediaLink} disabled={!newUrl.trim()}>+ {lang === 'no' ? 'Legg til' : 'Add'}</button>
             </div>
-            {mediaLinks.length === 0 ? <p style={{ color: '#6a5a40', fontSize: '13px' }}>{tx.noLinks}</p> : (
+            {mediaLinks.length === 0 ? (
+              <WorkspaceEmptyState
+                icon="🔗"
+                title={tx.songStudioEmptyMedia}
+                description={tx.songStudioEmptyMediaDesc}
+              />
+            ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {mediaLinks.map((link, i) => (
                   <div key={i} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px' }}>
@@ -2198,7 +2359,7 @@ export default function SongPage() {
         )}
 
         {/* CAMPAIGN TAB */}
-        {tab === 'campaign' && (
+        {panel === 'campaign' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 18 }}>
               <div>
@@ -2219,12 +2380,11 @@ export default function SongPage() {
               <UpgradePrompt compact title={tx.upgradeAiTitle} description={tx.upgradeAiDesc} />
             )}
 
-            {artist?.id && (
-              <CampaignMediaSection
-                artistId={artist.id}
-                songId={songId}
-                media={getCampaignMedia(publishContent)}
-                onUpdate={media => updatePublishContent({ campaign_media: media })}
+            {!campaignReleaseDate && campaignTimeline.length === 0 && (
+              <WorkspaceEmptyState
+                icon="📅"
+                title={tx.songStudioEmptyReleaseCampaign}
+                description={tx.songStudioEmptyReleaseCampaignDesc}
               />
             )}
 
@@ -2396,7 +2556,7 @@ export default function SongPage() {
                     const badge = timelineBadge(task)
                     return (
                       <div key={task.id} style={{ border: `1px solid ${badge.color}33`, background: badge.bg, borderRadius: 8, padding: 12 }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 130px 110px', gap: 8, alignItems: 'center' }}>
+                        <div className="song-studio-timeline-task" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 130px 110px', gap: 8, alignItems: 'center' }}>
                           <input
                             value={task.title}
                             onChange={e => updateTimelineTask(task.id, { title: e.target.value })}
@@ -2486,7 +2646,7 @@ export default function SongPage() {
         )}
 
         {/* DISTRIBUTION TAB */}
-        {tab === 'distribution' && (
+        {panel === 'distribution' && (
           <DistributionWorkflow
             songId={songId}
             title={title || song?.title || ''}
@@ -2507,22 +2667,24 @@ export default function SongPage() {
         )}
 
         {/* PUBLISH TAB */}
-        {tab === 'publish' && (
+        {panel === 'publish' && (
           <div>
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>{tx.publishTitle}</h2>
 
-            <div style={{ marginBottom: 24 }}>
-              <QRCodeCard path={`/s/${songId}`} title={tx.qrSongHint} artistId={artist?.id} songId={songId} saveLabel={title} />
-              {planId === 'free' && (
-                <UpgradePrompt compact title={tx.upgradeQrTitle} description={tx.upgradeQrDesc} />
-              )}
-            </div>
+            <div className="song-studio-publish-tools">
+              <div style={{ marginBottom: 24 }}>
+                <QRCodeCard path={`/s/${songId}`} title={tx.qrSongHint} artistId={artist?.id} songId={songId} saveLabel={title} />
+                {planId === 'free' && (
+                  <UpgradePrompt compact title={tx.upgradeQrTitle} description={tx.upgradeQrDesc} />
+                )}
+              </div>
 
-            <div style={{ marginBottom: 24 }}>
-              <EmbedCodeGenerator songId={songId} title={title || song?.title || 'ViaTone'} canRemoveBranding={planId === 'pro'} />
-              {planId === 'free' && (
-                <UpgradePrompt compact title={tx.upgradeEmbedTitle} description={tx.upgradeEmbedDesc} />
-              )}
+              <div style={{ marginBottom: 24 }}>
+                <EmbedCodeGenerator songId={songId} title={title || song?.title || 'ViaTone'} canRemoveBranding={planId === 'pro'} />
+                {planId === 'free' && (
+                  <UpgradePrompt compact title={tx.upgradeEmbedTitle} description={tx.upgradeEmbedDesc} />
+                )}
+              </div>
             </div>
 
             {/* Distribute to streaming platforms */}
@@ -2602,7 +2764,26 @@ export default function SongPage() {
             ))}
           </div>
         )}
-      </div>
+
+        {panel === 'settings' && (
+          <SongStudioSettingsPanel
+            songId={songId}
+            artistPageEnabled={!!artist?.page_enabled}
+            artistAdminHidden={!!artist?.admin_hidden}
+            songPublicHidden={!!song?.public_hidden}
+            status={song?.status || 'draft'}
+            statusOptions={statusOptions}
+            onStatusChange={updateStatus}
+            aiProvider={aiProvider}
+            onAiProviderChange={pickProvider}
+            aiOutputLang={aiOutputLang}
+            onAiOutputLangChange={setAiOutputLang}
+            aiLoading={aiLoading}
+            imageGenerating={imageGenerating}
+          />
+        )}
+        </div>
+      </SongStudioShell>
 
       {song && (
         <DistributionModal

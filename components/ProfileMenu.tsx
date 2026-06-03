@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import Avatar from '@/components/Avatar'
 
@@ -35,6 +35,7 @@ export default function ProfileMenu({
   }
 }) {
   const router = useRouter()
+  const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement | null>(null)
 
@@ -53,6 +54,9 @@ export default function ProfileMenu({
   }
 
   const isAdmin = role === 'admin' || role === 'super_admin'
+  const onAnalyticsPage = pathname === '/analytics' || pathname.startsWith('/analytics/')
+  const onSettingsPage = pathname === '/settings' || pathname.startsWith('/settings/') || pathname === '/profile'
+  const onFeedPage = pathname === '/feed' || pathname.startsWith('/feed/')
 
   const item: React.CSSProperties = {
     display: 'flex',
@@ -123,21 +127,27 @@ export default function ProfileMenu({
             </Link>
           )}
 
-          <Link href="/feed" onClick={() => setOpen(false)} style={item}>
-            📰 {texts.feed}
-          </Link>
+          {!onFeedPage && (
+            <Link href="/feed" onClick={() => setOpen(false)} style={item}>
+              📰 {texts.feed}
+            </Link>
+          )}
 
-          <Link href="/analytics" onClick={() => setOpen(false)} style={item}>
-            📊 {texts.analytics}
-          </Link>
+          {!onAnalyticsPage && (
+            <Link href="/analytics" onClick={() => setOpen(false)} style={item}>
+              📊 {texts.analytics}
+            </Link>
+          )}
 
           <Link href="/referrals" onClick={() => setOpen(false)} style={item}>
             🤝 {texts.referrals}
           </Link>
 
-          <Link href="/settings" onClick={() => setOpen(false)} style={item}>
-            ⚙ {texts.settings}
-          </Link>
+          {!onSettingsPage && (
+            <Link href="/settings" onClick={() => setOpen(false)} style={item}>
+              ⚙ {texts.settings}
+            </Link>
+          )}
 
           {isAdmin && (
             <Link href="/admin" onClick={() => setOpen(false)} style={{ ...item, color: accent }}>

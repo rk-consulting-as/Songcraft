@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { clientPublicUrl } from '@/lib/appUrl'
 import { t, useLang } from '@/lib/i18n'
+import PublicPresenceCard from '@/components/PublicPresenceCard'
 
 type Song = { id: string; title: string; status: string; created_at: string }
 type Artist = {
@@ -21,6 +22,10 @@ export default function ArtistWorkspaceOverview({
   subscriberCount,
   publicPageViews,
   newsletterSignups,
+  epkPublicEnabled,
+  epkHasContent,
+  featuredReleaseSet,
+  newsletterEnabled,
   onOpenTab,
 }: {
   artist: Artist
@@ -28,6 +33,10 @@ export default function ArtistWorkspaceOverview({
   subscriberCount: number
   publicPageViews: number
   newsletterSignups: number
+  epkPublicEnabled?: boolean
+  epkHasContent?: boolean
+  featuredReleaseSet?: boolean
+  newsletterEnabled?: boolean
   onOpenTab: (tab: string) => void
 }) {
   const lang = useLang()
@@ -73,15 +82,26 @@ export default function ArtistWorkspaceOverview({
         ))}
       </div>
 
+      <PublicPresenceCard
+        artistId={artist.id}
+        pageSlug={artist.page_slug}
+        pageEnabled={artist.page_enabled}
+        epkPublicEnabled={epkPublicEnabled}
+        epkHasContent={epkHasContent}
+        featuredReleaseSet={featuredReleaseSet}
+        newsletterEnabled={newsletterEnabled}
+        onManage={() => onOpenTab('public')}
+      />
+
       <div className="workspace-two-col">
         <div className="card workspace-card">
           <h3 className="workspace-card-title">{tx.workspaceQuickActions}</h3>
           <div className="workspace-action-grid">
-            <button type="button" className="btn-gold" onClick={() => onOpenTab('songs')}>
+            <button type="button" className="btn-gold quick-action-btn" onClick={() => onOpenTab('songs')}>
               + {tx.createNewSong.replace(/^\+ /, '')}
             </button>
             {artist.spotify_id && (
-              <button type="button" className="btn-outline" onClick={() => onOpenTab('songs')}>
+              <button type="button" className="btn-outline quick-action-btn" onClick={() => onOpenTab('songs')}>
                 {tx.importFromSpotify}
               </button>
             )}
@@ -90,25 +110,25 @@ export default function ArtistWorkspaceOverview({
                 href={`/p/${artist.page_slug}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-outline"
+                className="btn-outline quick-action-btn"
                 style={{ textDecoration: 'none', textAlign: 'center' }}
               >
                 {tx.workspaceActionPublicPage} ↗
               </a>
             )}
             {publicUrl && (
-              <button type="button" className="btn-outline" onClick={copyPublicUrl}>
+              <button type="button" className="btn-outline quick-action-btn" onClick={copyPublicUrl}>
                 {urlCopied ? tx.copied : tx.workspaceCopyPublicUrl}
               </button>
             )}
-            <button type="button" className="btn-outline" onClick={() => onOpenTab('epk')}>
+            <button type="button" className="btn-outline quick-action-btn" onClick={() => onOpenTab('epk')}>
               {tx.workspaceActionEpk}
             </button>
-            <button type="button" className="btn-outline" onClick={() => onOpenTab('analytics')}>
-              {tx.workspaceActionAnalytics}
+            <button type="button" className="btn-outline quick-action-btn" onClick={() => onOpenTab('analytics')}>
+              {tx.analyticsLabelArtistInsights}
             </button>
-            <Link href={`/playbook?artist=${artist.id}`} className="btn-outline" style={{ textDecoration: 'none', textAlign: 'center' }}>
-              🧭 {tx.playbookNavLink}
+            <Link href="/playbook" className="btn-gold quick-action-btn" style={{ textDecoration: 'none', textAlign: 'center' }}>
+              🧭 {tx.continueGrowthJourney}
             </Link>
           </div>
         </div>

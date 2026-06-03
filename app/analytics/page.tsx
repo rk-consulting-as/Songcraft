@@ -107,12 +107,10 @@ export default function AnalyticsPage() {
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px 80px' }}>
         <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, letterSpacing: '-0.01em' }}>
-          📊 {lang === 'no' ? 'Analyse' : 'Analytics'}
+          📊 {tx.analyticsLabelAccount}
         </h1>
         <p style={{ color: '#8a7a60', fontSize: 14, marginTop: 6 }}>
-          {lang === 'no'
-            ? 'Hvordan musikken din presterer på ViaTone.'
-            : 'How your music is performing on ViaTone.'}
+          {tx.analyticsLabelAccountHelp}
         </p>
 
         {/* Filters */}

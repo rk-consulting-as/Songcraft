@@ -1,21 +1,15 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { ARTIST_WORKSPACE_TABS, type ArtistWorkspaceTab } from '@/lib/artistWorkspaceTabs'
-import { t, useLang, type Lang } from '@/lib/i18n'
+import { ARTIST_WORKSPACE_AREAS, type ArtistWorkspaceArea } from '@/lib/artistWorkspaceTabs'
+import { t, useLang } from '@/lib/i18n'
 
-const TAB_LABEL_KEYS: Record<ArtistWorkspaceTab, keyof (typeof t)['en']> = {
-  overview: 'workspaceTabOverview',
-  songs: 'workspaceTabSongs',
-  campaigns: 'workspaceTabCampaigns',
-  playlists: 'workspaceTabPlaylists',
-  fanhub: 'workspaceTabFanHub',
-  growth: 'workspaceTabGrowth',
-  media: 'workspaceTabMedia',
-  analytics: 'workspaceTabAnalytics',
-  epk: 'workspaceTabEpk',
-  public: 'workspaceTabPublic',
-  events: 'workspaceTabEvents',
+const AREA_LABEL_KEYS: Record<ArtistWorkspaceArea, keyof (typeof t)['en']> = {
+  overview: 'workspaceShellOverview',
+  content: 'workspaceShellContent',
+  promotion: 'workspaceShellPromotion',
+  growth: 'workspaceShellGrowth',
+  brand: 'workspaceShellBrand',
   settings: 'workspaceTabSettings',
 }
 
@@ -23,8 +17,8 @@ export default function ArtistWorkspaceNav({
   active,
   onChange,
 }: {
-  active: ArtistWorkspaceTab
-  onChange: (tab: ArtistWorkspaceTab) => void
+  active: ArtistWorkspaceArea
+  onChange: (area: ArtistWorkspaceArea) => void
 }) {
   const lang = useLang()
   const tx = t[lang]
@@ -36,21 +30,21 @@ export default function ArtistWorkspaceNav({
   }, [active])
 
   return (
-    <nav className="artist-workspace-nav" aria-label={tx.workspaceNavLabel}>
+    <nav className="artist-workspace-nav workspace-glass" aria-label={tx.workspaceNavLabel}>
       <div ref={scrollRef} className="artist-workspace-nav-scroll" role="tablist">
-        {ARTIST_WORKSPACE_TABS.map(tab => {
-          const isActive = tab === active
+        {ARTIST_WORKSPACE_AREAS.map(area => {
+          const isActive = area === active
           return (
             <button
-              key={tab}
+              key={area}
               ref={isActive ? activeRef : undefined}
               type="button"
               role="tab"
               aria-selected={isActive}
               className={`artist-workspace-tab${isActive ? ' is-active' : ''}`}
-              onClick={() => onChange(tab)}
+              onClick={() => onChange(area)}
             >
-              {tx[TAB_LABEL_KEYS[tab]]}
+              {tx[AREA_LABEL_KEYS[area]]}
             </button>
           )
         })}

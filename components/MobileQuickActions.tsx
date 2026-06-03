@@ -30,10 +30,10 @@ export default function MobileQuickActions({
             </>
           )
           if (action.href && !action.disabled) {
-            return <a key={action.label} href={action.href}>{content}</a>
+            return <a key={action.label} href={action.href} className="quick-action-btn">{content}</a>
           }
           return (
-            <button key={action.label} type="button" onClick={action.onClick} disabled={action.disabled}>
+            <button key={action.label} type="button" className="quick-action-btn" onClick={action.onClick} disabled={action.disabled}>
               {content}
             </button>
           )

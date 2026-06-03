@@ -12,9 +12,8 @@ import ProfileMenu from '@/components/ProfileMenu'
 import UpgradePrompt from '@/components/UpgradePrompt'
 import MobileQuickActions from '@/components/MobileQuickActions'
 import { getUserPlan } from '@/lib/subscription'
-import PlaybookGrowthCoach from '@/components/PlaybookGrowthCoach'
+import GrowthHubDashboardCard from '@/components/growth/GrowthHubDashboardCard'
 import DashboardDiscoverHighlights from '@/components/DashboardDiscoverHighlights'
-import PlaylistCommunityDashboardBanner from '@/components/playlistCommunities/PlaylistCommunityDashboardBanner'
 import ViewerAdSlot from '@/components/ads/ViewerAdSlot'
 
 type Artist = {
@@ -264,6 +263,13 @@ export default function Dashboard() {
   const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => { setLangState(useLang()); checkAuth(); fetchArtists() }, [])
+  useEffect(() => {
+    if (loading) return
+    const hash = window.location.hash.replace(/^#/, '')
+    if (!hash) return
+    const el = document.getElementById(hash)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [loading])
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (genreRef.current && !genreRef.current.contains(e.target as Node)) setShowGenreDropdown(false)
@@ -736,8 +742,9 @@ export default function Dashboard() {
         {/* Compact header: main nav + chat button + profile dropdown */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
           <Link href="/discover" className="btn-outline" style={navLinkStyle}>🌍 {tx.discoverNavLink}</Link>
-          <Link href="/charts" className="btn-outline" style={navLinkStyle}>📈 {tx.chartsNavLink}</Link>
-          <Link href="/analytics" className="btn-outline" style={navLinkStyle}>📊 {tx.analyticsNavLink}</Link>
+          <Link href="/charts" className="btn-outline" style={navLinkStyle} title={tx.analyticsLabelChartsHelp}>📈 {tx.analyticsLabelCharts}</Link>
+          <Link href="/analytics" className="btn-outline" style={navLinkStyle} title={tx.analyticsLabelAccountHelp}>📊 {tx.analyticsLabelAccount}</Link>
+          <Link href="/growth" className="btn-outline" style={navLinkStyle}>🌱 {tx.growthHubNavLink}</Link>
           <Link href="/playbook" className="btn-outline" style={navLinkStyle}>🧭 {tx.playbookNavLink}</Link>
           <Link href="/library" className="btn-outline" style={navLinkStyle}>🖼 {tx.mediaLibraryNavLink}</Link>
           <button
@@ -786,7 +793,9 @@ export default function Dashboard() {
             }, disabled: !artists.some(a => a.page_enabled && a.page_slug) },
           ]}
         />
-        {artists[0] && <PlaylistCommunityDashboardBanner artistId={artists[0].id} />}
+        <section id="campaign" className="dashboard-nav-section">
+          <GrowthHubDashboardCard artistId={artists[0]?.id} />
+        </section>
         {/* Stats */}
         <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '32px' }}>
           {[
@@ -804,16 +813,18 @@ export default function Dashboard() {
         {planId === 'free' && <ViewerAdSlot placement="dashboard_card" planId={planId} />}
 
         {/* Top streamed songs widget */}
-        {topStreamedSongs.length > 0 && (
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-              <h2 style={{ color: '#d4a843', fontSize: 13, fontWeight: 'normal', letterSpacing: 1, textTransform: 'uppercase', margin: 0 }}>
-                📈 {tx.dashboardTopStreamed}
-              </h2>
+        <section id="songs" className="dashboard-nav-section" style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+            <h2 style={{ color: '#d4a843', fontSize: 13, fontWeight: 'normal', letterSpacing: 1, textTransform: 'uppercase', margin: 0 }}>
+              ♪ {tx.dashboardSectionSongs}
+            </h2>
+            {topStreamedSongs.length > 0 && (
               <Link href="/charts" style={{ color: '#8a7a60', fontSize: 12, textDecoration: 'none' }}>
-                {tx.dashboardViewAllActivity} →
+                {tx.analyticsLabelCharts} →
               </Link>
-            </div>
+            )}
+          </div>
+          {topStreamedSongs.length > 0 ? (
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
               {topStreamedSongs.map((song, i) => (
                 <Link key={song.id} href={`/song/${song.id}`} style={{
@@ -846,8 +857,17 @@ export default function Dashboard() {
                 </Link>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="card" style={{ padding: 20 }}>
+              <p style={{ color: '#8a7a60', fontSize: 13, margin: '0 0 12px' }}>{tx.dashboardSongsEmpty}</p>
+              {artists[0] ? (
+                <Link href={`/artist/${artists[0].id}#songs`} className="btn-gold" style={{ textDecoration: 'none' }}>{tx.openArtist} →</Link>
+              ) : (
+                <button type="button" className="btn-gold" onClick={openCreate}>{tx.newArtist}</button>
+              )}
+            </div>
+          )}
+        </section>
 
         {/* Release campaign timeline overview */}
         {planId === 'pro' && upcomingReleaseTasks.length > 0 && (
@@ -1011,7 +1031,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        <PlaybookGrowthCoach />
         <DashboardDiscoverHighlights />
 
         {onboardingStatus?.show && (
@@ -1562,6 +1581,7 @@ export default function Dashboard() {
         )}
 
         {/* Artist grid */}
+        <section id="artists" className="dashboard-nav-section">
         {loading ? (
           <p style={{ color: '#6a5a40' }}>{tx.loading}</p>
         ) : artists.length === 0 ? (
@@ -1645,6 +1665,7 @@ export default function Dashboard() {
             ))}
           </div>
         )}
+        </section>
       </div>
     </div>
   )

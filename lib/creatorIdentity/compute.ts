@@ -124,7 +124,7 @@ export function buildCreatorIdentity(input: {
 export function getFeaturedRelease(
   settings: CreatorPageSettings | null | undefined,
   songs: { id: string; title: string; cover_image_url?: string | null; spotify_cover_url?: string | null; public_hidden?: boolean | null }[],
-  albums: { id: string; title: string; cover_image_url?: string | null }[]
+  albums: { id: string; title: string; cover_url?: string | null; cover_image_url?: string | null }[]
 ) {
   const ref = settings?.featured_release
   if (!ref?.id) return null
@@ -145,7 +145,54 @@ export function getFeaturedRelease(
     type: 'album' as const,
     id: album.id,
     title: album.title,
-    coverUrl: album.cover_image_url || null,
+    coverUrl: album.cover_url || album.cover_image_url || null,
     href: null as string | null,
+  }
+}
+
+export type ResolvedFeaturedRelease = {
+  type: 'song' | 'album'
+  id: string
+  title: string
+  coverUrl: string | null
+  href: string | null
+  isFallback?: boolean
+}
+
+/** Featured release from settings, or latest public released song as fallback. */
+export function resolveFeaturedOrLatestSong(
+  settings: CreatorPageSettings | null | undefined,
+  songs: {
+    id: string
+    title: string
+    status?: string | null
+    public_hidden?: boolean | null
+    cover_image_url?: string | null
+    spotify_cover_url?: string | null
+    suno_url?: string | null
+    backstory?: string | null
+    spotify_url?: string | null
+  }[],
+  albums: { id: string; title: string; cover_url?: string | null; cover_image_url?: string | null }[]
+): ResolvedFeaturedRelease | null {
+  const featured = getFeaturedRelease(settings, songs, albums)
+  if (featured?.type === 'song' && featured.href) {
+    return { ...featured, isFallback: false }
+  }
+  if (featured?.type === 'album') {
+    return { ...featured, isFallback: false }
+  }
+
+  const released = songs.filter(s => !s.public_hidden && (s.status === 'released' || s.suno_url))
+  const latest = released[0]
+  if (!latest) return featured ? { ...featured, isFallback: false } : null
+
+  return {
+    type: 'song',
+    id: latest.id,
+    title: latest.title,
+    coverUrl: latest.cover_image_url || latest.spotify_cover_url || null,
+    href: `/s/${latest.id}`,
+    isFallback: true,
   }
 }

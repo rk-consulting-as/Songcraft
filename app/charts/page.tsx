@@ -129,11 +129,12 @@ export default function ChartsPage() {
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '40px 24px' }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <h1 style={{ color: accent, fontSize: 32, fontWeight: 700, letterSpacing: '-0.01em', margin: 0 }}>
-            📈 {tx.chartsTitle}
+            📈 {tx.analyticsLabelCharts}
           </h1>
           <p style={{ color: '#a09080', fontSize: 15, marginTop: 10 }}>
             {tx.chartsSubtitle}
           </p>
+          <p style={{ color: '#6a5a40', fontSize: 12, marginTop: 6 }}>{tx.chartsLabelHelp}</p>
         </div>
 
         <div style={{ display: 'flex', gap: 6, marginBottom: 20, justifyContent: 'center', borderBottom: '1px solid rgba(180,140,80,0.15)' }}>

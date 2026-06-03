@@ -14,11 +14,11 @@ export default function WorkspaceEmptyState({
   action?: ReactNode
 }) {
   return (
-    <div className="workspace-empty" role="status">
-      <span className="workspace-empty-icon" aria-hidden>{icon}</span>
-      <p className="workspace-empty-title">{title}</p>
-      {description && <p className="workspace-empty-desc">{description}</p>}
-      {action && <div className="workspace-empty-action">{action}</div>}
+    <div className="empty-state workspace-empty" role="status">
+      <span className="empty-state-icon workspace-empty-icon" aria-hidden>{icon}</span>
+      <p className="empty-state-title workspace-empty-title">{title}</p>
+      {description && <p className="empty-state-desc workspace-empty-desc">{description}</p>}
+      {action && <div className="empty-state-action workspace-empty-action">{action}</div>}
     </div>
   )
 }

@@ -185,6 +185,11 @@ export default function ArtistWorkspacePlaylistCommunities({ artistId, artistNam
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ margin: '0 0 6px', color: '#d4a843', fontWeight: 'normal', fontSize: 18 }}>{tx.playlistCommunityTitle}</h2>
         <p style={{ margin: 0, color: '#8a7a60', fontSize: 13, maxWidth: 560, lineHeight: 1.5 }}>{tx.playlistCommunitySubtitle}</p>
+        <p style={{ margin: '10px 0 0', fontSize: 12 }}>
+          <Link href={`/growth?artist=${artistId}`} style={{ color: '#d4a843', textDecoration: 'none' }}>
+            {tx.growthHubAlsoAvailable} →
+          </Link>
+        </p>
       </div>
 
       <PlaylistCommunityDisclaimer />

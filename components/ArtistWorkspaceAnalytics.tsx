@@ -153,13 +153,13 @@ export default function ArtistWorkspaceAnalytics({
       <div className="workspace-section">
         <div className="card workspace-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
-            <h2 className="workspace-section-title" style={{ margin: 0 }}>{tx.workspaceTabAnalytics}</h2>
+            <h2 className="workspace-section-title" style={{ margin: 0 }}>{tx.analyticsLabelArtistInsights}</h2>
             {rangePicker}
           </div>
           <WorkspaceEmptyState
             icon="📊"
             title={tx.workspaceEmptyNoAnalytics}
-            description={tx.workspaceEmptyNoAnalyticsDesc}
+            description={tx.analyticsLabelArtistInsightsHelp}
           />
         </div>
       </div>
@@ -171,8 +171,8 @@ export default function ArtistWorkspaceAnalytics({
       <div className="card workspace-card" style={{ borderColor: 'rgba(112,144,208,0.2)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
           <div>
-            <h2 className="workspace-section-title" style={{ margin: 0, color: '#7090d0' }}>{tx.fanAnalyticsTitle}</h2>
-            <p style={{ color: '#8a7a60', fontSize: 12, margin: '4px 0 0' }}>{tx.fanAnalyticsDesc}</p>
+            <h2 className="workspace-section-title" style={{ margin: 0, color: '#7090d0' }}>{tx.analyticsLabelArtistInsights}</h2>
+            <p style={{ color: '#8a7a60', fontSize: 12, margin: '4px 0 0' }}>{tx.analyticsLabelArtistInsightsHelp}</p>
           </div>
           {rangePicker}
         </div>

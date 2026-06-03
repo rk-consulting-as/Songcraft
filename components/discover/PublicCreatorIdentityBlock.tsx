@@ -1,5 +1,5 @@
 import { t } from '@/lib/i18n'
-import { buildCreatorIdentity, getFeaturedRelease, type CreatorPageSettings } from '@/lib/creatorIdentity'
+import { buildCreatorIdentity, resolveFeaturedOrLatestSong, type CreatorPageSettings } from '@/lib/creatorIdentity'
 import PublicCreatorIdentityStrip from './PublicCreatorIdentityStrip'
 import FeaturedReleaseHero from './FeaturedReleaseHero'
 
@@ -35,7 +35,7 @@ export default function PublicCreatorIdentityBlock({ artist, songs, albums, acce
       ? `${tx.creatorMemberSince} ${new Date(identity.memberSince).toLocaleDateString(lang === 'no' ? 'nb-NO' : 'en-US', { month: 'short', year: 'numeric' })}`
       : null
 
-  const featured = getFeaturedRelease(settings, songs, albums)
+  const featured = resolveFeaturedOrLatestSong(settings, songs, albums)
 
   return (
     <>
