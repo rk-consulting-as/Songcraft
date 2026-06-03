@@ -3,23 +3,16 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import type { NavArtistMeta, NavSongMeta } from '@/lib/navigation/badges'
 import {
   parseArtistIdFromPath,
   parseArtistIdFromSearch,
   parseSongIdFromPath,
 } from '@/lib/navigation/routes'
 
-export type NavArtist = {
-  id: string
-  name: string
-  genre: string | null
-}
+export type NavArtist = NavArtistMeta
 
-export type NavSong = {
-  id: string
-  title: string
-  artist_id: string | null
-}
+export type NavSong = NavSongMeta
 
 export type NavUserProfile = {
   id: string
@@ -35,6 +28,7 @@ export type NavStudioPage = {
 
 type NavigationContextValue = {
   artists: NavArtist[]
+  songs: NavSong[]
   currentArtistId: string | null
   currentArtist: NavArtist | null
   currentSongId: string | null
@@ -45,8 +39,10 @@ type NavigationContextValue = {
   unreadCount: number
   expandedArtistIds: Set<string>
   expandedSections: Set<string>
+  expandedSongIds: Set<string>
   toggleArtistExpanded: (artistId: string) => void
   toggleSectionExpanded: (sectionId: string) => void
+  toggleSongExpanded: (songId: string) => void
   refreshArtists: () => Promise<void>
   pageHash: string
 }
@@ -67,6 +63,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const search = searchParams?.toString() ? `?${searchParams.toString()}` : ''
 
   const [artists, setArtists] = useState<NavArtist[]>([])
+  const [songs, setSongs] = useState<NavSong[]>([])
   const [currentSong, setCurrentSong] = useState<NavSong | null>(null)
   const [userProfile, setUserProfile] = useState<NavUserProfile | null>(null)
   const [userRole, setUserRole] = useState<string | null>(null)
@@ -74,6 +71,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const [unreadCount, setUnreadCount] = useState(0)
   const [pageHash, setPageHash] = useState('')
   const [expandedArtistIds, setExpandedArtistIds] = useState<Set<string>>(new Set())
+  const [expandedSongIds, setExpandedSongIds] = useState<Set<string>>(new Set())
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     () => new Set(['growth', 'analytics', 'assets', 'settings'])
   )
@@ -94,14 +92,23 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       setArtists([])
+      setSongs([])
       return
     }
-    const { data } = await supabase
-      .from('artists')
-      .select('id, name, genre')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: true })
-    setArtists((data || []) as NavArtist[])
+    const [{ data: artistRows }, { data: songRows }] = await Promise.all([
+      supabase
+        .from('artists')
+        .select('id, name, genre, page_enabled, page_slug, page_settings, spotify_url, spotify_id, social_links')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('songs')
+        .select('id, title, artist_id, status, public_hidden, cover_image_url, spotify_cover_url, lyrics_text, publish_content, media_links, spotify_url')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false }),
+    ])
+    setArtists((artistRows || []) as NavArtist[])
+    setSongs((songRows || []) as NavSong[])
   }, [])
 
   useEffect(() => {
@@ -123,6 +130,26 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       setCurrentSong(null)
       return
     }
+    const fromList = songs.find(s => s.id === songIdFromPath)
+    if (fromList) {
+      setCurrentSong(fromList)
+      setExpandedSongIds(prev => {
+        if (prev.has(songIdFromPath)) return prev
+        const next = new Set(prev)
+        next.add(songIdFromPath)
+        return next
+      })
+      if (fromList.artist_id) {
+        setExpandedArtistIds(prev => {
+          if (prev.has(fromList.artist_id!)) return prev
+          const next = new Set(prev)
+          next.add(fromList.artist_id!)
+          return next
+        })
+      }
+      return
+    }
+
     let cancelled = false
     ;(async () => {
       const supabase = createClient()
@@ -130,14 +157,20 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       if (!user || cancelled) return
       const { data } = await supabase
         .from('songs')
-        .select('id, title, artist_id')
+        .select('id, title, artist_id, status, public_hidden, cover_image_url, spotify_cover_url, lyrics_text, publish_content, media_links, spotify_url')
         .eq('id', songIdFromPath)
         .eq('user_id', user.id)
         .maybeSingle()
-      if (!cancelled) setCurrentSong(data as NavSong | null)
+      if (!cancelled && data) {
+        setCurrentSong(data as NavSong)
+        setExpandedSongIds(prev => new Set(prev).add(songIdFromPath))
+        if (data.artist_id) {
+          setExpandedArtistIds(prev => new Set(prev).add(data.artist_id))
+        }
+      }
     })()
     return () => { cancelled = true }
-  }, [songIdFromPath])
+  }, [songIdFromPath, songs])
 
   useEffect(() => {
     let cancelled = false
@@ -204,6 +237,15 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  const toggleSongExpanded = useCallback((songId: string) => {
+    setExpandedSongIds(prev => {
+      const next = new Set(prev)
+      if (next.has(songId)) next.delete(songId)
+      else next.add(songId)
+      return next
+    })
+  }, [])
+
   const toggleSectionExpanded = useCallback((sectionId: string) => {
     setExpandedSections(prev => {
       const next = new Set(prev)
@@ -215,22 +257,26 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<NavigationContextValue>(() => ({
     artists,
+    songs,
     currentArtistId,
     currentArtist,
     currentSongId: songIdFromPath,
-    currentSong,
+    currentSong: currentSong || (songIdFromPath ? songs.find(s => s.id === songIdFromPath) ?? null : null),
     userProfile,
     userRole,
     studioPage,
     unreadCount,
     expandedArtistIds,
     expandedSections,
+    expandedSongIds,
     toggleArtistExpanded,
     toggleSectionExpanded,
+    toggleSongExpanded,
     refreshArtists,
     pageHash,
   }), [
     artists,
+    songs,
     currentArtistId,
     currentArtist,
     songIdFromPath,
@@ -241,8 +287,10 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     unreadCount,
     expandedArtistIds,
     expandedSections,
+    expandedSongIds,
     toggleArtistExpanded,
     toggleSectionExpanded,
+    toggleSongExpanded,
     refreshArtists,
     pageHash,
   ])

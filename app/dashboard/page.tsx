@@ -879,7 +879,7 @@ export default function Dashboard() {
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0a0f 0%, #12071e 50%, #0a0f0a 100%)' }}>
       <div className="app-header" data-header="page" style={{ borderBottom: '1px solid rgba(180,140,80,0.2)', padding: '20px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className="app-header-brand" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span style={{ fontSize: '28px' }}>🎼</span>
           <div>
             <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 'normal', color: '#d4a843', letterSpacing: '2px' }}>VIATONE</h1>

@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { useNavigationContext } from '@/components/navigation/NavigationProvider'
 import ProfileMenu from '@/components/ProfileMenu'
 import { t, useLang } from '@/lib/i18n'
@@ -15,11 +14,7 @@ export default function AppTopBar() {
 
   return (
     <header className="app-nav-topbar" data-header="app-nav">
-      <div className="app-nav-topbar__brand">
-        <span className="app-nav-topbar__logo" aria-hidden>🎼</span>
-        <span className="app-nav-topbar__name">VIATONE</span>
-      </div>
-      <div className="app-nav-topbar__actions">
+      <div className="app-nav-topbar__actions app-nav-topbar__actions--primary">
         <button
           type="button"
           className="app-nav-topbar__action app-nav-topbar__action--search"
@@ -44,10 +39,6 @@ export default function AppTopBar() {
             </span>
           )}
         </button>
-        <Link href="/profile#notifications" className="app-nav-topbar__action" aria-label={tx.sidebarNavNotifications}>
-          <span aria-hidden>🔔</span>
-          <span className="app-nav-topbar__action-label">{tx.sidebarNavNotifications}</span>
-        </Link>
         {ctx?.userProfile && (
           <ProfileMenu
             profile={ctx.userProfile}

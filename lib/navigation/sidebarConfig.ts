@@ -1,3 +1,5 @@
+import { parseSongStudioHash } from '@/lib/songStudio/routes'
+
 export type SidebarNavItem = {
   id: string
   labelKey: string
@@ -15,6 +17,67 @@ export type SidebarSection = {
   items: SidebarNavItem[]
   matchPaths?: string[]
 }
+
+export type ArtistTreeNode = {
+  id: string
+  labelKey: string
+  hash?: string
+  children?: ArtistTreeNode[]
+}
+
+export type SongTreeNode = {
+  id: string
+  labelKey: string
+  hash: string
+}
+
+export const ARTIST_TREE: ArtistTreeNode[] = [
+  { id: 'overview', labelKey: 'sidebarArtistOverview', hash: 'overview' },
+  {
+    id: 'content',
+    labelKey: 'sidebarArtistContent',
+    children: [
+      { id: 'songs', labelKey: 'sidebarArtistSongs', hash: 'content-songs' },
+      { id: 'albums', labelKey: 'sidebarArtistAlbums', hash: 'content-albums' },
+      { id: 'media', labelKey: 'sidebarArtistMedia', hash: 'content-media' },
+      { id: 'stories', labelKey: 'sidebarArtistStories', hash: 'content-stories' },
+    ],
+  },
+  {
+    id: 'promotion',
+    labelKey: 'sidebarArtistPromotion',
+    children: [
+      { id: 'release-campaigns', labelKey: 'sidebarArtistReleaseCampaigns', hash: 'promotion-campaigns' },
+      { id: 'playlist-campaigns', labelKey: 'sidebarArtistPlaylistCampaigns', hash: 'promotion-playlists' },
+    ],
+  },
+  { id: 'growth', labelKey: 'sidebarArtistGrowth', hash: 'growth' },
+  {
+    id: 'brand',
+    labelKey: 'sidebarArtistBrand',
+    children: [
+      { id: 'public-site', labelKey: 'sidebarArtistPublicSite', hash: 'brand-sharing' },
+      { id: 'epk', labelKey: 'sidebarArtistEpk', hash: 'brand-epk' },
+      { id: 'fanhub', labelKey: 'sidebarArtistFanHub', hash: 'brand-fanhub' },
+    ],
+  },
+  { id: 'analytics', labelKey: 'sidebarArtistAnalytics', hash: 'brand-analytics' },
+  { id: 'settings', labelKey: 'settings', hash: 'settings' },
+]
+
+export const SONG_TREE: SongTreeNode[] = [
+  { id: 'overview', labelKey: 'songStudioOverview', hash: '' },
+  { id: 'lyrics', labelKey: 'lyrics', hash: 'write-lyrics' },
+  { id: 'backstory', labelKey: 'backstory', hash: 'write-backstory' },
+  { id: 'dna', labelKey: 'songDnaTab', hash: 'write-dna' },
+  { id: 'suno', labelKey: 'sunoTitle', hash: 'produce-suno' },
+  { id: 'cover', labelKey: 'cover', hash: 'produce-cover' },
+  { id: 'canvas', labelKey: 'canvas', hash: 'produce-canvas' },
+  { id: 'promote', labelKey: 'songStudioPromote', hash: 'promote-captions' },
+  { id: 'release', labelKey: 'songStudioRelease', hash: 'release-campaign' },
+  { id: 'publish', labelKey: 'songStudioPublish', hash: 'publish-media' },
+  { id: 'settings', labelKey: 'songStudioSettings', hash: 'settings-metadata' },
+]
 
 export const SIDEBAR_MAIN_SECTIONS: SidebarSection[] = [
   {
@@ -65,26 +128,12 @@ export const SIDEBAR_MAIN_SECTIONS: SidebarSection[] = [
   },
 ]
 
-export type ArtistTreeChild = {
-  id: string
-  labelKey: string
-  hash: string
-}
-
-export const ARTIST_TREE_CHILDREN: ArtistTreeChild[] = [
-  { id: 'overview', labelKey: 'sidebarArtistOverview', hash: 'overview' },
-  { id: 'songs', labelKey: 'sidebarArtistSongs', hash: 'content-songs' },
-  { id: 'releases', labelKey: 'sidebarArtistReleases', hash: 'promotion-distribution' },
-  { id: 'growth', labelKey: 'sidebarArtistGrowth', hash: 'growth' },
-  { id: 'public-site', labelKey: 'sidebarArtistPublicSite', hash: 'brand-sharing' },
-  { id: 'stories', labelKey: 'sidebarArtistStories', hash: 'content-stories' },
-  { id: 'epk', labelKey: 'sidebarArtistEpk', hash: 'brand-epk' },
-  { id: 'fanhub', labelKey: 'sidebarArtistFanHub', hash: 'brand-fanhub' },
-  { id: 'analytics', labelKey: 'sidebarArtistAnalytics', hash: 'brand-analytics' },
-]
-
 export function artistTreeHref(artistId: string, hash: string): string {
   return `/artist/${artistId}${hash ? `#${hash}` : ''}`
+}
+
+export function songTreeHref(songId: string, hash: string): string {
+  return `/song/${songId}${hash ? `#${hash}` : ''}`
 }
 
 export function storiesAssetHref(artistId: string | null): string | null {
@@ -100,10 +149,51 @@ export function isPathActive(pathname: string, matchPaths?: string[]): boolean {
   })
 }
 
-export function isArtistHashActive(hash: string, targetHash: string): boolean {
-  const normalized = hash.replace(/^#/, '').trim() || 'overview'
+export function normalizePageHash(hash: string): string {
+  return hash.replace(/^#/, '').trim()
+}
+
+export function isArtistHashActive(pageHash: string, targetHash: string): boolean {
+  const normalized = normalizePageHash(pageHash) || 'overview'
   if (targetHash === 'overview') {
     return normalized === 'overview' || normalized === ''
   }
-  return normalized === targetHash || normalized.startsWith(`${targetHash.split('-')[0]}-`)
+  return normalized === targetHash
+}
+
+export function isArtistTreeGroupActive(pageHash: string, node: ArtistTreeNode): boolean {
+  if (node.hash && isArtistHashActive(pageHash, node.hash)) return true
+  return (node.children || []).some(child => isArtistTreeGroupActive(pageHash, child))
+}
+
+export function isArtistTreeLeafActive(pageHash: string, hash?: string): boolean {
+  if (!hash) return false
+  return isArtistHashActive(pageHash, hash)
+}
+
+export function isSongTreeHashActive(pageHash: string, targetHash: string): boolean {
+  const normalized = normalizePageHash(pageHash)
+  if (!targetHash || targetHash === '') {
+    return normalized === '' || normalized === 'overview'
+  }
+  if (normalized === targetHash) return true
+  const route = parseSongStudioHash(`#${normalized}`)
+  const targetRoute = parseSongStudioHash(`#${targetHash}`)
+  if (route.area !== targetRoute.area) return false
+  if (route.area === 'overview' || route.area === 'settings') return true
+  if (route.area === 'write') return route.writePanel === targetRoute.writePanel
+  if (route.area === 'produce') return route.producePanel === targetRoute.producePanel
+  if (route.area === 'promote') return route.promotePanel === targetRoute.promotePanel
+  if (route.area === 'release') return route.releasePanel === targetRoute.releasePanel
+  if (route.area === 'publish') return route.publishPanel === targetRoute.publishPanel
+  return false
+}
+
+export function collectArtistTreeHashes(nodes: ArtistTreeNode[]): string[] {
+  const hashes: string[] = []
+  for (const node of nodes) {
+    if (node.hash) hashes.push(node.hash)
+    if (node.children) hashes.push(...collectArtistTreeHashes(node.children))
+  }
+  return hashes
 }

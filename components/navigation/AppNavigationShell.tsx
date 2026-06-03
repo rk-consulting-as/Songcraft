@@ -8,7 +8,8 @@ import { isSidebarNavExcluded } from '@/lib/navigation/routes'
 import { NavigationProvider } from '@/components/navigation/NavigationProvider'
 import AppSidebar, { useSidebarCollapsedState } from '@/components/navigation/AppSidebar'
 import AppTopBar from '@/components/navigation/AppTopBar'
-import WorkspaceHeader, { AppBreadcrumbs } from '@/components/navigation/WorkspaceHeader'
+import SidebarNavDebugBanner from '@/components/navigation/SidebarNavDebugBanner'
+import WorkspaceHeader from '@/components/navigation/WorkspaceHeader'
 
 const DESKTOP_MQ = '(min-width: 761px)'
 
@@ -21,10 +22,10 @@ function AppNavigationShellInner({ children }: { children: ReactNode }) {
   const { collapsed, toggleCollapsed } = useSidebarCollapsedState()
 
   useEffect(() => {
-    setEnabled(isSidebarNavEnabled())
-    const onStorage = () => setEnabled(isSidebarNavEnabled())
-    window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
+    const syncEnabled = () => setEnabled(isSidebarNavEnabled())
+    syncEnabled()
+    window.addEventListener('storage', syncEnabled)
+    return () => window.removeEventListener('storage', syncEnabled)
   }, [])
 
   useEffect(() => {
@@ -48,18 +49,28 @@ function AppNavigationShellInner({ children }: { children: ReactNode }) {
     return () => { cancelled = true }
   }, [pathname])
 
+  const excluded = isSidebarNavExcluded(pathname)
+  const showShell = enabled && authenticated && isDesktop && !excluded
+  const showDebug = ready && authenticated && isDesktop && !excluded && !enabled
+
   useEffect(() => {
-    const active = enabled && authenticated && isDesktop && !isSidebarNavExcluded(pathname)
-    document.body.dataset.sidebarNavV1 = active ? '1' : '0'
+    document.body.dataset.sidebarNavV1 = showShell ? '1' : '0'
     return () => {
       delete document.body.dataset.sidebarNavV1
     }
-  }, [enabled, authenticated, isDesktop, pathname])
+  }, [showShell])
 
-  const showShell = enabled && authenticated && isDesktop && !isSidebarNavExcluded(pathname)
-
-  if (!ready || !showShell) {
+  if (!ready) {
     return <>{children}</>
+  }
+
+  if (!showShell) {
+    return (
+      <>
+        {showDebug && <SidebarNavDebugBanner />}
+        {children}
+      </>
+    )
   }
 
   return (
@@ -70,7 +81,6 @@ function AppNavigationShellInner({ children }: { children: ReactNode }) {
           <AppTopBar />
           <div className="app-nav-shell__context">
             <WorkspaceHeader />
-            <AppBreadcrumbs />
           </div>
           <div className="app-nav-shell__content">{children}</div>
         </div>

@@ -4,12 +4,18 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useNavigationContext } from '@/components/navigation/NavigationProvider'
+import { getArtistSidebarBadges, getSongSidebarBadges } from '@/lib/navigation/badges'
 import {
-  ARTIST_TREE_CHILDREN,
+  ARTIST_TREE,
   SIDEBAR_MAIN_SECTIONS,
+  SONG_TREE,
+  type ArtistTreeNode,
   artistTreeHref,
   isArtistHashActive,
+  isArtistTreeGroupActive,
   isPathActive,
+  isSongTreeHashActive,
+  songTreeHref,
   storiesAssetHref,
 } from '@/lib/navigation/sidebarConfig'
 import { isSidebarNavCollapsed, setSidebarNavCollapsed } from '@/lib/navigation/featureFlags'
@@ -18,6 +24,73 @@ import { t, useLang } from '@/lib/i18n'
 type Props = {
   collapsed: boolean
   onToggleCollapsed: () => void
+}
+
+function StatusBadges({ badges }: { badges: { key: string; label: string }[] }) {
+  if (!badges.length) return null
+  return (
+    <span className="app-nav-sidebar__status-badges">
+      {badges.map(b => (
+        <span key={b.key} className={`app-nav-sidebar__status app-nav-sidebar__status--${b.key}`}>
+          {b.label}
+        </span>
+      ))}
+    </span>
+  )
+}
+
+function ArtistTreeNodes({
+  nodes,
+  artistId,
+  isCurrentArtist,
+  pageHash,
+  tx,
+  depth = 0,
+}: {
+  nodes: ArtistTreeNode[]
+  artistId: string
+  isCurrentArtist: boolean
+  pageHash: string
+  tx: Record<string, string>
+  depth?: number
+}) {
+  return (
+    <>
+      {nodes.map(node => {
+        if (node.children?.length) {
+          const groupActive = isCurrentArtist && isArtistTreeGroupActive(pageHash, node)
+          return (
+            <li key={node.id} className={`app-nav-sidebar__tree-group${groupActive ? ' is-active-group' : ''}`}>
+              <span className="app-nav-sidebar__tree-group-label" style={{ paddingLeft: depth * 8 }}>
+                {tx[node.labelKey] || node.labelKey}
+              </span>
+              <ul className="app-nav-sidebar__artist-children">
+                <ArtistTreeNodes
+                  nodes={node.children}
+                  artistId={artistId}
+                  isCurrentArtist={isCurrentArtist}
+                  pageHash={pageHash}
+                  tx={tx}
+                  depth={depth + 1}
+                />
+              </ul>
+            </li>
+          )
+        }
+
+        if (!node.hash) return null
+        const href = artistTreeHref(artistId, node.hash)
+        const active = isCurrentArtist && isArtistHashActive(pageHash, node.hash)
+        return (
+          <li key={node.id}>
+            <Link href={href} className={active ? 'is-active' : undefined} style={{ paddingLeft: 8 + depth * 8 }}>
+              {tx[node.labelKey] || node.labelKey}
+            </Link>
+          </li>
+        )
+      })}
+    </>
+  )
 }
 
 export default function AppSidebar({ collapsed, onToggleCollapsed }: Props) {
@@ -66,7 +139,10 @@ export default function AppSidebar({ collapsed, onToggleCollapsed }: Props) {
               {(ctx?.artists || []).map(artist => {
                 const expanded = ctx?.expandedArtistIds.has(artist.id) ?? false
                 const isCurrentArtist = ctx?.currentArtistId === artist.id
-                const showSong = isCurrentArtist && ctx?.currentSong
+                const artistSongs = (ctx?.songs || []).filter(s => s.artist_id === artist.id)
+                const artistBadges = getArtistSidebarBadges(artist, artistSongs, tx)
+                const showCurrentSong = isCurrentArtist && ctx?.currentSong
+                const songExpanded = showCurrentSong && (ctx?.expandedSongIds.has(ctx.currentSong!.id) ?? true)
 
                 return (
                   <div key={artist.id} className={`app-nav-sidebar__artist${isCurrentArtist ? ' is-current' : ''}`}>
@@ -86,25 +162,55 @@ export default function AppSidebar({ collapsed, onToggleCollapsed }: Props) {
                       >
                         {artist.name}
                       </Link>
+                      <StatusBadges badges={artistBadges} />
                     </div>
                     {expanded && (
                       <ul className="app-nav-sidebar__artist-children">
-                        {ARTIST_TREE_CHILDREN.map(child => {
-                          const href = artistTreeHref(artist.id, child.hash)
-                          const hashActive = isCurrentArtist && !ctx?.currentSong && isArtistHashActive(ctx?.pageHash || '', child.hash)
-                          return (
-                            <li key={child.id}>
-                              <Link href={href} className={hashActive ? 'is-active' : undefined}>
-                                {tx[child.labelKey] || child.labelKey}
+                        <ArtistTreeNodes
+                          nodes={ARTIST_TREE}
+                          artistId={artist.id}
+                          isCurrentArtist={isCurrentArtist}
+                          pageHash={ctx?.pageHash || ''}
+                          tx={tx}
+                        />
+                        {showCurrentSong && (
+                          <li className="app-nav-sidebar__song-branch">
+                            <div className="app-nav-sidebar__song-head">
+                              <button
+                                type="button"
+                                className="app-nav-sidebar__artist-toggle"
+                                onClick={() => ctx?.toggleSongExpanded(ctx.currentSong!.id)}
+                                aria-expanded={!!songExpanded}
+                              >
+                                {songExpanded ? '▼' : '▶'}
+                              </button>
+                              <Link
+                                href={songTreeHref(ctx.currentSong!.id, '')}
+                                className="is-active is-song"
+                              >
+                                {ctx.currentSong!.title || tx.songTitle}
                               </Link>
-                            </li>
-                          )
-                        })}
-                        {showSong && (
-                          <li>
-                            <Link href={`/song/${ctx.currentSong!.id}`} className="is-active is-song">
-                              {ctx.currentSong!.title || tx.songTitle}
-                            </Link>
+                              <StatusBadges badges={getSongSidebarBadges(
+                                ctx.currentSong!,
+                                !!artist.page_enabled,
+                                tx,
+                              )} />
+                            </div>
+                            {songExpanded && (
+                              <ul className="app-nav-sidebar__song-children">
+                                {SONG_TREE.map(item => {
+                                  const href = songTreeHref(ctx.currentSong!.id, item.hash)
+                                  const active = isSongTreeHashActive(ctx?.pageHash || '', item.hash)
+                                  return (
+                                    <li key={item.id}>
+                                      <Link href={href} className={active ? 'is-active' : undefined}>
+                                        {tx[item.labelKey] || item.labelKey}
+                                      </Link>
+                                    </li>
+                                  )
+                                })}
+                              </ul>
+                            )}
                           </li>
                         )}
                       </ul>

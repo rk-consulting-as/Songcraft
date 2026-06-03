@@ -1,15 +1,20 @@
 const SIDEBAR_NAV_KEY = 'viatone_sidebar_nav_v1'
 const SIDEBAR_COLLAPSED_KEY = 'viatone_sidebar_nav_collapsed'
 
+/** Env default for sidebar nav (NEXT_PUBLIC_SIDEBAR_NAV_V1=1). */
+export function getSidebarNavEnvDefault(): boolean {
+  return process.env.NEXT_PUBLIC_SIDEBAR_NAV_V1 === '1'
+}
+
 /** Global desktop sidebar rollout — localStorage override or env default. */
 export function isSidebarNavEnabled(): boolean {
   if (typeof window === 'undefined') {
-    return process.env.NEXT_PUBLIC_SIDEBAR_NAV_V1 === '1'
+    return getSidebarNavEnvDefault()
   }
   const stored = localStorage.getItem(SIDEBAR_NAV_KEY)
   if (stored === '1') return true
   if (stored === '0') return false
-  return process.env.NEXT_PUBLIC_SIDEBAR_NAV_V1 === '1'
+  return getSidebarNavEnvDefault()
 }
 
 export function setSidebarNavEnabled(enabled: boolean) {

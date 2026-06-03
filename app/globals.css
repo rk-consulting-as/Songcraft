@@ -6689,6 +6689,35 @@ body[data-sidebar-nav-v1="1"] .song-studio-workspace-context {
   display: none;
 }
 
+body[data-sidebar-nav-v1="1"] .app-header-brand {
+  display: none !important;
+}
+
+@media (min-width: 761px) {
+  body[data-sidebar-nav-v1="1"] .artist-workspace-nav {
+    display: none !important;
+  }
+
+  body[data-sidebar-nav-v1="1"] .song-studio-nav {
+    display: none !important;
+  }
+
+  body[data-sidebar-nav-v1="1"] .app-header[data-header="page"] {
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+    border-bottom-color: rgba(180, 140, 80, 0.1) !important;
+  }
+
+  body[data-sidebar-nav-v1="1"] .page-pad.dashboard-command-center-layout {
+    padding-top: 20px !important;
+  }
+
+  body[data-sidebar-nav-v1="1"] .app-nav-shell__content > .song-studio-page,
+  body[data-sidebar-nav-v1="1"] .app-nav-shell__content > .artist-workspace {
+    min-height: auto;
+  }
+}
+
 .app-nav-shell {
   display: grid;
   grid-template-columns: var(--app-nav-sidebar-width) minmax(0, 1fr);
@@ -6707,7 +6736,7 @@ body[data-sidebar-nav-v1="1"] .song-studio-workspace-context {
 }
 
 .app-nav-shell__context {
-  padding: 12px 24px 0;
+  padding: 10px 24px 12px;
   border-bottom: 1px solid rgba(180, 140, 80, 0.12);
   background: rgba(255, 255, 255, 0.015);
 }
@@ -6843,6 +6872,7 @@ body[data-sidebar-nav-v1="1"] .song-studio-workspace-context {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-wrap: wrap;
 }
 
 .app-nav-sidebar__artist-toggle {
@@ -6950,18 +6980,120 @@ body[data-sidebar-nav-v1="1"] .song-studio-workspace-context {
   padding: 0 8px;
 }
 
+.app-nav-sidebar__tree-group-label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #5a4a30;
+  padding: 4px 8px 2px;
+}
+
+.app-nav-sidebar__tree-group.is-active-group .app-nav-sidebar__tree-group-label {
+  color: #8a7a60;
+}
+
+.app-nav-sidebar__song-branch {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(180, 140, 80, 0.12);
+}
+
+.app-nav-sidebar__song-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.app-nav-sidebar__song-children {
+  list-style: none;
+  margin: 4px 0 0 18px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.app-nav-sidebar__song-children a {
+  display: block;
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: #6a5a40;
+  text-decoration: none;
+  font-size: 11px;
+}
+
+.app-nav-sidebar__song-children a:hover,
+.app-nav-sidebar__song-children a.is-active {
+  color: #d4a843;
+  background: rgba(212, 168, 67, 0.08);
+}
+
+.app-nav-sidebar__status-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.app-nav-sidebar__status {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.app-nav-sidebar__status--needs_attention { background: rgba(224, 112, 112, 0.15); color: #e07070; }
+.app-nav-sidebar__status--public_live { background: rgba(123, 200, 123, 0.15); color: #7bc87b; }
+.app-nav-sidebar__status--release_active { background: rgba(212, 168, 67, 0.15); color: #d4a843; }
+.app-nav-sidebar__status--healthy { background: rgba(123, 200, 123, 0.12); color: #7bc87b; }
+.app-nav-sidebar__status--draft { background: rgba(255, 255, 255, 0.06); color: #8a7a60; }
+.app-nav-sidebar__status--missing_cover { background: rgba(224, 160, 80, 0.12); color: #d4a060; }
+.app-nav-sidebar__status--release_ready { background: rgba(112, 144, 208, 0.15); color: #7090d0; }
+
+.sidebar-nav-debug {
+  position: fixed;
+  bottom: calc(var(--mobile-nav-height) + 12px);
+  left: 12px;
+  right: 12px;
+  z-index: 90;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(212, 168, 67, 0.12);
+  border: 1px solid rgba(212, 168, 67, 0.35);
+  color: #d4a843;
+  font-size: 12px;
+  text-align: center;
+}
+
+@media (min-width: 761px) {
+  .sidebar-nav-debug {
+    left: auto;
+    right: 16px;
+    bottom: 16px;
+    max-width: 360px;
+  }
+}
+
 .app-nav-topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
-  padding: 14px 24px;
+  padding: 10px 24px;
   border-bottom: 1px solid rgba(180, 140, 80, 0.15);
   background: rgba(10, 10, 15, 0.85);
   backdrop-filter: blur(10px);
   position: sticky;
   top: 0;
   z-index: 40;
+}
+
+.app-nav-topbar__actions--primary {
+  margin-left: auto;
 }
 
 .app-nav-topbar__brand {
