@@ -1,8 +1,16 @@
 'use client'
 
 import HubSubNav from '@/components/workspace/HubSubNav'
+import WorkspacePanelErrorBoundary from '@/components/workspace/WorkspacePanelErrorBoundary'
 import type { ContentPanel } from '@/lib/artistWorkspaceTabs'
 import { t, useLang } from '@/lib/i18n'
+
+const CONTENT_PANEL_LABEL_KEYS: Record<ContentPanel, string> = {
+  songs: 'workspaceShellSongs',
+  albums: 'albums',
+  media: 'workspaceTabMedia',
+  stories: 'workspaceShellStories',
+}
 
 export default function ArtistWorkspaceContentHub({
   active,
@@ -24,7 +32,11 @@ export default function ArtistWorkspaceContentHub({
   return (
     <div className="workspace-hub">
       <HubSubNav items={items} active={active} onChange={id => onChange(id as ContentPanel)} ariaLabel={tx.workspaceShellContent} />
-      <div className="workspace-hub__body">{children}</div>
+      <div className="workspace-hub__body">
+        <WorkspacePanelErrorBoundary panelLabel={tx[CONTENT_PANEL_LABEL_KEYS[active]] || active}>
+          {children}
+        </WorkspacePanelErrorBoundary>
+      </div>
     </div>
   )
 }

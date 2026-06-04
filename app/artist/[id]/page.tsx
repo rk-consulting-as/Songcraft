@@ -651,7 +651,7 @@ export default function ArtistPage() {
 
   // Apply filters + search to get the visible song list. Reorder operates on UNFILTERED list,
   // so we look up indices via song id.
-  const visibleSongs = songs.filter(s => {
+  const visibleSongs = (songs ?? []).filter(s => {
     if (statusFilter !== 'all' && s.status !== statusFilter) return false
     if (albumFilter === 'none' && s.album_id) return false
     if (albumFilter !== 'all' && albumFilter !== 'none' && s.album_id !== albumFilter) return false
@@ -1106,7 +1106,7 @@ export default function ArtistPage() {
           </div>
         )}
 
-        {workspaceArea === 'content' && (
+        {workspaceArea === 'content' && artist && (
           <div id={`workspace-content-${contentPanel}`}>
           <ArtistWorkspaceContentHub active={contentPanel} onChange={changeContentPanel}>
             {contentPanel === 'songs' && (

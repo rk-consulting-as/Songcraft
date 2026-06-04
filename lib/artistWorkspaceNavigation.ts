@@ -1,9 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { usePathname } from 'next/navigation'
 import {
   buildWorkspaceHash,
+  canonicalArtistWorkspaceHash,
   parseWorkspaceHash,
   type WorkspaceRoute,
 } from '@/lib/artistWorkspaceTabs'
@@ -33,9 +34,14 @@ function subscribeWorkspaceHash(listener: () => void) {
   }
 }
 
-function readWorkspaceRouteFromLocation(): WorkspaceRoute {
-  if (typeof window === 'undefined') return DEFAULT_ROUTE
-  return parseWorkspaceHash(window.location.hash)
+/** Stable primitive snapshot for useSyncExternalStore (object snapshots cause infinite re-renders). */
+function readWorkspaceHashKey(): string {
+  if (typeof window === 'undefined') return 'overview'
+  return canonicalArtistWorkspaceHash(window.location.hash)
+}
+
+function routeFromHashKey(hashKey: string): WorkspaceRoute {
+  return parseWorkspaceHash(hashKey ? `#${hashKey}` : '')
 }
 
 /** Push/replace location hash and notify route subscribers (Next.js may skip hashchange). */
@@ -79,19 +85,29 @@ export function scrollToWorkspaceAnchor(route: WorkspaceRoute) {
   })
 }
 
-/** Hash-driven workspace route — re-renders on hash, popstate, and explicit workspace navigation. */
+/**
+ * Hash-driven workspace route.
+ * Uses a string snapshot + client hydration gate to avoid infinite re-renders and SSR mismatch.
+ */
 export function useWorkspaceRouteFromHash() {
   const pathname = usePathname()
+  const [hydrated, setHydrated] = useState(false)
 
-  const route = useSyncExternalStore(
+  useLayoutEffect(() => {
+    setHydrated(true)
+  }, [pathname])
+
+  const hashKey = useSyncExternalStore(
     subscribeWorkspaceHash,
-    readWorkspaceRouteFromLocation,
-    () => DEFAULT_ROUTE,
+    () => (hydrated ? readWorkspaceHashKey() : 'overview'),
+    () => 'overview',
   )
 
+  const route = useMemo(() => routeFromHashKey(hashKey), [hashKey])
+
   useEffect(() => {
-    notifyWorkspaceHashListeners()
-  }, [pathname])
+    if (hydrated) notifyWorkspaceHashListeners()
+  }, [hydrated, pathname])
 
   return route
 }

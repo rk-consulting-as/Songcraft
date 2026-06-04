@@ -43,7 +43,7 @@ export default function BrandKitPanel({
   const [heroId, setHeroId] = useState(kit.hero_asset_id || '')
   const [profileId, setProfileId] = useState(kit.profile_asset_id || '')
 
-  const imageAssets = assets.filter(a => a.visibility === 'public' || a.visibility === 'private')
+  const imageAssets = (assets ?? []).filter(a => a.visibility === 'public' || a.visibility === 'private')
 
   const resolveUrl = (assetId: string, fallback?: string | null) => {
     const a = assets.find(x => x.id === assetId)
