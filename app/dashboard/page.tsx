@@ -927,7 +927,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="page-pad dashboard-command-center-layout" style={{ padding: '32px 32px 100px', maxWidth: '1100px', margin: '0 auto' }}>
+      <div className="page-pad dashboard-command-center-layout workspace-container workspace-container--dashboard">
         {!loading && commandSnapshot && (
           <div className="dashboard-command-center">
             <DashboardCommandCenterHero
@@ -936,11 +936,16 @@ export default function Dashboard() {
               tx={tx as Record<string, string>}
               onCreateArtist={openCreate}
             />
-            {commandSnapshot.todayActions && commandSnapshot.todayActions.length > 0 && (
-              <DashboardTodayPanel actions={commandSnapshot.todayActions} tx={tx as Record<string, string>} />
-            )}
-            {commandSnapshot.quickWins && commandSnapshot.quickWins.length > 0 && (
-              <DashboardQuickWins wins={commandSnapshot.quickWins} tx={tx as Record<string, string>} />
+            {((commandSnapshot.todayActions && commandSnapshot.todayActions.length > 0) ||
+              (commandSnapshot.quickWins && commandSnapshot.quickWins.length > 0)) && (
+              <div className="dashboard-grid-priority workspace-two-column">
+                {commandSnapshot.todayActions && commandSnapshot.todayActions.length > 0 && (
+                  <DashboardTodayPanel actions={commandSnapshot.todayActions} tx={tx as Record<string, string>} />
+                )}
+                {commandSnapshot.quickWins && commandSnapshot.quickWins.length > 0 && (
+                  <DashboardQuickWins wins={commandSnapshot.quickWins} tx={tx as Record<string, string>} />
+                )}
+              </div>
             )}
             <DashboardArtistStrip
               artists={commandSnapshot.artists}
@@ -953,15 +958,17 @@ export default function Dashboard() {
               stage={commandSnapshot.stage}
               firstArtistId={artists[0]?.id}
             />
-            <DashboardCommunityPanel
-              snapshot={commandSnapshot}
-              tx={tx as Record<string, string>}
-              firstArtistId={artists[0]?.id}
-            />
+            <div className="dashboard-grid-secondary workspace-two-column">
+              <DashboardCommunityPanel
+                snapshot={commandSnapshot}
+                tx={tx as Record<string, string>}
+                firstArtistId={artists[0]?.id}
+              />
+              <DashboardGrowthOpportunities opportunities={commandSnapshot.growthOpportunities} tx={tx as Record<string, string>} />
+            </div>
             <section className="dashboard-nav-section">
               <GrowthHubDashboardCard artistId={artists[0]?.id} />
             </section>
-            <DashboardGrowthOpportunities opportunities={commandSnapshot.growthOpportunities} tx={tx as Record<string, string>} />
             {commandSnapshot.discoverOpportunities && commandSnapshot.discoverOpportunities.length > 0 && (
               <DashboardDiscoverOpportunities opportunities={commandSnapshot.discoverOpportunities} tx={tx as Record<string, string>} />
             )}

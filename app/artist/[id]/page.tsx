@@ -1091,7 +1091,7 @@ export default function ArtistPage() {
         onAreaChange={changeWorkspaceArea}
         nav={<ArtistWorkspaceNav active={workspaceArea} onChange={changeWorkspaceArea} />}
       >
-      <div className="artist-workspace-body">
+      <div className="artist-workspace-body workspace-container workspace-container--artist">
         {workspaceArea === 'overview' && artist && (
           <>
             <MobileQuickActions

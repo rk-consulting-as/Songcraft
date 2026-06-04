@@ -53,7 +53,7 @@ export default function MediaLibraryPage() {
         </Link>
       </header>
 
-      <main className="media-library-page" style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 32px 48px' }}>
+      <main className="media-library-page workspace-container" style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 32px 48px' }}>
         <MediaLibraryPanel artists={artists} planId={planId} />
 
         <section style={{ marginTop: 40 }}>

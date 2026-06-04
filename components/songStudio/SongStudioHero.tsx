@@ -110,35 +110,39 @@ export default function SongStudioHero({
             <Link href={`/artist/${artistId}`} className="song-studio-hero__back">← {artistName}</Link>
           )}
         </div>
-        <div className="song-studio-hero__identity">
-          {coverUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={coverUrl} alt="" className="song-studio-hero__cover" />
-          ) : (
-            <div className="song-studio-hero__cover song-studio-hero__cover--empty" aria-hidden="true">🎵</div>
-          )}
-          <div className="song-studio-hero__meta">
-            <input
-              value={title}
-              onChange={e => onTitleChange(e.target.value)}
-              className="song-studio-hero__title-input"
-              aria-label={tx.songTitle}
-            />
-            {chips.length > 0 && (
-              <div className="song-studio-hero__chips" aria-label={tx.songStudioStatusSummary}>
-                {chips.map(chip => (
-                  <span key={chip.label} className={`song-studio-hero__chip song-studio-hero__chip--${chip.tone}`}>{chip.label}</span>
-                ))}
-              </div>
+        <div className="song-studio-hero__main-row">
+          <div className="song-studio-hero__identity">
+            {coverUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={coverUrl} alt="" className="song-studio-hero__cover" />
+            ) : (
+              <div className="song-studio-hero__cover song-studio-hero__cover--empty" aria-hidden="true">🎵</div>
             )}
+            <div className="song-studio-hero__meta">
+              <input
+                value={title}
+                onChange={e => onTitleChange(e.target.value)}
+                className="song-studio-hero__title-input"
+                aria-label={tx.songTitle}
+              />
+              {chips.length > 0 && (
+                <div className="song-studio-hero__chips" aria-label={tx.songStudioStatusSummary}>
+                  {chips.map(chip => (
+                    <span key={chip.label} className={`song-studio-hero__chip song-studio-hero__chip--${chip.tone}`}>{chip.label}</span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
+          {typeof readinessScore === 'number' && (
+            <div className="song-studio-hero__dock">
+              <div className="song-studio-hero__readiness" aria-label={`${tx.reviewScore}: ${readinessScore}`}>
+                <span className="song-studio-hero__readiness-value">{readinessScore}</span>
+                <span className="song-studio-hero__readiness-label">{tx.reviewScore}</span>
+              </div>
+            </div>
+          )}
         </div>
-        {typeof readinessScore === 'number' && (
-          <div className="song-studio-hero__readiness" aria-label={`${tx.reviewScore}: ${readinessScore}`}>
-            <span className="song-studio-hero__readiness-value">{readinessScore}</span>
-            <span className="song-studio-hero__readiness-label">{tx.reviewScore}</span>
-          </div>
-        )}
         <SongQuickActions actions={actions} />
       </div>
     </header>

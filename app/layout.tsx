@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import './globals-workspace-layout.css'
 import DynamicFavicon from '@/components/DynamicFavicon'
 import ChatDock from '@/components/ChatDock'
 import MobileBottomNav from '@/components/MobileBottomNav'

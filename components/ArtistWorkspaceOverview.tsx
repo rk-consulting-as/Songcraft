@@ -82,18 +82,19 @@ export default function ArtistWorkspaceOverview({
         ))}
       </div>
 
-      <PublicPresenceCard
-        artistId={artist.id}
-        pageSlug={artist.page_slug}
-        pageEnabled={artist.page_enabled}
-        epkPublicEnabled={epkPublicEnabled}
-        epkHasContent={epkHasContent}
-        featuredReleaseSet={featuredReleaseSet}
-        newsletterEnabled={newsletterEnabled}
-        onManage={() => onOpenTab('public')}
-      />
+      <div className="workspace-overview__presence-row workspace-two-column workspace-two-column--balanced">
+        <PublicPresenceCard
+          artistId={artist.id}
+          pageSlug={artist.page_slug}
+          pageEnabled={artist.page_enabled}
+          epkPublicEnabled={epkPublicEnabled}
+          epkHasContent={epkHasContent}
+          featuredReleaseSet={featuredReleaseSet}
+          newsletterEnabled={newsletterEnabled}
+          onManage={() => onOpenTab('public')}
+        />
 
-      <div className="workspace-two-col">
+        <div className="workspace-two-col">
         <div className="card workspace-card">
           <h3 className="workspace-card-title">{tx.workspaceQuickActions}</h3>
           <div className="workspace-action-grid">
@@ -167,6 +168,7 @@ export default function ArtistWorkspaceOverview({
               {publicUrl}
             </p>
           )}
+        </div>
         </div>
       </div>
     </div>

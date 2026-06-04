@@ -1491,7 +1491,7 @@ export default function SongPage() {
           </>
         )}
       >
-        <div className="song-studio-body">
+        <div className="song-studio-body workspace-container workspace-container--song">
         <SongStudioWorkspaceContext
           route={studioRoute}
           songTitle={title || song?.title || ''}
@@ -1533,7 +1533,7 @@ export default function SongPage() {
 
         {/* LYRICS */}
         {panel === 'lyrics' && (
-          <div>
+          <div className="song-studio-panel song-studio-panel--lyrics">
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>{tx.lyrics}</h2>
             {!lyrics && !lyricsInstructions && (
               <WorkspaceEmptyState
@@ -1546,6 +1546,8 @@ export default function SongPage() {
               <UpgradePrompt compact title={tx.upgradeAiTitle} description={tx.upgradeAiDesc} />
             )}
 
+            <div className="song-studio-write-layout">
+            <aside className="song-studio-write-layout__side">
             <div className="card workspace-card workspace-glass" style={{ marginBottom: 16, padding: 14 }}>
               <AiPlatformSelector
                 platformId={normalizePlatformId(aiPlatformId)}
@@ -1588,7 +1590,9 @@ export default function SongPage() {
                 {isLoading('lyrics') ? tx.generating : lyrics ? tx.regenerateLyrics : tx.generateLyrics}
               </button>
             </div>
+            </aside>
 
+            <div className="song-studio-write-layout__main">
             {/* Lyrics editor — always visible. User can paste their own or use the AI generator above. */}
             <div className="card" style={{ marginBottom: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: 8 }}>
@@ -1779,6 +1783,8 @@ export default function SongPage() {
                 </div>
               </>
             )}
+            </div>
+            </div>
           </div>
         )}
 
@@ -1982,7 +1988,7 @@ export default function SongPage() {
 
         {/* COVER TAB */}
         {panel === 'cover' && (
-          <div>
+          <div className="song-studio-panel song-studio-panel--cover">
             <h2 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: '18px', marginTop: 0 }}>{tx.coverTitle}</h2>
             {!coverImageUrl && !song?.spotify_cover_url && (
               <WorkspaceEmptyState
@@ -1991,6 +1997,8 @@ export default function SongPage() {
                 description={tx.songStudioEmptyCoverDesc}
               />
             )}
+            <div className="song-studio-cover-layout">
+            <div className="song-studio-cover-layout__preview">
             <div className="card" style={{ marginBottom: '24px' }}>
               <p style={{ color: '#8a7a60', fontSize: '12px', letterSpacing: '1px', marginTop: 0 }}>{tx.uploadCover}</p>
               {coverImageUrl && (
@@ -2032,6 +2040,8 @@ export default function SongPage() {
                 title={tx.mediaCoverFromLibrary}
               />
             )}
+            </div>
+            <div className="song-studio-cover-layout__controls">
             {/* Style preset chips */}
             <div style={{ marginBottom: 14 }}>
               <label style={{ display: 'block', color: '#8a7a60', fontSize: 11, letterSpacing: 1, marginBottom: 6 }}>{tx.coverStyleChips}</label>
@@ -2116,7 +2126,10 @@ export default function SongPage() {
             <button className="btn-gold" onClick={generateCoverPrompt} disabled={aiLoading || !lyrics} style={{ marginBottom: '24px' }}>
               {isLoading('cover') ? tx.generating : coverPrompt ? '↻ ' + tx.regenerate : tx.generateCoverPrompt}
             </button>
+            </div>
+            </div>
             {coverPrompt && (
+              <div className="song-studio-cover-layout__prompt">
               <div className="card" style={{ borderColor: 'rgba(160,100,200,0.3)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
                   <span style={{ color: '#c07bd0', fontSize: '11px', letterSpacing: '1px' }}>{tx.coverPromptLabel}</span>
@@ -2145,6 +2158,7 @@ export default function SongPage() {
                 <p style={{ color: '#6a5a40', fontSize: '12px', margin: '14px 0 0' }}>
                   {tx.coverHint} <a href="https://midjourney.com" target="_blank" rel="noopener noreferrer" style={{ color: '#9080c0' }}>Midjourney</a>, <a href="https://openai.com/dall-e" target="_blank" rel="noopener noreferrer" style={{ color: '#9080c0' }}>DALL-E</a>
                 </p>
+              </div>
               </div>
             )}
           </div>
@@ -2596,7 +2610,7 @@ export default function SongPage() {
               </div>
             </div>
 
-            <div className="card" style={{ marginBottom: 20, borderColor: releaseReadinessScore >= 80 ? 'rgba(123,200,123,0.34)' : releaseReadinessScore >= 55 ? 'rgba(212,168,67,0.34)' : 'rgba(224,112,112,0.28)' }}>
+            <div className="card song-studio-release-readiness" style={{ marginBottom: 20, borderColor: releaseReadinessScore >= 80 ? 'rgba(123,200,123,0.34)' : releaseReadinessScore >= 55 ? 'rgba(212,168,67,0.34)' : 'rgba(224,112,112,0.28)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 16 }}>
                 <div>
                   <h3 style={{ color: '#d4a843', fontWeight: 'normal', fontSize: 16, margin: '0 0 6px' }}>{tx.reviewTitle}</h3>
@@ -2623,7 +2637,7 @@ export default function SongPage() {
                 ))}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+              <div className="song-studio-release-readiness__columns workspace-three-column">
                 <div>
                   <h4 style={{ color: '#a8b8e8', fontWeight: 'normal', fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', margin: '0 0 8px' }}>{tx.reviewMissingItems}</h4>
                   {releaseMissingItems.length === 0 ? (

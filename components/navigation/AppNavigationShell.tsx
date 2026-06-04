@@ -122,7 +122,7 @@ function AppNavigationShellInner({ children }: { children: ReactNode }) {
     <>
       {showDevPanel && <SidebarNavDebugPanel state={visibility} onRefresh={syncEnabled} />}
       <NavigationProvider onLoadError={() => setNavDataFailed(true)}>
-        <div className={`app-nav-shell${collapsed ? ' app-nav-shell--collapsed' : ''}`}>
+        <div className={`app-nav-shell workspace-sidebar-layout${collapsed ? ' app-nav-shell--collapsed' : ''}`}>
           {sidebarNode}
           <div className="app-nav-shell__main">
             <AppTopBar />

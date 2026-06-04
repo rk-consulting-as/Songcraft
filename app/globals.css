@@ -6515,7 +6515,13 @@ body.artist-workspace-page button[title="Open chat"] {
 }
 
 /* Phase 53A: Command Center Dashboard */
-.dashboard-command-center-layout { overflow-x: hidden; }
+.dashboard-command-center-layout {
+  overflow-x: hidden;
+  padding: 32px 32px 100px;
+  max-width: 1100px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
 .dashboard-command-center { display: flex; flex-direction: column; gap: 28px; margin-bottom: 28px; }
 
 .dashboard-cmd-hero { padding: 22px 24px; border-color: rgba(212,168,67,0.28); }

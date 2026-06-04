@@ -133,7 +133,7 @@ export default function GrowthCommunityHub() {
         )}
       </header>
 
-      <div className="growth-hub-body page-pad">
+      <div className="growth-hub-body page-pad workspace-container">
         <p className="growth-hub-subtitle">{tx.growthHubSubtitle}</p>
 
         {artistName && (
