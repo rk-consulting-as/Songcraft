@@ -1,5 +1,10 @@
 import { aiOutputLanguageDirective, type AIOutputLang } from '@/lib/aiOutputLanguage'
 import { clientPublicUrl } from '@/lib/appUrl'
+import {
+  appendCanonicalTitleDirective,
+  canonicalTitleUserLine,
+  storySongTitleGuidance,
+} from '@/lib/songs/canonicalTitle'
 import { buildSongListenLinks } from '@/lib/songs/publicListenLinks'
 import { slugifyStoryTitle } from './slug'
 import { STORY_TYPES, type GeneratedStoryDraft, type StoryType } from './types'
@@ -94,23 +99,28 @@ export function buildStoryAssistantPrompt(input: StoryAssistantInput): { system:
     news: 'News-style update — concise, factual tone about this music news.',
   }[storyType]
 
-  const system = [
-    aiOutputLanguageDirective(input.outputLang || 'en'),
-    'You are a music storyteller helping an independent artist write a fan-facing blog story.',
-    'Write engaging, authentic prose suitable for an artist website.',
-    'Return ONLY valid JSON with keys: title, excerpt, body, seo_title, seo_description, story_type.',
-    'excerpt: 1-2 sentences, max 220 chars.',
-    'body: 3-8 short paragraphs; markdown headings allowed.',
-    'seo_title: max 60 chars.',
-    'seo_description: max 155 chars.',
-    'story_type: one of: behind_the_song, release_story, artist_journal, lyrics_meaning, campaign_update, playlist_feature, news.',
-    ...QUALITY_RULES,
-  ].join('\n')
+  const system = appendCanonicalTitleDirective(
+    [
+      aiOutputLanguageDirective(input.outputLang || 'en'),
+      'You are a music storyteller helping an independent artist write a fan-facing blog story.',
+      'Write engaging, authentic prose suitable for an artist website.',
+      'Return ONLY valid JSON with keys: title, excerpt, body, seo_title, seo_description, story_type.',
+      'excerpt: 1-2 sentences, max 220 chars.',
+      'body: 3-8 short paragraphs; markdown headings allowed.',
+      'seo_title: max 60 chars.',
+      'seo_description: max 155 chars.',
+      'story_type: one of: behind_the_song, release_story, artist_journal, lyrics_meaning, campaign_update, playlist_feature, news.',
+      storySongTitleGuidance(input.title),
+      ...QUALITY_RULES,
+    ].join('\n'),
+    input.title,
+  )
 
   const user = [
     `Story type: ${storyType}`,
     `Angle: ${typeHint}`,
     input.direction?.trim() ? `Creator direction:\n${input.direction.trim()}` : '',
+    canonicalTitleUserLine(input.title),
     `Song: ${input.title}`,
     input.artistName ? `Artist: ${input.artistName}` : '',
     input.genre ? `Genre: ${input.genre}` : '',

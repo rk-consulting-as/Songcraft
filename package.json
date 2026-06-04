@@ -8,7 +8,8 @@
     "start": "next start",
     "test:workspace-routing": "npx --yes tsx lib/artistWorkspaceTabs.test.ts",
     "test:song-studio-routing": "npx --yes tsx lib/songStudio/routes.test.ts",
-    "test:story-public-url": "npx --yes tsx lib/artistStories/publicUrl.test.ts"
+    "test:story-public-url": "npx --yes tsx lib/artistStories/publicUrl.test.ts",
+    "test:canonical-title": "npx --yes tsx lib/songs/canonicalTitle.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.3.0",

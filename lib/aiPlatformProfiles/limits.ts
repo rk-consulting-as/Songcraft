@@ -204,13 +204,18 @@ export function buildLyricsGenerationSystem(
   useSongStructure: boolean,
   platformId: PlatformId | string | null | undefined,
   customLimits?: CustomPlatformLimits | null,
+  canonicalSongTitle?: string | null,
 ): string {
   const structureNote = useSongStructure ? ' Follow the song structure profile provided.' : ''
+  const titleNote = canonicalSongTitle?.trim()
+    ? ` If you include a title line, use exactly: "${canonicalSongTitle.trim()}".`
+    : ''
   return [
     `You are a creative songwriter. Write song lyrics based on the user's instructions. Write in ${lang}.`,
     'Format with Verse 1, Verse 2, Chorus, Bridge etc.',
     structureNote,
     buildLyricsGenerationConstraints(platformId, customLimits),
+    titleNote,
     'Output only the lyrics, no explanations.',
   ].filter(Boolean).join(' ')
 }
@@ -218,10 +223,15 @@ export function buildLyricsGenerationSystem(
 export function buildLyricsRefineSystem(
   platformId: PlatformId | string | null | undefined,
   customLimits?: CustomPlatformLimits | null,
+  canonicalSongTitle?: string | null,
 ): string {
+  const titleNote = canonicalSongTitle?.trim()
+    ? ` Keep any title line exactly: "${canonicalSongTitle.trim()}".`
+    : ''
   return [
     'You are a creative songwriter. Adjust the lyrics based on the feedback.',
     buildLyricsRefineConstraints(platformId, customLimits),
+    titleNote,
     'Output only the updated lyrics.',
   ].join(' ')
 }
@@ -229,6 +239,7 @@ export function buildLyricsRefineSystem(
 export function buildAdaptLyricsSystem(
   platformId: PlatformId | string | null | undefined,
   customLimits?: CustomPlatformLimits | null,
+  canonicalSongTitle?: string | null,
 ): string {
   const profile = getPlatformProfile(platformId, customLimits)
   const limit = getContentLimit(platformId, 'lyrics', customLimits)
@@ -238,12 +249,17 @@ export function buildAdaptLyricsSystem(
     recommendedMax: limit.adaptTargetMax,
   }) || buildRecommendedRangeLabel(limit)
 
+  const titleNote = canonicalSongTitle?.trim()
+    ? ` Keep any title line exactly: "${canonicalSongTitle.trim()}".`
+    : ''
+
   return [
     `You adapt song lyrics for ${profile.id} while preserving the story, strongest chorus hooks, emotional arc, and writing style.`,
     target ? `Target ${target} characters total (including section labels and line breaks).` : 'Keep the lyrics concise.',
     limit.hardMax != null ? `Hard maximum ${limit.hardMax} characters — never exceed this.` : '',
     'Remove repetition and trim stage directions if needed.',
     'Keep 2 verses, 2-3 choruses, and 1 bridge when possible.',
+    titleNote,
     'Output only the adapted lyrics.',
   ].filter(Boolean).join(' ')
 }

@@ -10,6 +10,7 @@ import { t, useLang } from '@/lib/i18n'
 
 type Props = {
   songId: string
+  songTitle?: string
   artistPageEnabled?: boolean
   artistAdminHidden?: boolean
   songPublicHidden?: boolean
@@ -30,6 +31,7 @@ type Props = {
 
 export default function SongStudioSettingsPanel({
   songId,
+  songTitle = '',
   artistPageEnabled,
   artistAdminHidden,
   songPublicHidden,
@@ -54,6 +56,14 @@ export default function SongStudioSettingsPanel({
       <div className="card workspace-card workspace-glass">
         <h2 className="workspace-section-title">{tx.songStudioSettingsTitle}</h2>
         <p className="workspace-section-desc">{tx.songStudioSettingsDesc}</p>
+
+        {songTitle.trim() && (
+          <div className="song-studio-settings__canonical">
+            <span className="song-studio-settings__label">{tx.songCanonicalTitleLabel}</span>
+            <p className="song-studio-settings__canonical-value">{songTitle}</p>
+            <p className="workspace-section-desc">{tx.songCanonicalTitleHint}</p>
+          </div>
+        )}
 
         <div className="song-studio-settings__row">
           <label className="song-studio-settings__label">{tx.status}</label>

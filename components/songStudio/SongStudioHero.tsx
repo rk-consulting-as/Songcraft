@@ -119,12 +119,14 @@ export default function SongStudioHero({
               <div className="song-studio-hero__cover song-studio-hero__cover--empty" aria-hidden="true">🎵</div>
             )}
             <div className="song-studio-hero__meta">
+              <label className="song-studio-hero__title-label">{tx.songCanonicalTitleLabel}</label>
               <input
                 value={title}
                 onChange={e => onTitleChange(e.target.value)}
                 className="song-studio-hero__title-input"
-                aria-label={tx.songTitle}
+                aria-label={tx.songCanonicalTitleLabel}
               />
+              <p className="song-studio-hero__title-hint">{tx.songCanonicalTitleHint}</p>
               {chips.length > 0 && (
                 <div className="song-studio-hero__chips" aria-label={tx.songStudioStatusSummary}>
                   {chips.map(chip => (

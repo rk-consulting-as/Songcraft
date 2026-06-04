@@ -1,3 +1,4 @@
+import { appendCanonicalTitleDirective } from '@/lib/songs/canonicalTitle'
 import {
   SUNO_COMPACT_MAX,
   SUNO_COMPACT_MIN,
@@ -95,27 +96,36 @@ export function sunoSystemPromptForMode(
   mode: SunoPromptMode,
   langName: string,
   styleLimit?: { targetMin: number; targetMax: number; hardMax: number | null },
+  canonicalSongTitle?: string | null,
 ): string {
   const targetMin = styleLimit?.targetMin ?? SUNO_COMPACT_MIN
   const targetMax = styleLimit?.targetMax ?? SUNO_COMPACT_MAX
   const hardMax = styleLimit?.hardMax ?? SUNO_HARD_MAX
   if (mode === 'compact') {
-    return [
-      'You are a Suno AI music prompt expert.',
-      `Write a COMPACT Suno "Style of Music" prompt in ${langName}.`,
-      hardMax != null
-        ? `Target length: ${targetMin}-${targetMax} characters (hard max ${hardMax}).`
-        : `Target length: ${targetMin}-${targetMax} characters.`,
-      'Include: genre, tempo, mood, key instruments, vocal style, production texture.',
-      'Use concise [tag] clusters. No lyrics. No preamble.',
-      'Prioritize genre, instrumentation, mood, and vocal direction.',
-    ].join(' ')
+    return appendCanonicalTitleDirective(
+      [
+        'You are a Suno AI music prompt expert.',
+        `Write a COMPACT Suno "Style of Music" prompt in ${langName}.`,
+        hardMax != null
+          ? `Target length: ${targetMin}-${targetMax} characters (hard max ${hardMax}).`
+          : `Target length: ${targetMin}-${targetMax} characters.`,
+        'Include: genre, tempo, mood, key instruments, vocal style, production texture.',
+        'Use concise [tag] clusters. No lyrics. No preamble.',
+        'Prioritize genre, instrumentation, mood, and vocal direction.',
+        'If you mention the song title, use only the canonical title provided — never invent a different title.',
+      ].join(' '),
+      canonicalSongTitle,
+    )
   }
-  return [
-    'You are an expert music production prompt writer for Claude, GPT, Udio, and future AI systems.',
-    `Write a DETAILED production brief in ${langName}.`,
-    `Target length: ${SUNO_DETAILED_MIN}-${SUNO_DETAILED_MAX} characters.`,
-    'Include: genre, subgenre, tempo/BPM feel, mood, instrumentation, arrangement, vocal direction, production references, dynamic arc.',
-    'Use [tags] where helpful. No lyrics. No preamble.',
-  ].join(' ')
+  return appendCanonicalTitleDirective(
+    [
+      'You are an expert music production prompt writer for Claude, GPT, Udio, and future AI systems.',
+      `Write a DETAILED production brief in ${langName}.`,
+      `Target length: ${SUNO_DETAILED_MIN}-${SUNO_DETAILED_MAX} characters.`,
+      'Include: genre, subgenre, tempo/BPM feel, mood, instrumentation, arrangement, vocal direction, production references, dynamic arc.',
+      'Use [tags] where helpful. No lyrics. No preamble.',
+      'If you mention the song title, use only the canonical title provided — never invent a different title.',
+    ].join(' '),
+    canonicalSongTitle,
+  )
 }

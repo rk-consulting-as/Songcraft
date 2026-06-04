@@ -1,4 +1,5 @@
 'use client'
+import { appendCanonicalTitleDirective, canonicalTitleUserLine } from '@/lib/songs/canonicalTitle'
 
 import { useEffect, useMemo, useState } from 'react'
 import { t, useLang, type Lang } from '@/lib/i18n'
@@ -126,7 +127,7 @@ export default function DistributionWorkflow({
   const generateAi = async (kind: 'description' | 'notes' | 'review') => {
     if (planId !== 'pro') return
     const context = [
-      `Song: ${title}`,
+      canonicalTitleUserLine(title),
       `Artist: ${artist?.name || ''}`,
       `Genre: ${artist?.genre || ''}`,
       `Release date: ${distribution.release_date || ''}`,
@@ -140,9 +141,9 @@ export default function DistributionWorkflow({
       `Missing metadata: ${missing.map(item => item.label).join(', ') || 'none'}`,
     ].filter(Boolean).join('\n\n')
     const systems = {
-      description: `${tx.distributionAiSystemBase} ${tx.distributionAiDescriptionSystem}`,
-      notes: `${tx.distributionAiSystemBase} ${tx.distributionAiNotesSystem}`,
-      review: `${tx.distributionAiSystemBase} ${tx.distributionAiReviewSystem}`,
+      description: appendCanonicalTitleDirective(`${tx.distributionAiSystemBase} ${tx.distributionAiDescriptionSystem}`, title),
+      notes: appendCanonicalTitleDirective(`${tx.distributionAiSystemBase} ${tx.distributionAiNotesSystem}`, title),
+      review: appendCanonicalTitleDirective(`${tx.distributionAiSystemBase} ${tx.distributionAiReviewSystem}`, title),
     }
     const result = await callAI([{ role: 'user', content: context }], systems[kind], `distribution_${kind}`)
     if (!result) return
