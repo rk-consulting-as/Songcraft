@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useSyncExternalStore } from 'react'
 import { usePathname } from 'next/navigation'
 import {
   buildWorkspaceHash,
@@ -15,24 +15,46 @@ const DEFAULT_ROUTE: WorkspaceRoute = {
   brandPanel: 'overview',
 }
 
-/** Push/replace location hash and notify listeners (Next.js same-page hash links may skip hashchange). */
+const workspaceHashListeners = new Set<() => void>()
+
+function notifyWorkspaceHashListeners() {
+  workspaceHashListeners.forEach(listener => listener())
+}
+
+function subscribeWorkspaceHash(listener: () => void) {
+  workspaceHashListeners.add(listener)
+  const onNativeHash = () => listener()
+  window.addEventListener('hashchange', onNativeHash)
+  window.addEventListener('popstate', onNativeHash)
+  return () => {
+    workspaceHashListeners.delete(listener)
+    window.removeEventListener('hashchange', onNativeHash)
+    window.removeEventListener('popstate', onNativeHash)
+  }
+}
+
+function readWorkspaceRouteFromLocation(): WorkspaceRoute {
+  if (typeof window === 'undefined') return DEFAULT_ROUTE
+  return parseWorkspaceHash(window.location.hash)
+}
+
+/** Push/replace location hash and notify route subscribers (Next.js may skip hashchange). */
 export function applyArtistWorkspaceHash(hash: string, options?: { replace?: boolean }) {
   if (typeof window === 'undefined') return
   const normalized = hash.replace(/^#/, '').trim()
   const nextUrl = `${window.location.pathname}${window.location.search}#${normalized}`
   const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`
 
-  if (currentUrl === nextUrl) {
-    window.dispatchEvent(new HashChangeEvent('hashchange'))
-    return
+  if (currentUrl !== nextUrl) {
+    if (options?.replace) {
+      window.history.replaceState(null, '', nextUrl)
+    } else {
+      window.history.pushState(null, '', nextUrl)
+    }
   }
 
-  if (options?.replace) {
-    window.history.replaceState(null, '', nextUrl)
-  } else {
-    window.history.pushState(null, '', nextUrl)
-  }
   window.dispatchEvent(new HashChangeEvent('hashchange'))
+  notifyWorkspaceHashListeners()
 }
 
 export function workspaceScrollAnchorId(route: WorkspaceRoute): string | null {
@@ -57,25 +79,19 @@ export function scrollToWorkspaceAnchor(route: WorkspaceRoute) {
   })
 }
 
+/** Hash-driven workspace route — re-renders on hash, popstate, and explicit workspace navigation. */
 export function useWorkspaceRouteFromHash() {
   const pathname = usePathname()
-  const [route, setRoute] = useState<WorkspaceRoute>(DEFAULT_ROUTE)
 
-  const syncFromLocation = useCallback(() => {
-    if (typeof window === 'undefined') return
-    setRoute(parseWorkspaceHash(window.location.hash))
-  }, [])
+  const route = useSyncExternalStore(
+    subscribeWorkspaceHash,
+    readWorkspaceRouteFromLocation,
+    () => DEFAULT_ROUTE,
+  )
 
   useEffect(() => {
-    syncFromLocation()
-    const onHash = () => syncFromLocation()
-    window.addEventListener('hashchange', onHash)
-    window.addEventListener('popstate', onHash)
-    return () => {
-      window.removeEventListener('hashchange', onHash)
-      window.removeEventListener('popstate', onHash)
-    }
-  }, [pathname, syncFromLocation])
+    notifyWorkspaceHashListeners()
+  }, [pathname])
 
   return route
 }

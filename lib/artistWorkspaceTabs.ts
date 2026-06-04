@@ -81,23 +81,45 @@ export const ARTIST_WORKSPACE_DEEP_LINKS: Record<string, WorkspaceRoute> = {
   settings: { area: 'settings' },
 }
 
+function warnUnknownWorkspaceHash(raw: string) {
+  if (typeof process !== 'undefined' && process.env.NODE_ENV === 'production') return
+  if (typeof console !== 'undefined' && console.warn) {
+    console.warn(`[ViaTone] Unknown artist workspace hash "${raw}" — showing Overview.`)
+  }
+}
+
 export function parseWorkspaceHash(hash: string): WorkspaceRoute {
   const raw = hash.replace(/^#/, '').trim()
   if (!raw) return { area: 'overview' }
-  if (ARTIST_WORKSPACE_DEEP_LINKS[raw]) return ARTIST_WORKSPACE_DEEP_LINKS[raw]
-  if (LEGACY_HASH[raw]) return LEGACY_HASH[raw]
+  if (ARTIST_WORKSPACE_DEEP_LINKS[raw]) return { ...ARTIST_WORKSPACE_DEEP_LINKS[raw] }
+  if (LEGACY_HASH[raw]) return { ...LEGACY_HASH[raw] }
 
   const [areaPart, panelPart] = raw.split('-', 2) as [string, string | undefined]
-  if (!isArtistWorkspaceArea(areaPart)) return { area: 'overview' }
+  if (!isArtistWorkspaceArea(areaPart)) {
+    warnUnknownWorkspaceHash(raw)
+    return { area: 'overview' }
+  }
 
   if (areaPart === 'content') {
-    return { area: 'content', contentPanel: isContentPanel(panelPart) ? panelPart : 'songs' }
+    if (!isContentPanel(panelPart)) {
+      warnUnknownWorkspaceHash(raw)
+      return { area: 'content', contentPanel: 'songs' }
+    }
+    return { area: 'content', contentPanel: panelPart }
   }
   if (areaPart === 'promotion') {
-    return { area: 'promotion', promotionPanel: isPromotionPanel(panelPart) ? panelPart : 'campaigns' }
+    if (!isPromotionPanel(panelPart)) {
+      warnUnknownWorkspaceHash(raw)
+      return { area: 'promotion', promotionPanel: 'campaigns' }
+    }
+    return { area: 'promotion', promotionPanel: panelPart }
   }
   if (areaPart === 'brand') {
-    return { area: 'brand', brandPanel: isBrandPanel(panelPart) ? panelPart : 'overview' }
+    if (!isBrandPanel(panelPart)) {
+      warnUnknownWorkspaceHash(raw)
+      return { area: 'brand', brandPanel: 'overview' }
+    }
+    return { area: 'brand', brandPanel: panelPart }
   }
   return { area: areaPart }
 }

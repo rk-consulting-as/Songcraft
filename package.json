@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test:workspace-routing": "npx --yes tsx lib/artistWorkspaceTabs.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.3.0",
