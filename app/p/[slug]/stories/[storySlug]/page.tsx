@@ -39,7 +39,7 @@ async function fetchStory(slug: string, storySlug: string) {
   const [{ data: candidates }, { data: linkedSong }] = await Promise.all([
     queryLiveArtistStoriesRelated(sb, artist.id, story.id),
     story.song_id
-      ? sb.from('songs').select('id, title, spotify_url, suno_url, cover_image_url, spotify_cover_url, public_hidden, admin_hidden')
+      ? sb.from('songs').select('id, title, spotify_url, suno_url, media_links, cover_image_url, spotify_cover_url, public_hidden, admin_hidden')
           .eq('id', story.song_id)
           .eq('public_hidden', false)
           .eq('admin_hidden', false)
@@ -93,9 +93,8 @@ export default async function ArtistStoryDetailPage({ params }: { params: { slug
         labels={{
           backToArtist: tx.publicStoriesBackToArtist,
           relatedStories: tx.publicStoriesRelated,
-          listenOnSpotify: tx.publicListenOnSpotify,
+          listenWatch: tx.storyListenWatch,
           openSongPage: tx.publicOpenSongPage,
-          listenToSong: tx.storyListenToSong,
           minRead: tx.storyMinRead,
         }}
       />

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { storySlugLookupVariants } from './slug'
 import { publicStoriesNowIso } from './visibility'
 
 const LIVE_STATUSES = ['published', 'scheduled'] as const
@@ -21,11 +22,12 @@ export function queryLiveArtistStoryBySlug(
   storySlug: string,
   now: Date = new Date(),
 ) {
+  const slugVariants = storySlugLookupVariants(storySlug)
   return sb
     .from('artist_stories')
     .select('*')
     .eq('artist_id', artistId)
-    .eq('slug', storySlug)
+    .in('slug', slugVariants)
     .in('status', [...LIVE_STATUSES])
     .lte('published_at', publicStoriesNowIso(now))
     .not('published_at', 'is', null)

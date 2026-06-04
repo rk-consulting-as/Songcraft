@@ -1,7 +1,14 @@
 import { absoluteAppUrl } from '@/lib/appUrl'
+import { normalizeStorySlug } from './slug'
 import type { ArtistStory } from './types'
 
 type ArtistMeta = { name: string; page_slug?: string | null }
+
+type LinkedSongJsonLd = {
+  title: string
+  id?: string
+  spotify_url?: string | null
+}
 
 export function buildStoryPageTitle(story: Pick<ArtistStory, 'seo_title' | 'title'>, artistName: string): string {
   const title = story.seo_title?.trim() || story.title
@@ -16,7 +23,7 @@ export function buildStoryPageDescription(story: Pick<ArtistStory, 'seo_descript
 }
 
 export function buildStoryCanonicalUrl(slug: string, storySlug: string): string {
-  return absoluteAppUrl(`/p/${slug}/stories/${storySlug}`)
+  return absoluteAppUrl(`/p/${slug}/stories/${normalizeStorySlug(storySlug)}`)
 }
 
 export function buildStoryListUrl(slug: string): string {
@@ -29,9 +36,24 @@ export function resolveStoryOgImage(story: Pick<ArtistStory, 'og_image_url' | 'c
   return raw.startsWith('http') ? raw : absoluteAppUrl(raw)
 }
 
-export function buildStoryJsonLd(story: ArtistStory, artist: ArtistMeta) {
+export function buildStoryJsonLd(
+  story: ArtistStory,
+  artist: ArtistMeta,
+  linkedSong?: LinkedSongJsonLd | null,
+) {
   const url = artist.page_slug ? buildStoryCanonicalUrl(artist.page_slug, story.slug) : undefined
   const image = resolveStoryOgImage(story)
+  const songPageUrl = linkedSong?.id ? absoluteAppUrl(`/s/${linkedSong.id}`) : undefined
+  const recording = linkedSong
+    ? {
+        '@type': 'MusicRecording',
+        name: linkedSong.title,
+        ...(songPageUrl ? { url: songPageUrl } : {}),
+        ...(linkedSong.spotify_url ? { sameAs: linkedSong.spotify_url } : {}),
+        byArtist: { '@type': 'MusicGroup', name: artist.name },
+      }
+    : null
+
   return {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
@@ -49,5 +71,11 @@ export function buildStoryJsonLd(story: ArtistStory, artist: ArtistMeta) {
       '@type': 'Organization',
       name: 'ViaTone',
     },
+    ...(recording
+      ? {
+          about: recording,
+          mentions: recording,
+        }
+      : {}),
   }
 }

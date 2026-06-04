@@ -6505,8 +6505,12 @@ body.artist-workspace-page button[title="Open chat"] {
 .public-story-page__body { font-size: 17px; line-height: 1.75; color: #c8c0b0; }
 .public-story-page__body p { margin: 0 0 1.2em; }
 .public-story-page__song { margin: 32px 0; padding: 20px; border-radius: 12px; border: 1px solid rgba(212,168,67,0.2); background: rgba(0,0,0,0.25); }
+.public-story-page__song-card { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.public-story-page__song-meta { flex: 1; min-width: 200px; }
+.public-story-page__song-artist { font-size: 14px; color: #a09080; margin: 0 0 12px; }
+.public-story-page__song-links { margin-top: 12px; }
 .public-story-page__listen { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
-.public-story-page__song-cover { width: 120px; height: 120px; border-radius: 8px; object-fit: cover; margin-top: 12px; }
+.public-story-page__song-cover { width: 120px; height: 120px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
 .public-story-page__newsletter { margin: 36px 0; }
 .public-story-page__related { margin-top: 36px; }
 .public-story-page__related-list { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
@@ -6536,6 +6540,14 @@ body.artist-workspace-page button[title="Open chat"] {
 .artist-stories-manager__og-preview { width: 100%; max-height: 160px; object-fit: cover; border-radius: 8px; margin-bottom: 10px; }
 .artist-stories-manager__share-title { margin: 0 0 6px; font-size: 15px; }
 .artist-stories-manager__share-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.artist-stories-manager__share-state { font-size: 13px; color: #c9a84c; margin: 8px 0 0; }
+.artist-stories-manager__share-social-note { font-size: 12px; opacity: 0.85; }
+.artist-stories-manager__linked-song { margin: 12px 0; padding: 12px; }
+.artist-stories-manager__linked-song-row { display: flex; gap: 12px; align-items: flex-start; }
+.artist-stories-manager__linked-song-cover { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+.artist-stories-manager__linked-song-cover--empty { display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3); font-size: 24px; }
+.artist-stories-manager__linked-song-warn { font-size: 12px; color: #c97a5a; margin: 6px 0 0; }
+.story-preview-modal__private-note { font-size: 13px; color: #c9a84c; margin: 0 0 12px; text-align: center; }
 .story-archive-confirm { z-index: 210; display: flex; align-items: center; justify-content: center; padding: 20px; }
 .story-archive-confirm__panel { max-width: 420px; width: 100%; padding: 20px; }
 

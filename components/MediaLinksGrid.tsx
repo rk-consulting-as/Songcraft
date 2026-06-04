@@ -39,12 +39,15 @@ export default function MediaLinksGrid({
   artistId,
   sourcePage,
   accent = '#d4a843',
+  onLinkClick,
 }: {
   links: MediaLink[]
   songId?: string
   artistId?: string
   sourcePage?: string
   accent?: string
+  /** Fired after outbound link tracking (e.g. story_song_click). */
+  onLinkClick?: (targetType: string) => void
 }) {
   if (!links?.length) return null
 
@@ -76,6 +79,7 @@ export default function MediaLinksGrid({
             artistId={artistId}
             targetType={meta.targetType}
             sourcePage={sourcePage}
+            onClick={() => onLinkClick?.(meta.targetType)}
             style={{
               display: 'flex',
               alignItems: 'center',

@@ -1,4 +1,6 @@
 import { aiOutputLanguageDirective, type AIOutputLang } from '@/lib/aiOutputLanguage'
+import { clientPublicUrl } from '@/lib/appUrl'
+import { buildSongListenLinks } from '@/lib/songs/publicListenLinks'
 import { slugifyStoryTitle } from './slug'
 import { STORY_TYPES, type GeneratedStoryDraft, type StoryType } from './types'
 
@@ -16,6 +18,13 @@ export type SongStorySource = {
   sunoPromptDetailed?: string | null
   campaignText?: string | null
   songDna?: unknown
+  spotify_url?: string | null
+  suno_url?: string | null
+  media_links?: { platform: string; url: string; label?: string }[] | null
+  publicSongUrl?: string | null
+  cover_image_url?: string | null
+  spotify_cover_url?: string | null
+  public_hidden?: boolean | null
 }
 
 export type StoryAssistantInput = SongStorySource & {
@@ -34,6 +43,12 @@ const QUALITY_RULES = [
 
 function isStoryType(v: unknown): v is StoryType {
   return typeof v === 'string' && (STORY_TYPES as readonly string[]).includes(v)
+}
+
+function formatStreamingLinksForPrompt(input: SongStorySource): string {
+  const links = buildSongListenLinks(input)
+  if (!links.length) return ''
+  return `Available streaming / media links:\n${links.map(l => `${l.platform}: ${l.url}`).join('\n')}`
 }
 
 function formatSongDna(dna: unknown): string {
@@ -108,6 +123,9 @@ export function buildStoryAssistantPrompt(input: StoryAssistantInput): { system:
     input.sunoPromptDetailed ? `Detailed production prompt:\n${input.sunoPromptDetailed.slice(0, 900)}` : '',
     input.campaignText ? `Release campaign copy:\n${input.campaignText}` : '',
     formatSongDna(input.songDna) ? `Song DNA:\n${formatSongDna(input.songDna)}` : '',
+    input.publicSongUrl ? `Public song page URL: ${input.publicSongUrl}` : '',
+    formatStreamingLinksForPrompt(input),
+    'If streaming links are provided, you may end the body with a short fan-facing CTA such as "Listen to the song here" only when a public song URL or streaming link exists. Do not invent URLs.',
   ].filter(Boolean).join('\n\n')
 
   return { system, user }
@@ -152,9 +170,26 @@ export function storySourceFromSongRow(
     suno_prompt_detailed?: string | null
     publish_content?: unknown
     song_dna?: unknown
+    spotify_url?: string | null
+    suno_url?: string | null
+    media_links?: { platform: string; url: string; label?: string }[] | null
+    cover_image_url?: string | null
+    spotify_cover_url?: string | null
+    public_hidden?: boolean | null
   },
-  artist?: { name?: string; genre?: string | null; description?: string | null; song_structure?: string | null } | null,
+  artist?: {
+    name?: string
+    genre?: string | null
+    description?: string | null
+    song_structure?: string | null
+    page_slug?: string | null
+    page_enabled?: boolean
+  } | null,
 ): SongStorySource {
+  const publicSongUrl =
+    song.id && artist?.page_enabled && artist?.page_slug && !song.public_hidden
+      ? clientPublicUrl(`/s/${song.id}`)
+      : null
   return {
     id: song.id,
     title: song.title,
@@ -168,5 +203,12 @@ export function storySourceFromSongRow(
     sunoPromptDetailed: song.suno_prompt_detailed,
     campaignText: summarizePublishContent(song.publish_content),
     songDna: song.song_dna,
+    spotify_url: song.spotify_url,
+    suno_url: song.suno_url,
+    media_links: song.media_links,
+    cover_image_url: song.cover_image_url,
+    spotify_cover_url: song.spotify_cover_url,
+    public_hidden: song.public_hidden,
+    publicSongUrl,
   }
 }

@@ -19,11 +19,18 @@ import {
 } from '@/lib/artistStories/limits'
 import { resolveStoryOgImage } from '@/lib/artistStories/metadata'
 import { estimateReadTimeMinutes, formatReadTimeLabel } from '@/lib/artistStories/readTime'
+import {
+  getStoryPublicUrl,
+  getStoryShareCopyUrl,
+  getStoryShareState,
+  isStoryLive,
+  type StoryShareState,
+} from '@/lib/artistStories/publicUrl'
 import { slugifyStoryTitle, uniqueStorySlug } from '@/lib/artistStories/slug'
 import { isStoryPubliclyLive } from '@/lib/artistStories/visibility'
 import { useStoryAnalytics } from '@/lib/artistStories/useStoryAnalytics'
+import { buildSongListenLinks, songHasListenLinks } from '@/lib/songs/publicListenLinks'
 import { STORY_TYPES, type ArtistStory, type StoryStatus, type StoryType } from '@/lib/artistStories/types'
-import { clientPublicUrl } from '@/lib/appUrl'
 import { t, useLang } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase'
 import type { MediaAsset } from '@/lib/mediaLibrary/types'
@@ -93,6 +100,63 @@ function statusLabel(story: ArtistStory, tx: Record<string, string>): string {
   return tx.storyStatusDraft
 }
 
+const SHARE_STATE_LABEL_KEYS: Record<Exclude<StoryShareState, 'live'>, string> = {
+  draft: 'storyShareStateDraft',
+  scheduled: 'storyShareStateScheduled',
+  hidden: 'storyShareStateHidden',
+  artist_not_public: 'storyShareStateArtistNotPublic',
+  missing_slug: 'storyShareStateMissingSlug',
+}
+
+function shareStateLabel(
+  state: StoryShareState,
+  tx: Record<string, string>,
+  publishedAt?: string | null,
+): string {
+  if (state === 'live') return ''
+  const key = SHARE_STATE_LABEL_KEYS[state]
+  const template = tx[key] || ''
+  if (state === 'scheduled' && publishedAt) {
+    return template.replace('{date}', new Date(publishedAt).toLocaleString())
+  }
+  return template
+}
+
+function LinkedSongPreviewCard({
+  song,
+  tx,
+}: {
+  song: SongStorySource
+  tx: Record<string, string>
+}) {
+  const cover = song.cover_image_url || song.spotify_cover_url
+  const linkCount = buildSongListenLinks(song).length
+  const isPublic = !!song.publicSongUrl && !song.public_hidden
+  return (
+    <div className="artist-stories-manager__linked-song card workspace-card">
+      <p className="artist-stories-manager__label" style={{ marginTop: 0 }}>{tx.storyLinkedSongPreview}</p>
+      <div className="artist-stories-manager__linked-song-row">
+        {cover ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={cover} alt="" className="artist-stories-manager__linked-song-cover" />
+        ) : (
+          <div className="artist-stories-manager__linked-song-cover artist-stories-manager__linked-song-cover--empty" aria-hidden>🎵</div>
+        )}
+        <div>
+          <p className="workspace-card-title" style={{ margin: 0 }}>{song.title}</p>
+          <p className="workspace-section-desc">
+            {isPublic ? tx.storyLinkedSongPublic : tx.storyLinkedSongPrivate}
+            {linkCount > 0 && ` · ${(tx.storyLinkedSongMediaCount || '').replace('{count}', String(linkCount))}`}
+          </p>
+          {!songHasListenLinks(song) && (
+            <p className="artist-stories-manager__linked-song-warn">{tx.storyLinkedSongNoMedia}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function ArtistStoriesManager({
   artistId,
   artistName,
@@ -127,6 +191,55 @@ export default function ArtistStoriesManager({
   const { byStoryId, loading: analyticsLoading } = useStoryAnalytics(
     artistId,
     stories.map(s => ({ id: s.id, slug: s.slug })),
+  )
+
+  const artistShareCtx = useMemo(
+    () => ({ id: artistId, page_slug: pageSlug, page_enabled: pageEnabled, admin_hidden: false }),
+    [artistId, pageSlug, pageEnabled],
+  )
+
+  const songSources = useMemo(
+    () =>
+      songs.map(s => ({
+        ...s,
+        id: s.id || '',
+        genre: s.genre ?? artistGenre,
+        artistName: s.artistName ?? artistName,
+        artistDescription: s.artistDescription ?? artistDescription,
+        artistSongStructure: s.artistSongStructure ?? artistSongStructure,
+      })),
+    [songs, artistGenre, artistName, artistDescription, artistSongStructure],
+  )
+
+  const linkedSongForForm = useMemo(
+    () => songSources.find(s => s.id === form.song_id),
+    [songSources, form.song_id],
+  )
+
+  const editingStory = useMemo(
+    () => (form.id ? stories.find(s => s.id === form.id) : null),
+    [form.id, stories],
+  )
+
+  const formPublishedAt = useMemo(() => {
+    if (form.status === 'scheduled') return scheduleAtToIso(form.schedule_at)
+    if (form.status === 'published') return editingStory?.published_at || new Date().toISOString()
+    return null
+  }, [form.status, form.schedule_at, editingStory?.published_at])
+
+  const formShareState = useMemo(
+    () =>
+      getStoryShareState(
+        {
+          slug: form.slug,
+          status: form.status,
+          published_at: formPublishedAt,
+          public_hidden: form.public_hidden,
+          admin_hidden: editingStory?.admin_hidden ?? false,
+        },
+        artistShareCtx,
+      ),
+    [form.slug, form.status, formPublishedAt, form.public_hidden, editingStory?.admin_hidden, artistShareCtx],
   )
 
   const loadStories = useCallback(async () => {
@@ -285,19 +398,6 @@ export default function ArtistStoriesManager({
     loadStories()
   }
 
-  const songSources = useMemo(
-    () =>
-      songs.map(s => ({
-        ...s,
-        id: s.id || '',
-        genre: s.genre ?? artistGenre,
-        artistName: s.artistName ?? artistName,
-        artistDescription: s.artistDescription ?? artistDescription,
-        artistSongStructure: s.artistSongStructure ?? artistSongStructure,
-      })),
-    [songs, artistGenre, artistName, artistDescription, artistSongStructure],
-  )
-
   const applyGeneratedDraft = (draft: GeneratedStoryDraft, mode: 'merge' | 'replace') => {
     const slugs = stories.map(s => s.slug)
     setForm(f => ({
@@ -326,9 +426,6 @@ export default function ArtistStoriesManager({
     setCoverPickerOpen(false)
   }
 
-  const publicStoryUrl = (storySlug: string) =>
-    pageSlug && pageEnabled ? clientPublicUrl(`/p/${pageSlug}/stories/${storySlug}`) : ''
-
   const sharePreviewImage = resolveStoryOgImage(
     { og_image_url: form.og_image_url, cover_image_url: form.cover_image_url },
     null,
@@ -336,9 +433,14 @@ export default function ArtistStoriesManager({
   const shareTitle = form.seo_title.trim() || form.title.trim() || artistName
   const shareDescription = form.seo_description.trim() || form.excerpt.trim()
 
-  const copyStoryUrl = (url: string) => {
+  const copyStoryUrl = (url: string, toastKey?: string) => {
     if (!url) return
-    navigator.clipboard.writeText(url).then(() => setToast(tx.copied)).catch(() => {})
+    navigator.clipboard.writeText(url).then(() => setToast(tx[toastKey || 'copied'] || tx.copied)).catch(() => {})
+  }
+
+  const copyShareForStory = (story: ArtistStory) => {
+    const { url, state } = getStoryShareCopyUrl(story, artistShareCtx)
+    copyStoryUrl(url, state === 'live' ? 'copied' : 'storyCopyUrlNotLive')
   }
 
   return (
@@ -408,6 +510,10 @@ export default function ArtistStoriesManager({
             {songs.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
           </select>
 
+          {linkedSongForForm?.id && (
+            <LinkedSongPreviewCard song={linkedSongForForm} tx={tx} />
+          )}
+
           <label className="artist-stories-manager__label">{tx.storyFieldExcerpt}</label>
           <textarea value={form.excerpt} onChange={e => setForm(f => ({ ...f, excerpt: e.target.value }))} rows={2} />
 
@@ -445,13 +551,43 @@ export default function ArtistStoriesManager({
             )}
             <p className="artist-stories-manager__share-title"><strong>{shareTitle}</strong></p>
             <p className="workspace-section-desc">{shareDescription || '—'}</p>
-            {form.slug && pageSlug && (
+            {formShareState !== 'live' && (
+              <>
+                <p className="artist-stories-manager__share-state">{shareStateLabel(formShareState, tx, formPublishedAt)}</p>
+                <p className="workspace-section-desc">{tx.storySharePreviewPrivate}</p>
+                <p className="workspace-section-desc artist-stories-manager__share-social-note">{tx.storySharePreviewSocialNote}</p>
+              </>
+            )}
+            {form.slug && (
               <div className="artist-stories-manager__share-actions">
-                <button type="button" className="btn-outline quick-action-btn" onClick={() => copyStoryUrl(publicStoryUrl(form.slug))}>
-                  {tx.storyCopyUrl}
+                <button
+                  type="button"
+                  className="btn-outline quick-action-btn"
+                  onClick={() => {
+                    const { url, state } = getStoryShareCopyUrl(
+                      {
+                        slug: form.slug,
+                        status: form.status,
+                        published_at: formPublishedAt,
+                        public_hidden: form.public_hidden,
+                        admin_hidden: editingStory?.admin_hidden ?? false,
+                      },
+                      artistShareCtx,
+                    )
+                    copyStoryUrl(url, state === 'live' ? 'copied' : 'storyCopyUrlNotLive')
+                  }}
+                  disabled={!form.slug.trim()}
+                >
+                  {formShareState === 'live' ? tx.storyCopyPublicUrl : tx.storyCopyWorkspaceUrl}
                 </button>
-                {isStoryPubliclyLive({ status: form.status, published_at: scheduleAtToIso(form.schedule_at), public_hidden: form.public_hidden, admin_hidden: false }) && (
-                  <a href={publicStoryUrl(form.slug)} target="_blank" rel="noopener noreferrer" className="btn-outline quick-action-btn" style={{ textDecoration: 'none' }}>
+                {formShareState === 'live' && (
+                  <a
+                    href={getStoryPublicUrl({ slug: form.slug }, artistShareCtx)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-outline quick-action-btn"
+                    style={{ textDecoration: 'none' }}
+                  >
                     {tx.storyViewPublic}
                   </a>
                 )}
@@ -499,8 +635,10 @@ export default function ArtistStoriesManager({
       ) : (
         <ul className="artist-stories-manager__list">
           {stories.map(story => {
-            const url = publicStoryUrl(story.slug)
-            const live = isStoryPubliclyLive(story)
+            const shareState = getStoryShareState(story, artistShareCtx)
+            const live = isStoryLive(story, artistShareCtx)
+            const publicUrl = live ? getStoryPublicUrl(story, artistShareCtx) : ''
+            const linkedSong = story.song_id ? songSources.find(s => s.id === story.song_id) : null
             const stats = byStoryId[story.id]
             const readMins = estimateReadTimeMinutes(story.body, story.excerpt)
             const readLabel = formatReadTimeLabel(readMins, { minRead: tx.storyMinRead })
@@ -513,12 +651,16 @@ export default function ArtistStoriesManager({
                   <p className="workspace-section-desc">
                     {tx[STORY_TYPE_LABEL_KEYS[story.story_type]]} · {statusLabel(story, tx)} · {readLabel}
                   </p>
+                  {shareState !== 'live' && (
+                    <p className="artist-stories-manager__share-state">{shareStateLabel(shareState, tx, story.published_at)}</p>
+                  )}
                   {story.published_at && story.status !== 'draft' && (
                     <p className="artist-stories-manager__schedule-hint">
                       {tx.storyPublishAt}: {new Date(story.published_at).toLocaleString()}
                     </p>
                   )}
                   {story.excerpt && <p className="artist-stories-manager__excerpt">{story.excerpt}</p>}
+                  {linkedSong?.id && <LinkedSongPreviewCard song={linkedSong} tx={tx} />}
 
                   {analyticsLoading ? (
                     <p className="workspace-section-desc">{tx.loading}</p>
@@ -547,11 +689,13 @@ export default function ArtistStoriesManager({
                   {story.status !== 'archived' && (
                     <button type="button" className="btn-outline quick-action-btn" onClick={() => setArchiveTarget(story)}>{tx.storyArchive}</button>
                   )}
-                  {url && live && !story.public_hidden && (
-                    <>
-                      <a href={url} target="_blank" rel="noopener noreferrer" className="btn-outline quick-action-btn" style={{ textDecoration: 'none' }}>{tx.storyViewPublic}</a>
-                      <button type="button" className="btn-outline quick-action-btn" onClick={() => copyStoryUrl(url)}>{tx.storyCopyUrl}</button>
-                    </>
+                  {story.slug && (
+                    <button type="button" className="btn-outline quick-action-btn" onClick={() => copyShareForStory(story)}>
+                      {live ? tx.storyCopyPublicUrl : tx.storyCopyWorkspaceUrl}
+                    </button>
+                  )}
+                  {publicUrl && (
+                    <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="btn-outline quick-action-btn" style={{ textDecoration: 'none' }}>{tx.storyViewPublic}</a>
                   )}
                 </div>
               </li>
@@ -561,7 +705,7 @@ export default function ArtistStoriesManager({
       )}
 
       {pageSlug && pageEnabled && (
-        <Link href={clientPublicUrl(`/p/${pageSlug}/stories`)} target="_blank" className="btn-outline quick-action-btn" style={{ textDecoration: 'none', alignSelf: 'flex-start' }}>
+        <Link href={`/p/${pageSlug}/stories`} target="_blank" className="btn-outline quick-action-btn" style={{ textDecoration: 'none', alignSelf: 'flex-start' }}>
           {tx.storyViewAllPublic} ↗
         </Link>
       )}
@@ -576,6 +720,7 @@ export default function ArtistStoriesManager({
           cover_image_url: form.cover_image_url,
         }}
         artistName={artistName}
+        privateNote={formShareState !== 'live' ? tx.storySharePreviewPrivate : undefined}
       />
 
       {archiveTarget && (

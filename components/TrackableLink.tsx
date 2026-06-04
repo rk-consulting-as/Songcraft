@@ -16,6 +16,7 @@ export default function TrackableLink({
   style,
   className,
   title,
+  onClick,
 }: {
   href: string
   songId?: string
@@ -26,6 +27,7 @@ export default function TrackableLink({
   style?: React.CSSProperties
   className?: string
   title?: string
+  onClick?: () => void
 }) {
   const handleClick = async (e: React.MouseEvent) => {
     // Don't intercept opening — let browser handle normal target=_blank navigation.
@@ -64,6 +66,7 @@ export default function TrackableLink({
         })
       }
     } catch {}
+    onClick?.()
   }
 
   return (

@@ -17,9 +17,10 @@ type Props = {
   onClose: () => void
   story: StoryPreviewData
   artistName: string
+  privateNote?: string
 }
 
-export default function StoryPreviewModal({ open, onClose, story, artistName }: Props) {
+export default function StoryPreviewModal({ open, onClose, story, artistName, privateNote }: Props) {
   const tx = t[useLang()] as Record<string, string>
   const [viewport, setViewport] = useState<'desktop' | 'mobile'>('desktop')
 
@@ -55,6 +56,7 @@ export default function StoryPreviewModal({ open, onClose, story, artistName }: 
 
         <div className="story-preview-modal__frame public-surface public-story-page">
           <p className="story-preview-modal__badge">{tx.storyPreviewDraftBadge}</p>
+          {privateNote && <p className="story-preview-modal__private-note">{privateNote}</p>}
           <article className="public-story-page__article">
             <header className="public-story-page__header">
               <span className="public-story-page__back" style={{ opacity: 0.6 }}>{artistName}</span>
