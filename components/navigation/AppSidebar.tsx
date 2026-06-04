@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type MouseEvent } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { applyArtistWorkspaceHash } from '@/lib/artistWorkspaceNavigation'
 import { useNavigationContext } from '@/components/navigation/NavigationProvider'
 import { getArtistSidebarBadges, getSongSidebarBadges } from '@/lib/navigation/badges'
 import {
@@ -44,6 +45,7 @@ function ArtistTreeNodes({
   artistId,
   isCurrentArtist,
   pageHash,
+  pathname,
   tx,
   depth = 0,
 }: {
@@ -51,6 +53,7 @@ function ArtistTreeNodes({
   artistId: string
   isCurrentArtist: boolean
   pageHash: string
+  pathname: string
   tx: Record<string, string>
   depth?: number
 }) {
@@ -70,6 +73,7 @@ function ArtistTreeNodes({
                   artistId={artistId}
                   isCurrentArtist={isCurrentArtist}
                   pageHash={pageHash}
+                  pathname={pathname}
                   tx={tx}
                   depth={depth + 1}
                 />
@@ -81,9 +85,20 @@ function ArtistTreeNodes({
         if (!node.hash) return null
         const href = artistTreeHref(artistId, node.hash)
         const active = isCurrentArtist && isArtistHashActive(pageHash, node.hash)
+        const onArtistWorkspaceNav = (e: MouseEvent<HTMLAnchorElement>) => {
+          if (pathname === `/artist/${artistId}`) {
+            e.preventDefault()
+            applyArtistWorkspaceHash(node.hash!)
+          }
+        }
         return (
           <li key={node.id}>
-            <Link href={href} className={active ? 'is-active' : undefined} style={{ paddingLeft: 8 + depth * 8 }}>
+            <Link
+              href={href}
+              className={active ? 'is-active' : undefined}
+              style={{ paddingLeft: 8 + depth * 8 }}
+              onClick={onArtistWorkspaceNav}
+            >
               {tx[node.labelKey] || node.labelKey}
             </Link>
           </li>
@@ -171,6 +186,7 @@ export default function AppSidebar({ collapsed, onToggleCollapsed }: Props) {
                           artistId={artist.id}
                           isCurrentArtist={isCurrentArtist}
                           pageHash={ctx?.pageHash || ''}
+                          pathname={pathname}
                           tx={tx}
                         />
                         {showCurrentSong && (

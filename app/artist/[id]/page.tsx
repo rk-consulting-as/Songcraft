@@ -51,15 +51,13 @@ import {
 } from '@/lib/publicArtist/metadata'
 import { fetchCampaigns, fetchCreatorPlaylists } from '@/lib/playlistCommunities/client'
 import {
-  buildWorkspaceHash,
   legacyTabToRoute,
-  parseWorkspaceHash,
   type ArtistWorkspaceArea,
   type BrandPanel,
   type ContentPanel,
   type PromotionPanel,
-  type WorkspaceRoute,
 } from '@/lib/artistWorkspaceTabs'
+import { useWorkspaceRouteController } from '@/lib/artistWorkspaceNavigation'
 
 import type { SocialLinksMap } from '@/lib/socialLinks'
 
@@ -770,18 +768,14 @@ export default function ArtistPage() {
     [songs, epk.selected_song_ids]
   )
 
-  const [workspaceRoute, setWorkspaceRoute] = useState<WorkspaceRoute>({ area: 'overview', contentPanel: 'songs', promotionPanel: 'campaigns', brandPanel: 'overview' })
+  const { workspaceRoute, applyWorkspaceRoute } = useWorkspaceRouteController()
   const [ownedCampaignCount, setOwnedCampaignCount] = useState(0)
   const [creatorPlaylistCount, setCreatorPlaylistCount] = useState(0)
 
   useEffect(() => {
     document.body.classList.add('artist-workspace-page')
-    setWorkspaceRoute(parseWorkspaceHash(window.location.hash))
-    const onHashChange = () => setWorkspaceRoute(parseWorkspaceHash(window.location.hash))
-    window.addEventListener('hashchange', onHashChange)
     return () => {
       document.body.classList.remove('artist-workspace-page')
-      window.removeEventListener('hashchange', onHashChange)
     }
   }, [])
 
@@ -811,13 +805,6 @@ export default function ArtistPage() {
     brandPanelRaw === 'presence' ? 'overview'
       : brandPanelRaw === 'public' ? 'sharing'
         : brandPanelRaw
-
-  const applyWorkspaceRoute = (route: WorkspaceRoute) => {
-    setWorkspaceRoute(route)
-    if (typeof window !== 'undefined') {
-      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${buildWorkspaceHash(route)}`)
-    }
-  }
 
   const changeWorkspaceArea = (area: ArtistWorkspaceArea) => {
     applyWorkspaceRoute({
@@ -1093,7 +1080,7 @@ export default function ArtistPage() {
       >
       <div className="artist-workspace-body workspace-container workspace-container--artist">
         {workspaceArea === 'overview' && artist && (
-          <>
+          <div id="workspace-overview">
             <MobileQuickActions
               title={tx.mobileQuickActions}
               actions={[
@@ -1116,10 +1103,11 @@ export default function ArtistPage() {
               newsletterEnabled={(artist.page_settings?.sections?.newsletter ?? true) !== false}
               onOpenTab={openWorkspaceFromLegacyTab}
             />
-          </>
+          </div>
         )}
 
         {workspaceArea === 'content' && (
+          <div id={`workspace-content-${contentPanel}`}>
           <ArtistWorkspaceContentHub active={contentPanel} onChange={changeContentPanel}>
             {contentPanel === 'songs' && (
           <>
@@ -1699,6 +1687,7 @@ export default function ArtistPage() {
               </div>
             )}
           </ArtistWorkspaceContentHub>
+          </div>
         )}
 
         {workspaceArea === 'content' && showAlbumForm && (
@@ -1788,6 +1777,7 @@ export default function ArtistPage() {
         )}
 
         {workspaceArea === 'promotion' && (
+          <div id={`workspace-promotion-${promotionPanel}`}>
           <ArtistWorkspacePromotionHub active={promotionPanel} onChange={changePromotionPanel}>
             {promotionPanel === 'campaigns' && <ArtistCampaignsSummary songs={songs} />}
             {promotionPanel === 'distribution' && <ArtistWorkspaceDistributionSummary songs={songs} />}
@@ -1797,15 +1787,17 @@ export default function ArtistPage() {
               </div>
             )}
           </ArtistWorkspacePromotionHub>
+          </div>
         )}
 
         {workspaceArea === 'growth' && artist && (
-          <div className="workspace-section">
+          <div id="workspace-growth" className="workspace-section">
             <ArtistWorkspaceGrowth artistId={artist.id} />
           </div>
         )}
 
         {workspaceArea === 'brand' && artist && (
+          <div id={`workspace-brand-${brandPanel === 'sharing' ? 'public-site' : brandPanel}`}>
           <ArtistWorkspaceBrandHub active={brandPanel} onChange={changeBrandPanel}>
             {brandPanel === 'overview' && (
               <PublicPresenceBuilder
@@ -2166,10 +2158,13 @@ export default function ArtistPage() {
               />
             )}
           </ArtistWorkspaceBrandHub>
+          </div>
         )}
 
         {workspaceArea === 'settings' && artist && (
-          <ArtistSettingsPanel artist={artist} planId={planId} onSaved={setArtist} />
+          <div id="workspace-settings">
+            <ArtistSettingsPanel artist={artist} planId={planId} onSaved={setArtist} />
+          </div>
         )}
       </div>
       </ArtistWorkspaceShell>

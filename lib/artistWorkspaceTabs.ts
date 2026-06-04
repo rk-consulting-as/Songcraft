@@ -43,15 +43,19 @@ export type ArtistWorkspaceTab = ArtistWorkspaceArea
 
 export const ARTIST_WORKSPACE_TABS = ARTIST_WORKSPACE_AREAS
 
+/** Single-segment and legacy tab ids (pre–Phase 54B sidebar). */
 const LEGACY_HASH: Record<string, WorkspaceRoute> = {
   overview: { area: 'overview' },
   songs: { area: 'content', contentPanel: 'songs' },
+  albums: { area: 'content', contentPanel: 'albums' },
+  stories: { area: 'content', contentPanel: 'stories' },
   media: { area: 'content', contentPanel: 'media' },
   campaigns: { area: 'promotion', promotionPanel: 'campaigns' },
   playlists: { area: 'promotion', promotionPanel: 'playlists' },
   growth: { area: 'growth' },
   epk: { area: 'brand', brandPanel: 'epk' },
   public: { area: 'brand', brandPanel: 'sharing' },
+  'public-site': { area: 'brand', brandPanel: 'sharing' },
   presence: { area: 'brand', brandPanel: 'overview' },
   fanhub: { area: 'brand', brandPanel: 'fanhub' },
   analytics: { area: 'brand', brandPanel: 'analytics' },
@@ -59,9 +63,28 @@ const LEGACY_HASH: Record<string, WorkspaceRoute> = {
   settings: { area: 'settings' },
 }
 
+/** Canonical deep-link hashes used by the global sidebar (Phase 54B/54D). */
+export const ARTIST_WORKSPACE_DEEP_LINKS: Record<string, WorkspaceRoute> = {
+  overview: { area: 'overview' },
+  'content-songs': { area: 'content', contentPanel: 'songs' },
+  'content-albums': { area: 'content', contentPanel: 'albums' },
+  'content-media': { area: 'content', contentPanel: 'media' },
+  'content-stories': { area: 'content', contentPanel: 'stories' },
+  'promotion-campaigns': { area: 'promotion', promotionPanel: 'campaigns' },
+  'promotion-playlists': { area: 'promotion', promotionPanel: 'playlists' },
+  growth: { area: 'growth' },
+  'brand-public-site': { area: 'brand', brandPanel: 'sharing' },
+  'brand-sharing': { area: 'brand', brandPanel: 'sharing' },
+  'brand-epk': { area: 'brand', brandPanel: 'epk' },
+  'brand-fanhub': { area: 'brand', brandPanel: 'fanhub' },
+  'brand-analytics': { area: 'brand', brandPanel: 'analytics' },
+  settings: { area: 'settings' },
+}
+
 export function parseWorkspaceHash(hash: string): WorkspaceRoute {
   const raw = hash.replace(/^#/, '').trim()
   if (!raw) return { area: 'overview' }
+  if (ARTIST_WORKSPACE_DEEP_LINKS[raw]) return ARTIST_WORKSPACE_DEEP_LINKS[raw]
   if (LEGACY_HASH[raw]) return LEGACY_HASH[raw]
 
   const [areaPart, panelPart] = raw.split('-', 2) as [string, string | undefined]
@@ -82,8 +105,16 @@ export function parseWorkspaceHash(hash: string): WorkspaceRoute {
 export function buildWorkspaceHash(route: WorkspaceRoute): string {
   if (route.area === 'content') return `content-${route.contentPanel || 'songs'}`
   if (route.area === 'promotion') return `promotion-${route.promotionPanel || 'campaigns'}`
-  if (route.area === 'brand') return `brand-${route.brandPanel || 'overview'}`
+  if (route.area === 'brand') {
+    if (route.brandPanel === 'sharing') return 'brand-public-site'
+    return `brand-${route.brandPanel || 'overview'}`
+  }
   return route.area
+}
+
+/** Normalize any supported hash to the canonical sidebar/deep-link form. */
+export function canonicalArtistWorkspaceHash(hash: string): string {
+  return buildWorkspaceHash(parseWorkspaceHash(hash))
 }
 
 export function isArtistWorkspaceArea(value: string): value is ArtistWorkspaceArea {

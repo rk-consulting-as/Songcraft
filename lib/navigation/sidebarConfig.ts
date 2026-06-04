@@ -1,3 +1,4 @@
+import { canonicalArtistWorkspaceHash } from '@/lib/artistWorkspaceTabs'
 import { parseSongStudioHash } from '@/lib/songStudio/routes'
 
 export type SidebarNavItem = {
@@ -56,7 +57,7 @@ export const ARTIST_TREE: ArtistTreeNode[] = [
     id: 'brand',
     labelKey: 'sidebarArtistBrand',
     children: [
-      { id: 'public-site', labelKey: 'sidebarArtistPublicSite', hash: 'brand-sharing' },
+      { id: 'public-site', labelKey: 'sidebarArtistPublicSite', hash: 'brand-public-site' },
       { id: 'epk', labelKey: 'sidebarArtistEpk', hash: 'brand-epk' },
       { id: 'fanhub', labelKey: 'sidebarArtistFanHub', hash: 'brand-fanhub' },
     ],
@@ -154,11 +155,12 @@ export function normalizePageHash(hash: string): string {
 }
 
 export function isArtistHashActive(pageHash: string, targetHash: string): boolean {
-  const normalized = normalizePageHash(pageHash) || 'overview'
-  if (targetHash === 'overview') {
-    return normalized === 'overview' || normalized === ''
+  const page = canonicalArtistWorkspaceHash(normalizePageHash(pageHash) || 'overview')
+  const target = canonicalArtistWorkspaceHash(targetHash)
+  if (target === 'overview') {
+    return page === 'overview'
   }
-  return normalized === targetHash
+  return page === target
 }
 
 export function isArtistTreeGroupActive(pageHash: string, node: ArtistTreeNode): boolean {
