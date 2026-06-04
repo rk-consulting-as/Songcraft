@@ -6,7 +6,10 @@ import AssetPicker from '@/components/media/AssetPicker'
 import UpgradePrompt from '@/components/UpgradePrompt'
 import WorkspaceEmptyState from '@/components/WorkspaceEmptyState'
 import StoryPreviewModal from '@/components/artistStories/StoryPreviewModal'
-import { buildBehindTheSongPrompt, parseGeneratedStoryJson } from '@/lib/artistStories/generateFromSong'
+import ArtistStoryAssistant from '@/components/artistStories/ArtistStoryAssistant'
+import type { SongStorySource } from '@/lib/artistStories/generateFromSong'
+import type { GeneratedStoryDraft } from '@/lib/artistStories/types'
+import type { AIOutputLang } from '@/lib/aiOutputLanguage'
 import {
   canGenerateStoryWithAi,
   canPublishMoreStories,
@@ -26,17 +29,17 @@ import { createClient } from '@/lib/supabase'
 import type { MediaAsset } from '@/lib/mediaLibrary/types'
 import type { PlanId } from '@/lib/subscription'
 
-type SongOption = { id: string; title: string; lyrics_text?: string | null; backstory?: string | null }
-
 type Props = {
   artistId: string
   artistName: string
   pageSlug?: string | null
   pageEnabled?: boolean
   planId: PlanId
-  songs: SongOption[]
+  songs: SongStorySource[]
   artistGenre?: string | null
   artistDescription?: string | null
+  artistSongStructure?: string | null
+  aiOutputLang?: AIOutputLang
   initialSongId?: string | null
 }
 
@@ -99,13 +102,15 @@ export default function ArtistStoriesManager({
   songs,
   artistGenre,
   artistDescription,
+  artistSongStructure,
+  aiOutputLang = 'en',
   initialSongId,
 }: Props) {
   const tx = t[useLang()] as Record<string, string>
   const [stories, setStories] = useState<ArtistStory[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [generating, setGenerating] = useState(false)
+  const [storyDirection, setStoryDirection] = useState('')
   const [form, setForm] = useState({ ...EMPTY_FORM, song_id: initialSongId || '' })
   const [editing, setEditing] = useState(false)
   const [coverPickerOpen, setCoverPickerOpen] = useState(false)
@@ -280,59 +285,35 @@ export default function ArtistStoriesManager({
     loadStories()
   }
 
-  const generateFromSong = async () => {
-    const song = songs.find(s => s.id === form.song_id)
-    if (!song || !aiEnabled) return
-    setGenerating(true)
-    const { system, user } = buildBehindTheSongPrompt({
-      title: song.title,
-      lyrics: song.lyrics_text,
-      backstory: song.backstory,
-      genre: artistGenre,
-      artistName,
-      artistDescription,
-    })
-    try {
-      const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      const res = await fetch('/api/ai', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: user }],
-          system,
-          feature: 'story_behind_the_song',
-        }),
-      })
-      const json = await res.json()
-      const draft = parseGeneratedStoryJson(json.content || json.text || '', song.title)
-      if (!draft) {
-        setToast(tx.storyGenerateError)
-        return
-      }
-      const slugs = stories.map(s => s.slug)
-      setForm(f => ({
-        ...f,
-        title: draft.title,
-        slug: uniqueStorySlug(draft.slug, slugs),
-        excerpt: draft.excerpt,
-        body: draft.body,
-        seo_title: draft.seo_title,
-        seo_description: draft.seo_description,
-        story_type: 'behind_the_song',
-        song_id: song.id,
-        status: 'draft',
-      }))
-      setEditing(true)
-      setToast(tx.storyGeneratedDraft)
-    } catch {
-      setToast(tx.storyGenerateError)
-    } finally {
-      setGenerating(false)
-    }
+  const songSources = useMemo(
+    () =>
+      songs.map(s => ({
+        ...s,
+        id: s.id || '',
+        genre: s.genre ?? artistGenre,
+        artistName: s.artistName ?? artistName,
+        artistDescription: s.artistDescription ?? artistDescription,
+        artistSongStructure: s.artistSongStructure ?? artistSongStructure,
+      })),
+    [songs, artistGenre, artistName, artistDescription, artistSongStructure],
+  )
+
+  const applyGeneratedDraft = (draft: GeneratedStoryDraft, mode: 'merge' | 'replace') => {
+    const slugs = stories.map(s => s.slug)
+    setForm(f => ({
+      ...f,
+      title: mode === 'replace' || !f.title.trim() ? draft.title : f.title,
+      slug: mode === 'replace' || !f.slug.trim() ? uniqueStorySlug(draft.slug, slugs) : f.slug,
+      excerpt: mode === 'replace' ? draft.excerpt : (f.excerpt.trim() ? f.excerpt : draft.excerpt),
+      body: mode === 'replace' ? draft.body : (f.body.trim() ? f.body : draft.body),
+      seo_title: mode === 'replace' || !f.seo_title.trim() ? draft.seo_title : f.seo_title,
+      seo_description: mode === 'replace' || !f.seo_description.trim() ? draft.seo_description : f.seo_description,
+      story_type: draft.story_type,
+      song_id: form.song_id || f.song_id,
+      status: 'draft',
+    }))
+    setEditing(true)
+    setToast(tx.storyGeneratedDraft)
   }
 
   const onCoverSelect = (asset: MediaAsset) => {
@@ -385,6 +366,21 @@ export default function ArtistStoriesManager({
         <UpgradePrompt compact title={tx.storyFreeLimitTitle} description={tx.storyFreeLimitDesc} />
       )}
 
+      <ArtistStoryAssistant
+        songs={songSources.filter(s => s.id)}
+        planId={planId}
+        aiEnabled={aiEnabled}
+        aiOutputLang={aiOutputLang}
+        linkedSongId={form.song_id}
+        storyType={form.story_type}
+        direction={storyDirection}
+        onLinkedSongIdChange={id => setForm(f => ({ ...f, song_id: id }))}
+        onStoryTypeChange={type => setForm(f => ({ ...f, story_type: type }))}
+        onDirectionChange={setStoryDirection}
+        onApplyDraft={applyGeneratedDraft}
+        onToast={setToast}
+      />
+
       {editing && (
         <div className="card workspace-card workspace-glass artist-stories-manager__editor">
           <h3 className="workspace-card-title">{form.id ? tx.storyEditTitle : tx.storyCreateNew}</h3>
@@ -411,15 +407,6 @@ export default function ArtistStoriesManager({
             <option value="">{tx.storyNoLinkedSong}</option>
             {songs.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
           </select>
-
-          {form.song_id && (
-            <button type="button" className="btn-outline quick-action-btn" onClick={generateFromSong} disabled={generating || !aiEnabled}>
-              {generating ? tx.generating : tx.storyGenerateBehindTheSong}
-            </button>
-          )}
-          {!aiEnabled && form.song_id && (
-            <UpgradePrompt compact title={tx.storyAiProTitle} description={tx.storyAiProDesc} />
-          )}
 
           <label className="artist-stories-manager__label">{tx.storyFieldExcerpt}</label>
           <textarea value={form.excerpt} onChange={e => setForm(f => ({ ...f, excerpt: e.target.value }))} rows={2} />

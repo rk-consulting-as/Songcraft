@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test:workspace-routing": "npx --yes tsx lib/artistWorkspaceTabs.test.ts"
+    "test:workspace-routing": "npx --yes tsx lib/artistWorkspaceTabs.test.ts",
+    "test:song-studio-routing": "npx --yes tsx lib/songStudio/routes.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.3.0",

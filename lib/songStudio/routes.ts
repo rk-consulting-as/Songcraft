@@ -49,6 +49,24 @@ export type LegacySongPanel =
   | 'publish'
   | 'settings'
 
+/** Canonical deep-link hashes (global sidebar + share links). */
+export const SONG_STUDIO_DEEP_LINKS: Record<string, SongStudioRoute> = {
+  overview: { area: 'overview' },
+  'write-lyrics': { area: 'write', writePanel: 'lyrics' },
+  'write-backstory': { area: 'write', writePanel: 'backstory' },
+  'write-dna': { area: 'write', writePanel: 'dna' },
+  'produce-suno': { area: 'produce', producePanel: 'suno' },
+  'produce-cover': { area: 'produce', producePanel: 'cover' },
+  'produce-canvas': { area: 'produce', producePanel: 'canvas' },
+  'promote-captions': { area: 'promote', promotePanel: 'captions' },
+  'promote-assets': { area: 'promote', promotePanel: 'assets' },
+  'release-campaign': { area: 'release', releasePanel: 'campaign' },
+  'release-distribution': { area: 'release', releasePanel: 'distribution' },
+  'publish-media': { area: 'publish', publishPanel: 'media' },
+  'publish-share': { area: 'publish', publishPanel: 'publish' },
+  'settings-metadata': { area: 'settings' },
+}
+
 const LEGACY_HASH: Record<string, SongStudioRoute> = {
   overview: { area: 'overview' },
   lyrics: { area: 'write', writePanel: 'lyrics' },
@@ -72,13 +90,24 @@ const LEGACY_HASH: Record<string, SongStudioRoute> = {
   'settings-metadata': { area: 'settings' },
 }
 
+function warnUnknownSongStudioHash(raw: string) {
+  if (typeof process !== 'undefined' && process.env.NODE_ENV === 'production') return
+  if (typeof console !== 'undefined' && console.warn) {
+    console.warn(`[ViaTone] Unknown song studio hash "${raw}" — showing Overview.`)
+  }
+}
+
 export function parseSongStudioHash(hash: string): SongStudioRoute {
   const raw = hash.replace(/^#/, '').trim()
   if (!raw) return { area: 'overview' }
-  if (LEGACY_HASH[raw]) return LEGACY_HASH[raw]
+  if (SONG_STUDIO_DEEP_LINKS[raw]) return { ...SONG_STUDIO_DEEP_LINKS[raw] }
+  if (LEGACY_HASH[raw]) return { ...LEGACY_HASH[raw] }
 
   const [areaPart, panelPart] = raw.split('-', 2)
-  if (!isSongStudioArea(areaPart)) return { area: 'overview' }
+  if (!isSongStudioArea(areaPart)) {
+    warnUnknownSongStudioHash(raw)
+    return { area: 'overview' }
+  }
 
   if (areaPart === 'write') {
     return { area: 'write', writePanel: isWritePanel(panelPart) ? panelPart : 'lyrics' }
@@ -119,6 +148,12 @@ export function buildSongStudioHash(route: SongStudioRoute): string {
     return route.publishPanel === 'publish' ? 'publish-share' : 'publish-media'
   }
   return route.area
+}
+
+/** Normalize any supported hash to canonical form used in the URL. */
+export function canonicalSongStudioHash(hash: string): string {
+  const built = buildSongStudioHash(parseSongStudioHash(hash))
+  return built || 'overview'
 }
 
 export function getActivePanel(route: SongStudioRoute): LegacySongPanel {

@@ -20,18 +20,16 @@ import ContentLimitCounter from '@/components/songStudio/ContentLimitCounter'
 import AiPlatformSelector from '@/components/songStudio/AiPlatformSelector'
 import WorkspaceEmptyState from '@/components/WorkspaceEmptyState'
 import {
-  buildSongStudioHash,
   defaultPanelForArea,
   getActivePanel,
   legacyPanelToRoute,
-  parseSongStudioHash,
   type SongStudioArea,
-  type SongStudioRoute,
   type WritePanel,
   type ProducePanel,
   type ReleasePanel,
   type PublishPanel,
 } from '@/lib/songStudio/routes'
+import { useSongStudioRouteController } from '@/lib/songStudio/navigation'
 import { cleanLyricsText } from '@/lib/lyricsCleanup'
 import {
   buildAdaptLyricsSystem,
@@ -87,7 +85,6 @@ export default function SongPage() {
   const router = useRouter()
   const songId = params.id as string
   const [lang, setLangState] = useState<Lang>('en')
-  const [studioRoute, setStudioRoute] = useState<SongStudioRoute>({ area: 'overview' })
   const [song, setSong] = useState<any>(null)
   const [artist, setArtist] = useState<any>(null)
   const [planId, setPlanId] = useState<'free' | 'pro'>('free')
@@ -212,13 +209,6 @@ export default function SongPage() {
     fetchSong()
   }, [songId])
 
-  useEffect(() => {
-    const syncFromHash = () => setStudioRoute(parseSongStudioHash(window.location.hash))
-    syncFromHash()
-    window.addEventListener('hashchange', syncFromHash)
-    return () => window.removeEventListener('hashchange', syncFromHash)
-  }, [])
-
   const pickProvider = (p: AIProvider) => { setAiProvider(p); setStoredProvider(p) }
 
   const tx = t[lang] as Record<string, string>
@@ -231,17 +221,9 @@ export default function SongPage() {
   const lyricsContentLimit = getContentLimit(aiPlatformId, 'lyrics', aiPlatformCustomLimits)
   const adaptLyricsLabel = tx[buildAdaptActionKey(aiPlatformId)] || tx.aiAdaptForSuno
 
-  const navigateToRoute = (route: SongStudioRoute) => {
-    setStudioRoute(route)
-    if (typeof window === 'undefined') return
-    const hash = buildSongStudioHash(route)
-    const next = hash ? `#${hash}` : ''
-    if (window.location.hash !== next) {
-      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${next}`)
-    }
-  }
-  const navigateToArea = (area: SongStudioArea) => navigateToRoute(defaultPanelForArea(area))
-  const navigateToPanel = (panel: string) => navigateToRoute(legacyPanelToRoute(panel))
+  const { studioRoute, applyStudioRoute } = useSongStudioRouteController()
+  const navigateToArea = (area: SongStudioArea) => applyStudioRoute(defaultPanelForArea(area))
+  const navigateToPanel = (panel: string) => applyStudioRoute(legacyPanelToRoute(panel))
   const panel = getActivePanel(studioRoute)
 
   const fetchSong = async () => {
@@ -1398,7 +1380,7 @@ export default function SongPage() {
             { id: 'dna', label: tx.songDnaTab },
           ],
           active: studioRoute.writePanel || 'lyrics',
-          onChange: (id: string) => navigateToRoute({ area: 'write', writePanel: id as WritePanel }),
+          onChange: (id: string) => applyStudioRoute({ area: 'write', writePanel: id as WritePanel }),
         }
       case 'produce':
         return {
@@ -1408,7 +1390,7 @@ export default function SongPage() {
             { id: 'canvas', label: tx.canvas },
           ],
           active: studioRoute.producePanel || 'suno',
-          onChange: (id: string) => navigateToRoute({ area: 'produce', producePanel: id as ProducePanel }),
+          onChange: (id: string) => applyStudioRoute({ area: 'produce', producePanel: id as ProducePanel }),
         }
       case 'promote':
         return {
@@ -1417,7 +1399,7 @@ export default function SongPage() {
             { id: 'assets', label: tx.songStudioCampaignAssets },
           ],
           active: studioRoute.promotePanel === 'assets' ? 'assets' : 'captions',
-          onChange: (id: string) => navigateToRoute({ area: 'promote', promotePanel: id === 'assets' ? 'assets' : 'captions' }),
+          onChange: (id: string) => applyStudioRoute({ area: 'promote', promotePanel: id === 'assets' ? 'assets' : 'captions' }),
         }
       case 'release':
         return {
@@ -1426,7 +1408,7 @@ export default function SongPage() {
             { id: 'distribution', label: tx.distributionTab },
           ],
           active: studioRoute.releasePanel || 'campaign',
-          onChange: (id: string) => navigateToRoute({ area: 'release', releasePanel: id as ReleasePanel }),
+          onChange: (id: string) => applyStudioRoute({ area: 'release', releasePanel: id as ReleasePanel }),
         }
       case 'publish':
         return {
@@ -1435,7 +1417,7 @@ export default function SongPage() {
             { id: 'publish', label: tx.publish },
           ],
           active: studioRoute.publishPanel || 'media',
-          onChange: (id: string) => navigateToRoute({ area: 'publish', publishPanel: id as PublishPanel }),
+          onChange: (id: string) => applyStudioRoute({ area: 'publish', publishPanel: id as PublishPanel }),
         }
       default:
         return { items: [] as { id: string; label: string }[], active: '', onChange: (_id: string) => {} }

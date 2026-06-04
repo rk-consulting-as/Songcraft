@@ -40,6 +40,7 @@ import ArtistWorkspaceBrandHub from '@/components/workspace/ArtistWorkspaceBrand
 import ArtistWorkspaceDistributionSummary from '@/components/workspace/ArtistWorkspaceDistributionSummary'
 import PublicPresenceBuilder from '@/components/workspace/PublicPresenceBuilder'
 import ArtistStoriesManager from '@/components/artistStories/ArtistStoriesManager'
+import { storySourceFromSongRow } from '@/lib/artistStories/generateFromSong'
 import ArtistSiteHomepageControls from '@/components/artistSite/ArtistSiteHomepageControls'
 import ArtistSiteThemePanel from '@/components/artistSite/ArtistSiteThemePanel'
 import ArtistSiteSeoPanel from '@/components/artistSite/ArtistSiteSeoPanel'
@@ -770,6 +771,14 @@ export default function ArtistPage() {
 
   const { workspaceRoute, applyWorkspaceRoute } = useWorkspaceRouteController()
   const [ownedCampaignCount, setOwnedCampaignCount] = useState(0)
+
+  useEffect(() => {
+    if (!initialStorySongId || typeof window === 'undefined') return
+    const raw = window.location.hash.replace(/^#/, '').trim()
+    if (!raw || raw === 'overview') {
+      applyWorkspaceRoute({ area: 'brand', brandPanel: 'stories' })
+    }
+  }, [initialStorySongId, applyWorkspaceRoute])
   const [creatorPlaylistCount, setCreatorPlaylistCount] = useState(0)
 
   useEffect(() => {
@@ -1847,9 +1856,11 @@ export default function ArtistPage() {
                 pageSlug={artist.page_slug}
                 pageEnabled={!!artist.page_enabled}
                 planId={planId}
-                songs={songs.map(s => ({ id: s.id, title: s.title, lyrics_text: s.lyrics_text, backstory: s.backstory }))}
+                songs={songs.map(s => storySourceFromSongRow(s, artist))}
                 artistGenre={artist.genre}
                 artistDescription={artist.description}
+                artistSongStructure={artist.song_structure}
+                aiOutputLang={aiOutputLang}
                 initialSongId={initialStorySongId}
               />
             )}

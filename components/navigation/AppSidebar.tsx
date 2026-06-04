@@ -4,6 +4,7 @@ import { useEffect, useState, type MouseEvent } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { applyArtistWorkspaceHash } from '@/lib/artistWorkspaceNavigation'
+import { applySongStudioHash } from '@/lib/songStudio/navigation'
 import { useNavigationContext } from '@/components/navigation/NavigationProvider'
 import { getArtistSidebarBadges, getSongSidebarBadges } from '@/lib/navigation/badges'
 import {
@@ -217,9 +218,19 @@ export default function AppSidebar({ collapsed, onToggleCollapsed }: Props) {
                                 {SONG_TREE.map(item => {
                                   const href = songTreeHref(ctx.currentSong!.id, item.hash)
                                   const active = isSongTreeHashActive(ctx?.pageHash || '', item.hash)
+                                  const onSongStudioNav = (e: MouseEvent<HTMLAnchorElement>) => {
+                                    if (pathname === `/song/${ctx.currentSong!.id}`) {
+                                      e.preventDefault()
+                                      applySongStudioHash(item.hash)
+                                    }
+                                  }
                                   return (
                                     <li key={item.id}>
-                                      <Link href={href} className={active ? 'is-active' : undefined}>
+                                      <Link
+                                        href={href}
+                                        className={active ? 'is-active' : undefined}
+                                        onClick={onSongStudioNav}
+                                      >
                                         {tx[item.labelKey] || item.labelKey}
                                       </Link>
                                     </li>

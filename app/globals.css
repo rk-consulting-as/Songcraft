@@ -6428,6 +6428,41 @@ body.artist-workspace-page button[title="Open chat"] {
 .artist-site-homepage__toggle input { width: 18px; height: 18px; accent-color: #d4a843; }
 
 .artist-stories-manager { display: flex; flex-direction: column; gap: 16px; }
+.artist-story-assistant__hints { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.artist-story-assistant__hint-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(180, 140, 80, 0.2);
+  color: #8a7a60;
+  border-radius: 14px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.artist-story-assistant__hint-btn:hover { border-color: rgba(212, 168, 67, 0.4); color: #d4a843; }
+.artist-story-assistant__draft-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(212, 168, 67, 0.12);
+  border: 1px solid rgba(212, 168, 67, 0.35);
+  color: #d4a843;
+}
+.artist-story-assistant__preview-body {
+  margin: 0;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 8px;
+  color: #c8c0b0;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  font-family: inherit;
+  max-height: 240px;
+  overflow-y: auto;
+}
 .artist-stories-manager__header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .artist-stories-manager__label { display: block; font-size: 12px; color: #a89878; margin: 12px 0 6px; text-transform: uppercase; letter-spacing: 0.04em; }
 .artist-stories-manager input[type="text"],

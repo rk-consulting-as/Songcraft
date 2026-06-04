@@ -1,5 +1,5 @@
 import { canonicalArtistWorkspaceHash } from '@/lib/artistWorkspaceTabs'
-import { parseSongStudioHash } from '@/lib/songStudio/routes'
+import { canonicalSongStudioHash } from '@/lib/songStudio/routes'
 
 export type SidebarNavItem = {
   id: string
@@ -174,21 +174,10 @@ export function isArtistTreeLeafActive(pageHash: string, hash?: string): boolean
 }
 
 export function isSongTreeHashActive(pageHash: string, targetHash: string): boolean {
-  const normalized = normalizePageHash(pageHash)
-  if (!targetHash || targetHash === '') {
-    return normalized === '' || normalized === 'overview'
-  }
-  if (normalized === targetHash) return true
-  const route = parseSongStudioHash(`#${normalized}`)
-  const targetRoute = parseSongStudioHash(`#${targetHash}`)
-  if (route.area !== targetRoute.area) return false
-  if (route.area === 'overview' || route.area === 'settings') return true
-  if (route.area === 'write') return route.writePanel === targetRoute.writePanel
-  if (route.area === 'produce') return route.producePanel === targetRoute.producePanel
-  if (route.area === 'promote') return route.promotePanel === targetRoute.promotePanel
-  if (route.area === 'release') return route.releasePanel === targetRoute.releasePanel
-  if (route.area === 'publish') return route.publishPanel === targetRoute.publishPanel
-  return false
+  const page = canonicalSongStudioHash(normalizePageHash(pageHash) || 'overview')
+  const target = canonicalSongStudioHash(targetHash || 'overview')
+  if (target === 'overview') return page === 'overview'
+  return page === target
 }
 
 export function collectArtistTreeHashes(nodes: ArtistTreeNode[]): string[] {
