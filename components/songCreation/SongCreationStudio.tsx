@@ -5,6 +5,12 @@ import { createClient } from '@/lib/supabase'
 import { generateArtistProductionProfile } from '@/lib/artistProductionProfiles'
 import { parseConceptResponse, prepareConceptGeneration } from '@/lib/songCreation/generateConcepts'
 import {
+  buildCreativeDirectionPayload,
+  INSPIRATION_TRAIT_KEYS,
+  sanitizeExternalReferences,
+  type InspirationTrait,
+} from '@/lib/songCreation/creativeDirection'
+import {
   DEFAULT_INSPIRATION_CONTROLS,
   type InspirationControls,
   type SongProposal,
@@ -145,6 +151,10 @@ export default function SongCreationStudio({
   const [inspirationControls, setInspirationControls] = useState<InspirationControls>({
     ...DEFAULT_INSPIRATION_CONTROLS,
   })
+  const [externalArtists, setExternalArtists] = useState('')
+  const [externalSongs, setExternalSongs] = useState('')
+  const [externalTraits, setExternalTraits] = useState<Set<InspirationTrait>>(new Set())
+  const [externalUserDirection, setExternalUserDirection] = useState('')
 
   const productionProfile = useMemo(
     () => generateArtistProductionProfile(artist, songs),
@@ -209,6 +219,10 @@ export default function SongCreationStudio({
         inspirationControls,
         count,
         prompt,
+        externalArtists: sanitizeExternalReferences(externalArtists),
+        externalSongs: sanitizeExternalReferences(externalSongs),
+        inspirationTraits: Array.from(externalTraits),
+        externalUserDirection: externalUserDirection.trim(),
       },
       {
         name: artist.name,
@@ -258,6 +272,19 @@ export default function SongCreationStudio({
     setSaving(true)
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
+    const refIds = Array.from(inspirationIds)
+    const refTitles = inspirationSongs.map(s => s.title)
+    const baseDirection = buildCreativeDirectionPayload({
+      artistProfileUsed: useProfile,
+      productionDnaUsed: useProductionDna,
+      internalReferenceSongIds: refIds,
+      internalReferenceSongTitles: refTitles,
+      externalArtists: sanitizeExternalReferences(externalArtists),
+      externalSongs: sanitizeExternalReferences(externalSongs),
+      inspirationTraits: Array.from(externalTraits),
+      userDirection: externalUserDirection.trim(),
+      originalPrompt: prompt.trim(),
+    })
     const { data } = await supabase.from('songs').insert(
       generatedSongs.map(s => ({
         artist_id: artist.id,
@@ -267,6 +294,12 @@ export default function SongCreationStudio({
         status: 'draft',
         song_dna: s.dna || null,
         proposal_meta: s.genre || s.mood ? { genre: s.genre, mood: s.mood } : null,
+        publish_content: {
+          creative_direction: {
+            ...baseDirection,
+            generated_concept_summary: s.instructions,
+          },
+        },
       }))
     ).select()
     if (data) {
@@ -276,6 +309,27 @@ export default function SongCreationStudio({
       setPrompt('')
     }
     setSaving(false)
+  }
+
+  const externalTraitLabels: Record<InspirationTrait, string> = {
+    mood: 'inspirationTraitMood',
+    energy: 'inspirationTraitEnergy',
+    structure: 'inspirationTraitStructure',
+    instrumentation: 'inspirationTraitInstrumentation',
+    vocal_style: 'inspirationTraitVocalStyle',
+    rhythm_groove: 'inspirationTraitRhythmGroove',
+    atmosphere: 'inspirationTraitAtmosphere',
+    lyrical_themes: 'inspirationTraitLyricalThemes',
+    production_style: 'inspirationTraitProductionStyle',
+  }
+
+  const toggleExternalTrait = (trait: InspirationTrait) => {
+    setExternalTraits(prev => {
+      const next = new Set(prev)
+      if (next.has(trait)) next.delete(trait)
+      else next.add(trait)
+      return next
+    })
   }
 
   const controlLabels: { key: keyof InspirationControls; labelKey: string }[] = [
@@ -393,6 +447,55 @@ export default function SongCreationStudio({
             )}
           </>
         )}
+      </section>
+
+      <section className="song-creation-step song-creation-step--external" aria-labelledby="song-creation-step-external">
+        <StepHeading id="song-creation-step-external" label={tx.externalInspirationTitle} />
+        <p className="workspace-section-desc song-creation-external__intro">{tx.externalInspirationIntro}</p>
+        <label className="song-creation-idea-label" htmlFor="song-creation-external-artists">
+          {tx.externalInspirationArtists}
+        </label>
+        <input
+          id="song-creation-external-artists"
+          className="song-creation-external__input"
+          value={externalArtists}
+          onChange={e => setExternalArtists(e.target.value)}
+          placeholder={tx.externalInspirationArtistsPlaceholder}
+        />
+        <label className="song-creation-idea-label" htmlFor="song-creation-external-songs">
+          {tx.externalInspirationSongs}
+        </label>
+        <input
+          id="song-creation-external-songs"
+          className="song-creation-external__input"
+          value={externalSongs}
+          onChange={e => setExternalSongs(e.target.value)}
+          placeholder={tx.externalInspirationSongsPlaceholder}
+        />
+        <p className="song-creation-inspiration__controls-label">{tx.externalInspirationBorrow}</p>
+        <div className="song-creation-inspiration__controls-grid">
+          {INSPIRATION_TRAIT_KEYS.map(trait => (
+            <label key={trait} className="song-creation-control-chip">
+              <input
+                type="checkbox"
+                checked={externalTraits.has(trait)}
+                onChange={() => toggleExternalTrait(trait)}
+              />
+              <span>{tx[externalTraitLabels[trait]]}</span>
+            </label>
+          ))}
+        </div>
+        <label className="song-creation-idea-label" htmlFor="song-creation-external-notes">
+          {tx.externalInspirationNotes}
+        </label>
+        <textarea
+          id="song-creation-external-notes"
+          className="song-creation-idea-input"
+          value={externalUserDirection}
+          onChange={e => setExternalUserDirection(e.target.value)}
+          placeholder={tx.externalInspirationNotesPlaceholder}
+          rows={3}
+        />
       </section>
 
       <section className="song-creation-step" aria-labelledby="song-creation-step-3">

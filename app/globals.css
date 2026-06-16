@@ -6317,6 +6317,72 @@ body.artist-workspace-page .feedback-fab {
     grid-template-columns: 1fr;
   }
 }
+.song-creation-external__intro {
+  margin: 0 0 12px;
+}
+.song-creation-external__input {
+  width: 100%;
+  margin-bottom: 12px;
+}
+.song-creative-direction {
+  margin-bottom: 16px;
+}
+.song-creative-direction--empty {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.song-creative-direction__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.song-creative-direction__row {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #c8c0b0;
+}
+.song-creative-direction__label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8a7a60;
+  margin-bottom: 2px;
+}
+.song-creative-direction__notes {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #c8c0b0;
+}
+.song-creative-direction__summary {
+  margin-top: 8px;
+}
+.song-creative-direction__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.song-creative-direction__editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.song-creative-direction__field-label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8a7a60;
+}
+.song-creative-direction--compact .song-creative-direction__summary {
+  display: none;
+}
 .song-dna-panel__list {
   list-style: none;
   padding: 0;

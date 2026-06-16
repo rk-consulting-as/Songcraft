@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { t, useLang, type Lang } from '@/lib/i18n'
@@ -12,6 +12,7 @@ import SongStudioMobileNavigator from '@/components/songStudio/SongStudioMobileN
 import SongStudioSubNav from '@/components/songStudio/SongStudioSubNav'
 import SongStudioOverview from '@/components/songStudio/SongStudioOverview'
 import SongStudioSettingsPanel from '@/components/songStudio/SongStudioSettingsPanel'
+import SongCreativeDirectionPanel from '@/components/songStudio/SongCreativeDirectionPanel'
 import SongStudioWorkspaceContext from '@/components/songStudio/SongStudioWorkspaceContext'
 import ImportFinishedTrackCard from '@/components/songStudio/ImportFinishedTrackCard'
 import SongPromoteAssetsPanel from '@/components/songStudio/SongPromoteAssetsPanel'
@@ -72,13 +73,18 @@ import { AI_OUTPUT_LANGUAGES, aiOutputLanguageDirective, aiOutputLanguageName, n
 import { generateSongDNA } from '@/lib/songDNA/generateSongDNA'
 import { normalizeSongDNA, type SongDNA } from '@/lib/songDNA/types'
 import { compressSunoPrompt } from '@/lib/songCreation/compressSunoPrompt'
+import {
+  alignSunoPromptToDirection,
+  buildCreativeDirectionContext,
+  buildCreativeDirectionUserPrefix,
+  buildSongAiSystemPrompt,
+  parseCreativeDirection,
+} from '@/lib/songCreation/creativeDirection'
 import { prepareSunoPromptPair, SUNO_CREATE_URL, sunoSystemPromptForMode } from '@/lib/songCreation/exportPrompt'
 import type { SunoPromptMode } from '@/lib/songCreation/types'
 import SongDNAPanel from '@/components/songCreation/SongDNAPanel'
 import SunoPromptToolbar from '@/components/songCreation/SunoPromptToolbar'
 import {
-  appendCanonicalTitleDirective,
-  canonicalTitleUserLine,
   enforceCanonicalTitleInLyrics,
 } from '@/lib/songs/canonicalTitle'
 
@@ -217,6 +223,7 @@ export default function SongPage() {
   const pickProvider = (p: AIProvider) => { setAiProvider(p); setStoredProvider(p) }
 
   const tx = t[lang] as Record<string, string>
+  const creativeDirection = useMemo(() => parseCreativeDirection(publishContent), [publishContent])
   const { platformId: aiPlatformId, customLimits: aiPlatformCustomLimits } = resolveSongAiPlatformSettings(
     publishContent,
     artist?.page_settings,
@@ -402,7 +409,7 @@ export default function SongPage() {
     const artistCtx = buildArtistContext()
     const lyricsExcerpt = lyrics ? lyrics.slice(0, 600) : ''
     const userContent = [
-      canonicalTitleUserLine(canonicalSongTitle),
+      buildAiUserPrefix(),
       artistCtx ? artistCtx.trim() : '',
       lyricsInstructions ? `Theme / concept: ${lyricsInstructions}` : '',
       coverPrompt ? `Cover image prompt (for visual consistency): ${coverPrompt}` : '',
@@ -425,7 +432,7 @@ export default function SongPage() {
 
     const result = await callAI(
       [{ role: 'user', content: userContent }],
-      appendCanonicalTitleDirective(system, canonicalSongTitle),
+      buildAiSystem(system),
       'canvas_prompt',
     )
     if (result) {
@@ -699,6 +706,54 @@ export default function SongPage() {
 
   const canonicalSongTitle = title.trim()
 
+  const songContextForAi = () => ({
+    title: canonicalSongTitle,
+    lyrics_instructions: lyricsInstructions,
+    proposal_meta: proposalMeta,
+  })
+
+  const artistContextForAi = () => (artist ? {
+    name: artist.name,
+    genre: artist.genre,
+    song_structure: artist.song_structure,
+  } : undefined)
+
+  const buildAiSystem = (base: string, opts?: { includeContinuity?: boolean }) =>
+    buildSongAiSystemPrompt(base, {
+      canonicalTitle: canonicalSongTitle,
+      creativeDirection,
+      song: songContextForAi(),
+      artist: artistContextForAi(),
+      includeContinuity: opts?.includeContinuity,
+    })
+
+  const buildAiUserPrefix = () =>
+    buildCreativeDirectionUserPrefix(
+      canonicalSongTitle,
+      creativeDirection,
+      songContextForAi(),
+      artistContextForAi(),
+    )
+
+  const saveCreativeDirectionPublish = async (updatedPc: Record<string, unknown>) => {
+    setPublishContent(updatedPc)
+    await save({ publish_content: updatedPc })
+  }
+
+  const applyCreativeDirectionToLyrics = () => {
+    const hint = creativeDirection?.generated_concept_summary || creativeDirection?.user_direction
+    if (hint && !lyricsInstructions.trim()) {
+      setLyricsInstructions(hint)
+      void save({ lyrics_instructions: hint })
+    }
+    navigateToPanel('lyrics')
+  }
+
+  const applyCreativeDirectionToSuno = () => {
+    navigateToPanel('suno')
+    if (lyrics.trim()) void generateSuno()
+  }
+
   const applyCanonicalLyrics = (raw: string) => {
     if (!canonicalSongTitle) return raw
     const { text, conflict } = enforceCanonicalTitleInLyrics(raw, canonicalSongTitle)
@@ -736,12 +791,12 @@ export default function SongPage() {
     const artistCtx = buildArtistContext()
     const msgs = [{
       role: 'user',
-      content: [canonicalTitleUserLine(canonicalSongTitle), lyricsInstructions, artistCtx].filter(Boolean).join('\n\n'),
+      content: [buildAiUserPrefix(), lyricsInstructions, artistCtx].filter(Boolean).join('\n\n'),
     }]
     const sysLang = aiOutputLanguageName(aiOutputLang)
     let result = await callAI(
       msgs,
-      appendCanonicalTitleDirective(
+      buildAiSystem(
         buildLyricsGenerationSystem(
           sysLang,
           !!(artist?.song_structure && useProfileForLyrics),
@@ -749,7 +804,6 @@ export default function SongPage() {
           aiPlatformCustomLimits,
           canonicalSongTitle,
         ),
-        canonicalSongTitle,
       ),
       'lyrics',
     )
@@ -766,10 +820,7 @@ export default function SongPage() {
     if (isWithinHardLimit(getTextCharCount(text), limit)) return text
     const shortened = await callAI(
       [{ role: 'user', content: `These lyrics are ${text.length} characters. Adapt for ${platformLabel}:\n\n${text}` }],
-      appendCanonicalTitleDirective(
-        buildAdaptLyricsSystem(aiPlatformId, aiPlatformCustomLimits, canonicalSongTitle),
-        canonicalSongTitle,
-      ),
+      buildAiSystem(buildAdaptLyricsSystem(aiPlatformId, aiPlatformCustomLimits, canonicalSongTitle)),
       'adapt_lyrics',
     )
     if (!shortened) return limit.hardMax != null ? text.slice(0, limit.hardMax) : text
@@ -784,10 +835,7 @@ export default function SongPage() {
     if (!lyrics.trim()) return
     const result = await callAI(
       [{ role: 'user', content: `Adapt these lyrics for ${platformLabel}:\n\n${lyrics}` }],
-      appendCanonicalTitleDirective(
-        buildAdaptLyricsSystem(aiPlatformId, aiPlatformCustomLimits, canonicalSongTitle),
-        canonicalSongTitle,
-      ),
+      buildAiSystem(buildAdaptLyricsSystem(aiPlatformId, aiPlatformCustomLimits, canonicalSongTitle)),
       'adapt_lyrics',
     )
     if (!result) return
@@ -809,16 +857,16 @@ export default function SongPage() {
     }
     const context = parts.join('\n\n')
     const userMsg = [
-      canonicalTitleUserLine(canonicalSongTitle),
+      buildAiUserPrefix(),
       `Write a short, engaging backstory for this song (3-5 paragraphs). Tell the story behind the song: inspiration, theme, the emotion it captures, what listeners should know. Write in ${lang}, first person from the artist's perspective if natural. Don't quote the lyrics verbatim — describe what they're about. Refer to the song only by its canonical title.`,
+      'Describe the track using broad musical traits and the song concept — never say it sounds like a famous artist or specific recording.',
       artistCtx,
       context,
     ].filter(Boolean).join('\n\n')
     const result = await callAI(
       [{ role: 'user', content: userMsg }],
-      appendCanonicalTitleDirective(
+      buildAiSystem(
         `You are a music journalist + the artist's storyteller. Craft a compelling backstory for a song that gives context, mood, and motivation. ${lang}. Markdown OK. Aim for 3-5 paragraphs.`,
-        canonicalSongTitle,
       ),
       'backstory'
     )
@@ -831,9 +879,8 @@ export default function SongPage() {
     const newHistory = [...lyricsHistory, { role: 'user', content: lyricsChat }]
     let result = await callAI(
       newHistory,
-      appendCanonicalTitleDirective(
+      buildAiSystem(
         buildLyricsRefineSystem(aiPlatformId, aiPlatformCustomLimits, canonicalSongTitle),
-        canonicalSongTitle,
       ),
       'refine',
     )
@@ -908,9 +955,9 @@ export default function SongPage() {
     const detailedRaw = await callAI(
       [{
         role: 'user',
-        content: [canonicalTitleUserLine(canonicalSongTitle), `Lyrics:\n\n${lyrics}`].filter(Boolean).join('\n\n'),
+        content: [buildAiUserPrefix(), `Lyrics:\n\n${lyrics}`].filter(Boolean).join('\n\n'),
       }],
-      sunoSystemPromptForMode('detailed', langName, undefined, canonicalSongTitle),
+      buildAiSystem(sunoSystemPromptForMode('detailed', langName, undefined, canonicalSongTitle)),
       'suno_detailed',
     )
     const compactLimits = buildStylePromptGenerationConstraints(aiPlatformId, 'compact', aiPlatformCustomLimits)
@@ -919,10 +966,15 @@ export default function SongPage() {
       compactLimits.hardMax ?? undefined,
       compactLimits.targetMax,
     )
+    const alignedCompact = alignSunoPromptToDirection(
+      compact,
+      creativeDirection,
+      compactLimits.hardMax ?? 1000,
+    )
     setSunoPromptDetailed(detailed)
-    setSunoPrompt(compact)
+    setSunoPrompt(alignedCompact)
     const dna = await computeAndSaveSongDna()
-    await save({ suno_prompt: compact, suno_prompt_detailed: detailed, song_dna: dna })
+    await save({ suno_prompt: alignedCompact, suno_prompt_detailed: detailed, song_dna: dna })
   }
 
   const updateSunoPromptField = (value: string) => {
@@ -954,15 +1006,14 @@ export default function SongPage() {
     const { data: ruleData } = await supabase.from('platform_rules').select('custom_rules').eq('platform', platform).single()
     const customRules = ruleData?.custom_rules || ''
     const { buildPlatformSystemPrompt } = await import('@/lib/platformRules')
-    const systemPrompt = appendCanonicalTitleDirective(
+    const systemPrompt = buildAiSystem(
       buildPlatformSystemPrompt(platform as any, captionLanguage, customRules),
-      canonicalSongTitle,
     )
     const result = await callAI(
       [{
         role: 'user',
         content: [
-          canonicalTitleUserLine(canonicalSongTitle),
+          buildAiUserPrefix(),
           `Artist: ${artist?.name}`,
           `Lyrics:\n\n${lyrics}`,
           captionTone ? `Requested tone: ${captionTone}` : '',
@@ -982,7 +1033,7 @@ export default function SongPage() {
       artist.description ? `Artist description: ${artist.description}` : '',
     ].filter(Boolean).join('\n') : ''
     const userContent = [
-      canonicalTitleUserLine(canonicalSongTitle),
+      buildAiUserPrefix(),
       artistCtx,
       lyrics ? `Lyrics:\n${lyrics.slice(0, 800)}` : '',
       coverStyle ? `Free-form style notes: ${coverStyle}` : '',
@@ -1005,7 +1056,7 @@ export default function SongPage() {
 
     const result = await callAI(
       [{ role: 'user', content: userContent }],
-      appendCanonicalTitleDirective(system, canonicalSongTitle),
+      buildAiSystem(system),
       'cover',
     )
     setCoverPrompt(result)
@@ -1074,21 +1125,17 @@ export default function SongPage() {
       : ' Reference the lyrics naturally but do NOT include the full lyrics text.'
     const titleHeading = canonicalSongTitle ? ` Include H1 exactly: # ${canonicalSongTitle}` : ' Include title (# Title)'
     const systemMap: Record<string,string> = {
-      wordpress: appendCanonicalTitleDirective(
+      wordpress: buildAiSystem(
         `Write a WordPress blog post in ${publishLang} about this song.${titleHeading}, intro, background, lyric analysis, listen info. Use markdown. ~400 words.${lyricsDirective}`,
-        canonicalSongTitle,
       ),
-      facebook: appendCanonicalTitleDirective(
+      facebook: buildAiSystem(
         `Write a Facebook post in ${publishLang} about this song. Engaging, personal, with hashtags. ~150 words.`,
-        canonicalSongTitle,
       ),
-      instagram: appendCanonicalTitleDirective(
+      instagram: buildAiSystem(
         `Write an Instagram post in ${publishLang}. Visual language, storytelling, hashtags. ~120 words.`,
-        canonicalSongTitle,
       ),
-      press: appendCanonicalTitleDirective(
+      press: buildAiSystem(
         `Write a press release in ${publishLang} about this song. Professional tone, 5W structure, artist quote. ~300 words.${lyricsDirective}`,
-        canonicalSongTitle,
       ),
     }
     const cleanedLyrics = lyrics ? cleanLyricsText(lyrics) : ''
@@ -1096,7 +1143,7 @@ export default function SongPage() {
       ? (includeLyricsInPublish && cleanedLyrics ? `\n\nCleaned lyrics (use these verbatim if including in post):\n${cleanedLyrics}` : `\n\nLyrics excerpt for context:\n${cleanedLyrics.slice(0, 600)}`)
       : `\n\nLyrics excerpt for context:\n${cleanedLyrics.slice(0, 400)}`
     const context = [
-      canonicalTitleUserLine(canonicalSongTitle),
+      buildAiUserPrefix(),
       `Artist: ${artist?.name}`,
       artist?.genre ? `Genre: ${artist.genre}` : '',
       lyricsBlock,
@@ -1274,14 +1321,13 @@ export default function SongPage() {
           return value ? `${asset.label}:\n${value}` : ''
         }).filter(Boolean).join('\n\n'),
       ].filter(Boolean).join('\n\n') }],
-      appendCanonicalTitleDirective(
+      buildAiSystem(
         [
           `You are a practical release manager for independent artists. Write the output in: ${aiOutputLanguageName(aiOutputLang)}.`,
           'Review the lyrics, Suno prompt, backstory, campaign text, and missing readiness items.',
           'Return concise, actionable improvement tips. Use sections: Quick verdict, High impact fixes, Copy/content improvements, Release risk.',
           'Do not block publishing; this is advisory only.',
         ].join('\n'),
-        canonicalSongTitle,
       ),
       'release_review'
     )
@@ -1298,7 +1344,8 @@ export default function SongPage() {
   const campaignContext = () => {
     const cleanedLyrics = lyrics ? cleanLyricsText(lyrics) : ''
     return [
-      canonicalTitleUserLine(canonicalSongTitle),
+      buildAiUserPrefix(),
+      buildCreativeDirectionContext(songContextForAi(), artistContextForAi(), creativeDirection),
       `Artist: ${artist?.name || ''}`,
       `Genre/style: ${artist?.genre || ''}`,
       campaignReleaseDate ? `Release date: ${campaignReleaseDate}` : '',
@@ -1314,33 +1361,26 @@ export default function SongPage() {
   const generateCampaignAsset = async (key: string) => {
     const outLang = aiOutputLanguageName(aiOutputLang)
     const systemMap: Record<string, string> = {
-      spotify_pitch: appendCanonicalTitleDirective(
+      spotify_pitch: buildAiSystem(
         `Write a concise Spotify for Artists playlist pitch in ${outLang}. Max 500 characters. Include mood, genre, instrumentation, audience, and release angle. No markdown.`,
-        canonicalSongTitle,
       ),
-      tiktok_caption: appendCanonicalTitleDirective(
+      tiktok_caption: buildAiSystem(
         `Write a TikTok release caption in ${outLang}. Short hook, personality, 3-5 hashtags, no more than 500 characters.`,
-        canonicalSongTitle,
       ),
-      instagram_caption: appendCanonicalTitleDirective(
+      instagram_caption: buildAiSystem(
         `Write an Instagram release caption in ${outLang}. Visual, personal, includes a call to listen and 5-8 relevant hashtags.`,
-        canonicalSongTitle,
       ),
-      youtube_shorts_caption: appendCanonicalTitleDirective(
+      youtube_shorts_caption: buildAiSystem(
         `Write a YouTube Shorts caption in ${outLang}. Strong first line, brief context, call to action, 3-5 hashtags.`,
-        canonicalSongTitle,
       ),
-      facebook_post: appendCanonicalTitleDirective(
+      facebook_post: buildAiSystem(
         `Write a Facebook release post in ${outLang}. Warm and personal, 100-160 words, includes listen/share call to action.`,
-        canonicalSongTitle,
       ),
-      press_bio: appendCanonicalTitleDirective(
+      press_bio: buildAiSystem(
         `Write a short press release artist/song bio in ${outLang}. Professional tone, 120-180 words, suitable for media outreach.`,
-        canonicalSongTitle,
       ),
-      newsletter_announcement: appendCanonicalTitleDirective(
+      newsletter_announcement: buildAiSystem(
         `Write an email/newsletter announcement in ${outLang}. Include subject line, preview text, short body, and call to listen/share.`,
-        canonicalSongTitle,
       ),
     }
     const result = await callAI([{ role: 'user', content: campaignContext() }], systemMap[key], `campaign_${key}`)
@@ -1625,6 +1665,11 @@ export default function SongPage() {
             pageEnabled={!!artist?.page_enabled}
             linkedStory={linkedStory}
             onGoToPanel={navigateToPanel}
+            creativeDirection={creativeDirection}
+            publishContent={publishContent}
+            onSaveCreativeDirection={saveCreativeDirectionPublish}
+            onApplyDirectionLyrics={applyCreativeDirectionToLyrics}
+            onApplyDirectionSuno={applyCreativeDirectionToSuno}
           />
         )}
 
@@ -3044,6 +3089,15 @@ export default function SongPage() {
         )}
 
         {panel === 'settings' && (
+          <>
+          <SongCreativeDirectionPanel
+            direction={creativeDirection}
+            publishContent={publishContent}
+            onSave={saveCreativeDirectionPublish}
+            onApplyLyrics={applyCreativeDirectionToLyrics}
+            onApplySuno={applyCreativeDirectionToSuno}
+            compact
+          />
           <SongStudioSettingsPanel
             songId={songId}
             songTitle={title}
@@ -3064,6 +3118,7 @@ export default function SongPage() {
             aiLoading={aiLoading}
             imageGenerating={imageGenerating}
           />
+          </>
         )}
         </div>
       </SongStudioShell>

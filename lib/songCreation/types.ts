@@ -1,4 +1,5 @@
 import type { SongDNA } from '@/lib/songDNA/types'
+import type { InspirationTrait } from './creativeDirection'
 
 export type InspirationAnalysisFocus =
   | 'themes'
@@ -63,6 +64,10 @@ export type GeneratorOptions = {
   inspirationControls: InspirationControls
   count: number
   prompt: string
+  externalArtists?: string[]
+  externalSongs?: string[]
+  inspirationTraits?: InspirationTrait[]
+  externalUserDirection?: string
 }
 
 export type SunoPromptMode = 'compact' | 'detailed'

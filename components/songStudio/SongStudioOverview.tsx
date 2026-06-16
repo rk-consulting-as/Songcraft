@@ -2,8 +2,10 @@
 
 import Link from 'next/link'
 import WorkspaceEmptyState from '@/components/WorkspaceEmptyState'
+import SongCreativeDirectionPanel from '@/components/songStudio/SongCreativeDirectionPanel'
 import { isStoryPubliclyLive } from '@/lib/artistStories/visibility'
 import { clientPublicUrl } from '@/lib/appUrl'
+import type { CreativeDirection } from '@/lib/songCreation/creativeDirection'
 import { useSongEngagementStats } from '@/lib/songStudio/useSongEngagementStats'
 import { t, useLang } from '@/lib/i18n'
 
@@ -25,6 +27,11 @@ type Props = {
   pageEnabled?: boolean
   linkedStory?: { id: string; title: string; slug: string; status: string; published_at?: string | null; public_hidden?: boolean } | null
   onGoToPanel: (panel: string) => void
+  creativeDirection?: CreativeDirection | null
+  publishContent?: Record<string, unknown>
+  onSaveCreativeDirection?: (publishContent: Record<string, unknown>) => Promise<void>
+  onApplyDirectionLyrics?: () => void
+  onApplyDirectionSuno?: () => void
 }
 
 export default function SongStudioOverview({
@@ -43,6 +50,11 @@ export default function SongStudioOverview({
   pageEnabled,
   linkedStory,
   onGoToPanel,
+  creativeDirection,
+  publishContent,
+  onSaveCreativeDirection,
+  onApplyDirectionLyrics,
+  onApplyDirectionSuno,
 }: Props) {
   const tx = t[useLang()] as Record<string, string>
   const engagement = useSongEngagementStats(songId, {
@@ -80,6 +92,16 @@ export default function SongStudioOverview({
           <div className="song-studio-overview__progress-fill" style={{ width: `${readinessScore}%`, background: scoreColor }} />
         </div>
       </div>
+
+      {publishContent && onSaveCreativeDirection && onApplyDirectionLyrics && onApplyDirectionSuno && (
+        <SongCreativeDirectionPanel
+          direction={creativeDirection ?? null}
+          publishContent={publishContent}
+          onSave={onSaveCreativeDirection}
+          onApplyLyrics={onApplyDirectionLyrics}
+          onApplySuno={onApplyDirectionSuno}
+        />
+      )}
 
       <div className="song-studio-overview__grid">
         <div className="card workspace-card workspace-glass">

@@ -9,6 +9,8 @@ import {
 } from './generateSongReferences'
 import type { ArtistContextInput } from './generateArtistContext'
 import type { GeneratorOptions, SongProposal, SongReference } from './types'
+import { buildExternalInspirationContext, EXTERNAL_INSPIRATION_SAFETY_RULE } from './creativeDirection'
+import type { CreativeDirection } from './creativeDirection'
 
 export function buildConceptGenerationSystem(
   count: number,
@@ -21,6 +23,8 @@ export function buildConceptGenerationSystem(
     `Create EXACTLY ${count} original song proposals.`,
     'Each proposal must feel consistent with the artist identity but be entirely new material.',
     'Do not copy titles, lyrics, melodies, or hooks from reference songs.',
+    EXTERNAL_INSPIRATION_SAFETY_RULE,
+    'If external artist/song references are provided, translate them into broad genre, mood, structure, energy, and atmosphere traits — never imitate a specific work.',
     'Respond ONLY with valid JSON array, no markdown:',
     '[',
     '  {',
@@ -59,6 +63,15 @@ export function buildConceptGenerationUserMessage(
 
   parts.push(`User creative direction: ${options.prompt}`)
   parts.push(`Number of songs: ${options.count}`)
+
+  const externalDirection: CreativeDirection = {
+    external_reference_artists: options.externalArtists,
+    external_reference_songs: options.externalSongs,
+    inspiration_traits: options.inspirationTraits,
+    user_direction: options.externalUserDirection,
+  }
+  const externalCtx = buildExternalInspirationContext(externalDirection)
+  if (externalCtx) parts.push(externalCtx)
 
   return parts.join('\n\n')
 }

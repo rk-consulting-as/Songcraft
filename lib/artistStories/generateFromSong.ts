@@ -1,10 +1,15 @@
 import { aiOutputLanguageDirective, type AIOutputLang } from '@/lib/aiOutputLanguage'
 import { clientPublicUrl } from '@/lib/appUrl'
 import {
-  appendCanonicalTitleDirective,
   canonicalTitleUserLine,
   storySongTitleGuidance,
 } from '@/lib/songs/canonicalTitle'
+import {
+  buildCreativeDirectionContext,
+  buildSongAiSystemPrompt,
+  parseCreativeDirection,
+  type CreativeDirection,
+} from '@/lib/songCreation/creativeDirection'
 import { buildSongListenLinks } from '@/lib/songs/publicListenLinks'
 import { slugifyStoryTitle } from './slug'
 import { STORY_TYPES, type GeneratedStoryDraft, type StoryType } from './types'
@@ -30,6 +35,7 @@ export type SongStorySource = {
   cover_image_url?: string | null
   spotify_cover_url?: string | null
   public_hidden?: boolean | null
+  creativeDirection?: CreativeDirection | null
 }
 
 export type StoryAssistantInput = SongStorySource & {
@@ -99,7 +105,7 @@ export function buildStoryAssistantPrompt(input: StoryAssistantInput): { system:
     news: 'News-style update — concise, factual tone about this music news.',
   }[storyType]
 
-  const system = appendCanonicalTitleDirective(
+  const system = buildSongAiSystemPrompt(
     [
       aiOutputLanguageDirective(input.outputLang || 'en'),
       'You are a music storyteller helping an independent artist write a fan-facing blog story.',
@@ -111,9 +117,23 @@ export function buildStoryAssistantPrompt(input: StoryAssistantInput): { system:
       'seo_description: max 155 chars.',
       'story_type: one of: behind_the_song, release_story, artist_journal, lyrics_meaning, campaign_update, playlist_feature, news.',
       storySongTitleGuidance(input.title),
+      'Describe musical character using broad traits — never say the song sounds like a famous artist or specific recording.',
       ...QUALITY_RULES,
     ].join('\n'),
-    input.title,
+    {
+      canonicalTitle: input.title,
+      creativeDirection: input.creativeDirection,
+      song: {
+        title: input.title,
+        lyrics_instructions: input.backstory?.slice(0, 400),
+        proposal_meta: input.genre || input.mood ? { genre: input.genre || undefined, mood: input.mood || undefined } : null,
+      },
+      artist: input.artistName ? {
+        name: input.artistName,
+        genre: input.genre,
+        song_structure: input.artistSongStructure,
+      } : undefined,
+    },
   )
 
   const user = [
@@ -132,6 +152,11 @@ export function buildStoryAssistantPrompt(input: StoryAssistantInput): { system:
     input.sunoPrompt ? `Suno / production prompt:\n${input.sunoPrompt.slice(0, 900)}` : '',
     input.sunoPromptDetailed ? `Detailed production prompt:\n${input.sunoPromptDetailed.slice(0, 900)}` : '',
     input.campaignText ? `Release campaign copy:\n${input.campaignText}` : '',
+    buildCreativeDirectionContext(
+      { title: input.title, proposal_meta: input.genre || input.mood ? { genre: input.genre || undefined, mood: input.mood || undefined } : null },
+      input.artistName ? { name: input.artistName, genre: input.genre, song_structure: input.artistSongStructure } : null,
+      input.creativeDirection,
+    ),
     formatSongDna(input.songDna) ? `Song DNA:\n${formatSongDna(input.songDna)}` : '',
     input.publicSongUrl ? `Public song page URL: ${input.publicSongUrl}` : '',
     formatStreamingLinksForPrompt(input),
@@ -220,5 +245,6 @@ export function storySourceFromSongRow(
     spotify_cover_url: song.spotify_cover_url,
     public_hidden: song.public_hidden,
     publicSongUrl,
+    creativeDirection: parseCreativeDirection(song.publish_content),
   }
 }
