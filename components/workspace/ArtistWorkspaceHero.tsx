@@ -20,6 +20,7 @@ type Props = {
   }
   onCreateSong: () => void
   onCreateReleaseCampaign: () => void
+  onCopyPublicLink?: () => void
 }
 
 export default function ArtistWorkspaceHero({
@@ -33,6 +34,7 @@ export default function ArtistWorkspaceHero({
   stats,
   onCreateSong,
   onCreateReleaseCampaign,
+  onCopyPublicLink,
 }: Props) {
   const tx = t[useLang()] as Record<string, string>
   const genres = genre?.split(',').map(g => g.trim()).filter(Boolean) || []
@@ -40,9 +42,10 @@ export default function ArtistWorkspaceHero({
 
   const primaryActions: ArtistQuickAction[] = [
     { id: 'song', label: tx.createNewSong.replace(/^\+ /, ''), icon: '+', onClick: onCreateSong, primary: true },
-    { id: 'release', label: tx.workspaceShellCreateReleaseCampaign, icon: '↗', onClick: onCreateReleaseCampaign },
     { id: 'public', label: tx.workspaceActionPublicPage, icon: '🌐', href: publicHref, disabled: !publicHref },
+    { id: 'copy', label: tx.mobileCopyShareLink, icon: '⧉', onClick: onCopyPublicLink, disabled: !onCopyPublicLink || !pageSlug },
     { id: 'growth', label: tx.growthHubOpen, icon: '🌱', href: `/growth?artist=${artistId}` },
+    { id: 'release', label: tx.workspaceShellCreateReleaseCampaign, icon: '↗', onClick: onCreateReleaseCampaign },
   ]
 
   return (
@@ -65,6 +68,13 @@ export default function ArtistWorkspaceHero({
           )}
           <div className="artist-workspace-hero__meta">
             <h1 className="artist-workspace-hero__name">{name}</h1>
+            <div className="artist-workspace-hero__status-row">
+              {pageEnabled && pageSlug ? (
+                <span className="artist-workspace-hero__status artist-workspace-hero__status--live">{tx.songStudioPublicLive}</span>
+              ) : (
+                <span className="artist-workspace-hero__status artist-workspace-hero__status--draft">{tx.workspaceActionPublicPage} — {tx.draft}</span>
+              )}
+            </div>
             {genres.length > 0 && (
               <div className="artist-workspace-hero__genres">
                 {genres.slice(0, 4).map(g => (

@@ -34,6 +34,8 @@ import ArtistSettingsPanel from '@/components/ArtistSettingsPanel'
 import SongPublicPageActions from '@/components/SongPublicPageActions'
 import ArtistWorkspaceShell from '@/components/workspace/ArtistWorkspaceShell'
 import ArtistWorkspaceHero from '@/components/workspace/ArtistWorkspaceHero'
+import ArtistWorkspaceMiniHeader from '@/components/workspace/ArtistWorkspaceMiniHeader'
+import ArtistWorkspaceMobileNavigator from '@/components/workspace/ArtistWorkspaceMobileNavigator'
 import ArtistWorkspaceContentHub from '@/components/workspace/ArtistWorkspaceContentHub'
 import ArtistWorkspacePromotionHub from '@/components/workspace/ArtistWorkspacePromotionHub'
 import ArtistWorkspaceBrandHub from '@/components/workspace/ArtistWorkspaceBrandHub'
@@ -780,6 +782,8 @@ export default function ArtistPage() {
     }
   }, [initialStorySongId, applyWorkspaceRoute])
   const [creatorPlaylistCount, setCreatorPlaylistCount] = useState(0)
+  const [heroMiniHeaderVisible, setHeroMiniHeaderVisible] = useState(false)
+  const heroSentinelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     document.body.classList.add('artist-workspace-page')
@@ -787,6 +791,17 @@ export default function ArtistPage() {
       document.body.classList.remove('artist-workspace-page')
     }
   }, [])
+
+  useEffect(() => {
+    const el = heroSentinelRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver(
+      ([entry]) => setHeroMiniHeaderVisible(!entry.isIntersecting),
+      { threshold: 0, rootMargin: '0px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [artist])
 
   useEffect(() => {
     if (!artistId) return
@@ -1060,7 +1075,7 @@ export default function ArtistPage() {
 
   return (
     <div className="artist-workspace" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0a0f 0%, #12071e 50%, #0a0f0a 100%)' }}>
-      <div className="artist-workspace-sticky">
+      <div className="artist-workspace-hero-wrap">
         {artist && (
           <ArtistWorkspaceHero
             artistId={artistId}
@@ -1078,14 +1093,34 @@ export default function ArtistPage() {
             }}
             onCreateSong={() => { changeContentPanel('songs'); setShowGenerator(true) }}
             onCreateReleaseCampaign={() => changePromotionPanel('campaigns')}
+            onCopyPublicLink={
+              artist.page_slug
+                ? () => navigator.clipboard.writeText(`${window.location.origin}/p/${artist.page_slug}`)
+                : undefined
+            }
           />
         )}
+        <div ref={heroSentinelRef} className="artist-workspace-hero-sentinel" aria-hidden="true" />
       </div>
+
+      {artist && (
+        <ArtistWorkspaceMiniHeader
+          visible={heroMiniHeaderVisible}
+          name={artist.name}
+          avatarUrl={artist.avatar_url}
+          route={workspaceRoute}
+        />
+      )}
 
       <ArtistWorkspaceShell
         activeArea={workspaceArea}
         onAreaChange={changeWorkspaceArea}
-        nav={<ArtistWorkspaceNav active={workspaceArea} onChange={changeWorkspaceArea} />}
+        nav={(
+          <>
+            <ArtistWorkspaceNav active={workspaceArea} onChange={changeWorkspaceArea} />
+            <ArtistWorkspaceMobileNavigator route={workspaceRoute} applyRoute={applyWorkspaceRoute} />
+          </>
+        )}
       >
       <div className="artist-workspace-body workspace-container workspace-container--artist">
         {workspaceArea === 'overview' && artist && (

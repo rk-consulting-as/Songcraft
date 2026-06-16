@@ -7,6 +7,7 @@ import { t, useLang, type Lang } from '@/lib/i18n'
 import { parseWorkspaceHash } from '@/lib/artistWorkspaceTabs'
 import { parseSongStudioHash } from '@/lib/songStudio/routes'
 import { SONG_STUDIO_SHEET_OPEN_EVENT } from '@/lib/songStudio/areaMeta'
+import { ARTIST_WORKSPACE_SHEET_OPEN_EVENT } from '@/lib/artistWorkspace/areaMeta'
 
 function resolveNavHrefs(pathname: string) {
   const artistMatch = pathname.match(/^\/artist\/([^/]+)/)
@@ -105,21 +106,36 @@ export default function MobileBottomNav() {
     const base = `/artist/${artistId}`
     const area = resolveArtistWorkspaceHash(`#${hash}`)
     const items = [
-      { href: `${base}#overview`, icon: '⌂', label: tx.mobileNavDashboard, active: area === 'overview' || !hash },
-      { href: `${base}#content-songs`, icon: '♪', label: tx.mobileNavContent, active: area === 'content' },
-      { href: `${base}#promotion-campaigns`, icon: '↗', label: tx.mobileNavPromotion, active: area === 'promotion' },
-      { href: `/growth?artist=${artistId}`, icon: '🌱', label: tx.mobileNavGrowth, active: pathname.startsWith('/growth') },
-      { href: `${base}#brand-presence`, icon: '☰', label: tx.mobileNavMore, active: area === 'brand' || area === 'settings' },
+      { href: `${base}#overview`, icon: '⌂', label: tx.mobileNavDashboard, active: area === 'overview' || !hash, kind: 'link' as const },
+      { href: `${base}#content-songs`, icon: '♪', label: tx.mobileNavContent, active: area === 'content', kind: 'link' as const },
+      { href: `${base}#promotion-campaigns`, icon: '↗', label: tx.mobileNavPromotion, active: area === 'promotion', kind: 'link' as const },
+      { href: `/growth?artist=${artistId}`, icon: '🌱', label: tx.mobileNavGrowth, active: pathname.startsWith('/growth'), kind: 'link' as const },
+      { icon: '☰', label: tx.mobileNavMore, active: area === 'brand' || area === 'settings', kind: 'more' as const },
     ]
 
     return (
       <nav className="mobile-bottom-nav" aria-label={tx.mobileNavLabel}>
-        {items.map(item => (
-          <Link key={item.label} href={item.href} className={item.active ? 'active' : ''}>
-            <span aria-hidden="true">{item.icon}</span>
-            <small>{item.label}</small>
-          </Link>
-        ))}
+        {items.map(item => {
+          if (item.kind === 'more') {
+            return (
+              <button
+                key={item.label}
+                type="button"
+                className={item.active ? 'active' : ''}
+                onClick={() => window.dispatchEvent(new CustomEvent(ARTIST_WORKSPACE_SHEET_OPEN_EVENT))}
+              >
+                <span aria-hidden="true">{item.icon}</span>
+                <small>{item.label}</small>
+              </button>
+            )
+          }
+          return (
+            <Link key={item.label} href={item.href!} className={item.active ? 'active' : ''}>
+              <span aria-hidden="true">{item.icon}</span>
+              <small>{item.label}</small>
+            </Link>
+          )
+        })}
       </nav>
     )
   }
