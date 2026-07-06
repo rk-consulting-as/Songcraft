@@ -19,6 +19,7 @@ export type V2Circle = {
   sessionCount: number
   visibility: CircleVisibility
   featured?: boolean
+  isMember?: boolean
 }
 
 export type V2SessionStatus = 'live' | 'upcoming' | 'ended'
@@ -33,10 +34,13 @@ export type V2QueueTrack = {
 
 export type V2Session = {
   id: string
+  slug?: string
   title: string
   hostName: string
+  hostUserId?: string
   circleSlug: string
   circleName: string
+  circleId?: string
   status: V2SessionStatus
   startsAt: string
   platform: PlatformTag
@@ -49,6 +53,8 @@ export type V2Session = {
   queue: V2QueueTrack[]
   features: string[]
   creationTypes: CreationType[]
+  userJoined?: boolean
+  isHost?: boolean
 }
 
 export type V2Artist = {
@@ -90,6 +96,7 @@ export type V2PlaylistRoom = {
   trackCount: number
   circleSlug?: string
   platform: PlatformTag
+  campaignId?: string
 }
 
 export type V2Supporter = {
@@ -97,6 +104,45 @@ export type V2Supporter = {
   name: string
   score: number
   badge?: string
+}
+
+export type V2FeedbackReaction = 'fire' | 'love' | 'idea' | 'clap'
+
+export type V2SongFeedback = {
+  id: string
+  songId: string
+  fromUserId: string
+  fromUserName: string
+  body?: string
+  rating?: number
+  reaction?: V2FeedbackReaction
+  createdAt: string
+  circleId?: string
+  sessionId?: string
+}
+
+export type V2SubmissionStatus = 'pending' | 'approved' | 'removed'
+
+export type V2SessionSongRow = {
+  id: string
+  sessionId: string
+  songId?: string
+  title: string
+  artistName: string
+  status: V2SubmissionStatus
+  position: number
+  submittedBy?: string
+  isNowPlaying?: boolean
+  duration?: string
+}
+
+export type V2CommunityPersonalization = {
+  userId: string | null
+  myCircles: V2Circle[]
+  joinedSessions: V2Session[]
+  mySubmissions: { id: string; title: string; artistName: string; targetType: 'circle' | 'session' | 'playlist'; targetLabel: string; status: V2SubmissionStatus; createdAt: string }[]
+  recommendedCircles: V2Circle[]
+  feedbackReceivedCount: number
 }
 
 export type V2CommunityStats = {

@@ -10,7 +10,7 @@ import {
 } from '@/lib/v2/mockData'
 import type { CreationType, PlatformTag, V2Circle, V2PlaylistRoom, V2QueueTrack, V2Session, V2SessionStatus, V2Song } from '@/lib/v2/types'
 
-function mapCircleRow(row: Record<string, unknown>): V2Circle {
+export function mapCircleRow(row: Record<string, unknown>): V2Circle {
   return {
     id: String(row.id),
     slug: String(row.slug),
@@ -27,13 +27,16 @@ function mapCircleRow(row: Record<string, unknown>): V2Circle {
   }
 }
 
-function mapSessionRow(row: Record<string, unknown>, circle?: { slug: string; name: string }): V2Session {
+export function mapSessionRow(row: Record<string, unknown>, circle?: { slug: string; name: string }, hostName?: string): V2Session {
   return {
     id: String(row.id),
+    slug: String(row.slug || ''),
     title: String(row.title),
-    hostName: 'Host',
+    hostName: hostName || 'Host',
+    hostUserId: row.host_user_id ? String(row.host_user_id) : undefined,
     circleSlug: circle?.slug || '',
     circleName: circle?.name || '',
+    circleId: row.circle_id ? String(row.circle_id) : undefined,
     status: (row.status as V2SessionStatus) || 'upcoming',
     startsAt: String(row.starts_at),
     platform: (row.platform as PlatformTag) || 'spotify',
@@ -80,8 +83,15 @@ export async function fetchCommunitySessions(): Promise<{ sessions: V2Session[];
   }
 }
 
-export async function fetchCommunitySessionById(id: string): Promise<{ session: V2Session | null; fromMock: boolean }> {
+export async function fetchCommunitySessionById(id: string): Promise<{
+  session: V2Session | null
+  fromMock: boolean
+  queueRows: import('@/lib/v2/types').V2SessionSongRow[]
+  isHost: boolean
+  userJoined: boolean
+}> {
   const supabase = createServerSupabase()
+  const { data: { user } } = await supabase.auth.getUser()
   const { data, error } = await supabase
     .from('v2_sessions')
     .select('*, v2_circles(slug, name)')
@@ -89,27 +99,62 @@ export async function fetchCommunitySessionById(id: string): Promise<{ session: 
     .maybeSingle()
   if (error || !data) {
     const mock = getMockSession(id)
-    if (mock) return { session: mock, fromMock: true }
+    if (mock) return { session: mock, fromMock: true, queueRows: [], isHost: false, userJoined: false }
     const bySlug = V2_SESSIONS.find(s => s.id === id)
-    return { session: bySlug || null, fromMock: !!bySlug }
+    return { session: bySlug || null, fromMock: !!bySlug, queueRows: [], isHost: false, userJoined: false }
   }
   const circle = (data as { v2_circles?: { slug: string; name: string } }).v2_circles
-  const session = mapSessionRow(data as Record<string, unknown>, circle)
+  let hostName = 'Host'
+  if (data.host_user_id) {
+    const { data: profile } = await supabase.from('profiles').select('display_name').eq('id', data.host_user_id).maybeSingle()
+    if (profile?.display_name) hostName = profile.display_name
+  }
+  const session = mapSessionRow(data as Record<string, unknown>, circle, hostName)
+  session.isHost = user?.id === data.host_user_id
   const { data: queueRows } = await supabase
     .from('v2_session_songs')
-    .select('position, title, artist_name, duration_label, is_now_playing')
+    .select('id, session_id, song_id, title, artist_name, duration_label, is_now_playing, status, position, submitted_by')
     .eq('session_id', data.id)
+    .neq('status', 'removed')
     .order('position', { ascending: true })
-  if (queueRows?.length) {
-    session.queue = queueRows.map(q => ({
+
+  const mappedRows: import('@/lib/v2/types').V2SessionSongRow[] = (queueRows || []).map(q => ({
+    id: q.id,
+    sessionId: q.session_id,
+    songId: q.song_id ?? undefined,
+    title: q.title,
+    artistName: q.artist_name || '',
+    status: (q.status || 'approved') as import('@/lib/v2/types').V2SubmissionStatus,
+    position: q.position,
+    submittedBy: q.submitted_by ?? undefined,
+    isNowPlaying: q.is_now_playing,
+    duration: q.duration_label || '',
+  }))
+
+  if (mappedRows.length) {
+    session.queue = mappedRows.filter(r => r.status === 'approved').map(q => ({
       position: q.position,
       title: q.title,
-      artistName: q.artist_name || '',
-      duration: q.duration_label || '',
-      isNowPlaying: q.is_now_playing,
-    })) as V2QueueTrack[]
+      artistName: q.artistName,
+      duration: q.duration || '',
+      isNowPlaying: q.isNowPlaying,
+    }))
   }
-  return { session, fromMock: false }
+
+  let userJoined = false
+  if (user) {
+    const { data: part } = await supabase
+      .from('v2_session_participation')
+      .select('id')
+      .eq('session_id', data.id)
+      .eq('user_id', user.id)
+      .eq('status', 'joined')
+      .maybeSingle()
+    userJoined = !!part
+    session.userJoined = userJoined
+  }
+
+  return { session, fromMock: false, queueRows: mappedRows, isHost: session.isHost || false, userJoined }
 }
 
 export async function fetchSessionsForCircle(circleSlug: string, circleId?: string): Promise<{ sessions: V2Session[]; fromMock: boolean }> {
@@ -142,9 +187,84 @@ export async function fetchSessionsForCircle(circleSlug: string, circleId?: stri
   }
 }
 
-/** TODO: v2_session_songs + songs join when circle submissions are seeded */
-export async function fetchSongsForCircle(circleSlug: string): Promise<{ songs: V2Song[]; fromMock: boolean }> {
-  return { songs: getSongsForCircle(circleSlug), fromMock: true }
+/** Circle song submissions from v2_circle_songs */
+export async function fetchSongsForCircle(circleSlug: string, circleId?: string): Promise<{ songs: V2Song[]; fromMock: boolean }> {
+  const supabase = createServerSupabase()
+  let resolvedId = circleId
+  if (!resolvedId) {
+    const { data: circle } = await supabase.from('v2_circles').select('id').eq('slug', circleSlug).maybeSingle()
+    resolvedId = circle?.id
+  }
+  if (!resolvedId) return { songs: getSongsForCircle(circleSlug), fromMock: true }
+
+  const { data: rows, error } = await supabase
+    .from('v2_circle_songs')
+    .select('song_id, songs(id, artist_id, title, status, lyrics_instructions, cover_image_url, spotify_cover_url, spotify_url, media_links, publish_content, artists(name, page_slug))')
+    .eq('circle_id', resolvedId)
+    .in('status', ['pending', 'approved'])
+    .order('created_at', { ascending: false })
+    .limit(24)
+
+  if (error || !rows?.length) {
+    const fallback = getSongsForCircle(circleSlug)
+    return { songs: fallback, fromMock: !rows?.length && fallback.length > 0 }
+  }
+
+  const { mapSongRow } = await import('@/lib/v2/mappers')
+  const { artistCommunitySlug } = await import('@/lib/v2/slug')
+
+  const songs = rows
+    .map(r => {
+      const row = r as unknown as { songs?: Record<string, unknown> & { artists?: { name: string; page_slug?: string } | { name: string; page_slug?: string }[] } }
+      const song = row.songs
+      if (!song) return null
+      const artistRaw = song.artists
+      const artist = Array.isArray(artistRaw) ? artistRaw[0] : artistRaw
+      return mapSongRow(song as Parameters<typeof mapSongRow>[0], artist ? {
+        name: artist.name,
+        slug: artistCommunitySlug({ id: String(song.artist_id), name: artist.name, page_slug: artist.page_slug }),
+      } : null)
+    })
+    .filter((s): s is V2Song => !!s)
+
+  return { songs, fromMock: false }
+}
+
+export async function fetchCircleMembership(slug: string, userId?: string | null): Promise<boolean> {
+  if (!userId) return false
+  const supabase = createServerSupabase()
+  const { data: circle } = await supabase.from('v2_circles').select('id').eq('slug', slug).maybeSingle()
+  if (!circle) return false
+  const { data } = await supabase.from('v2_circle_members').select('id').eq('circle_id', circle.id).eq('user_id', userId).maybeSingle()
+  return !!data
+}
+
+export async function fetchPlaylistRoomBySlug(slug: string): Promise<{ room: V2PlaylistRoom | null; fromMock: boolean }> {
+  const supabase = createServerSupabase()
+  const { data, error } = await supabase
+    .from('v2_playlist_rooms')
+    .select('*, v2_circles(slug)')
+    .eq('slug', slug)
+    .maybeSingle()
+  if (error || !data) {
+    const mock = V2_PLAYLISTS.find(p => p.slug === slug)
+    return { room: mock || null, fromMock: !!mock }
+  }
+  const circle = (data as { v2_circles?: { slug: string } | null }).v2_circles
+  return {
+    room: {
+      id: String(data.id),
+      slug: String(data.slug),
+      name: String(data.name),
+      description: String(data.description || ''),
+      coverImageUrl: String(data.cover_image_url || ''),
+      trackCount: Number(data.track_count || 0),
+      platform: (data.platform as PlatformTag) || 'spotify',
+      circleSlug: circle?.slug,
+      campaignId: data.creator_playlist_id ? String(data.creator_playlist_id) : undefined,
+    },
+    fromMock: false,
+  }
 }
 
 export async function fetchPlaylistRooms(): Promise<{ rooms: V2PlaylistRoom[]; fromMock: boolean }> {

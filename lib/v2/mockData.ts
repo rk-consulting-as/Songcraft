@@ -45,7 +45,7 @@ export const V2_CIRCLES: V2Circle[] = [
   {
     id: 'circle-ai-metal',
     slug: 'ai-metal-lab',
-    name: 'AI Metal Lab',
+    name: 'AI Metal Circle',
     description: 'For AI metal, hybrid production, heavy prompts and feedback.',
     coverImageUrl: IMG.metal,
     tags: ['Metal', 'AI', 'Feedback'],
@@ -59,7 +59,7 @@ export const V2_CIRCLES: V2Circle[] = [
   {
     id: 'circle-nordic-indie',
     slug: 'nordic-indie-discovery',
-    name: 'Nordic Indie Discovery',
+    name: 'Nordic Indie Circle',
     description: 'For nordic artists, soft releases and Tidal/Spotify discovery.',
     coverImageUrl: IMG.indie,
     tags: ['Indie', 'Nordic', 'Discovery'],
@@ -71,9 +71,9 @@ export const V2_CIRCLES: V2Circle[] = [
     featured: true,
   },
   {
-    id: 'circle-release-support',
-    slug: 'release-support-room',
-    name: 'Release Support Room',
+    id: 'circle-boost',
+    slug: 'new-release-boost',
+    name: 'New Release Boost Circle',
     description: 'Submit one song, join sessions, give feedback and build momentum.',
     coverImageUrl: IMG.release,
     tags: ['Release', 'Playlist', 'Support'],
@@ -261,7 +261,7 @@ export const V2_PLAYLISTS: V2PlaylistRoom[] = [
     description: 'Rotation of community picks with proof logging.',
     coverImageUrl: IMG.release,
     trackCount: 34,
-    circleSlug: 'release-support-room',
+    circleSlug: 'new-release-boost',
     platform: 'spotify',
   },
   {

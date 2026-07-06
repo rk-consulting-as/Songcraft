@@ -1,16 +1,31 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import V2FeedbackPanel from '@/components/v2/V2FeedbackPanel'
+import V2ReportButton from '@/components/v2/V2ReportButton'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
+import { fetchSongFeedback } from '@/lib/v2/data/feedback'
 import { fetchCommunitySongById } from '@/lib/v2/data/songs'
 import { V2_ROUTES } from '@/lib/v2/routes'
+import { createServerSupabase } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
 type Props = { params: { id: string } }
 
 export default async function SongDetailPage({ params }: Props) {
+  const supabase = createServerSupabase()
+  const { data: { user } } = await supabase.auth.getUser()
+
   const { song, fromMock } = await fetchCommunitySongById(params.id)
   if (!song) notFound()
+
+  const songId = song.legacySongId || song.id
+  const feedback = fromMock ? [] : await fetchSongFeedback(songId)
+  let isOwner = false
+  if (!fromMock && user && song.legacySongId) {
+    const { data: owned } = await supabase.from('songs').select('id').eq('id', song.legacySongId).eq('user_id', user.id).maybeSingle()
+    isOwner = !!owned
+  }
 
   return (
     <>
@@ -41,14 +56,28 @@ export default async function SongDetailPage({ params }: Props) {
             {song.needsFeedback && <span className="v2-tag">Needs feedback</span>}
           </div>
           <div className="v2-hero-actions" style={{ marginTop: 20 }}>
-            <button type="button" className="v2-btn hot">Submit to session</button>
-            <Link href={V2_ROUTES.sessions} className="v2-btn secondary">Find session</Link>
+            <Link href={V2_ROUTES.sessions} className="v2-btn hot">Find session</Link>
             {song.legacySongId && !fromMock && (
               <Link href={`/song/${song.legacySongId}`} className="v2-btn secondary">Song Studio</Link>
             )}
           </div>
+          {!fromMock && song.legacySongId && (
+            <div style={{ marginTop: 12 }}>
+              <V2ReportButton targetType="song" targetId={song.legacySongId} />
+            </div>
+          )}
         </div>
       </div>
+
+      <section className="v2-section">
+        <V2SectionHeader title="Community feedback" lead="Ratings, reactions and notes from listeners." />
+        <V2FeedbackPanel
+          songId={songId}
+          initialFeedback={feedback}
+          isOwner={!!isOwner}
+          demoMode={fromMock}
+        />
+      </section>
 
       <section className="v2-section">
         <V2SectionHeader title="Streaming links" />

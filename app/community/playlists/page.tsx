@@ -34,6 +34,9 @@ export default async function PlaylistsIndexPage() {
                 View circle
               </Link>
             )}
+            <Link href={V2_ROUTES.playlistRoom(room.slug)} className="v2-btn sm" style={{ marginTop: 12 }}>
+              Open room
+            </Link>
           </article>
         ))}
       </div>

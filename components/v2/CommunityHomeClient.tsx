@@ -9,6 +9,7 @@ import V2StreamEngineBlock from '@/components/v2/V2StreamEngineBlock'
 import { useV2Toast } from '@/components/v2/V2Toast'
 import { V2_COMMUNITY_STATS } from '@/lib/v2/mockData'
 import { V2_ROUTES } from '@/lib/v2/routes'
+import type { CommunityPersonalization } from '@/lib/v2/data/personalization'
 import type { V2Circle, V2Session, V2Song } from '@/lib/v2/types'
 
 const HERO_IMG = 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=1800&q=80'
@@ -18,21 +19,35 @@ type Props = {
   circles: V2Circle[]
   feedbackSongs: V2Song[]
   usingDemoData?: boolean
+  personalization: CommunityPersonalization
 }
 
-export default function CommunityHomeClient({ sessions, circles, feedbackSongs, usingDemoData }: Props) {
+export default function CommunityHomeClient({ sessions, circles, feedbackSongs, usingDemoData, personalization }: Props) {
   const { showToast } = useV2Toast()
 
   const upcoming = sessions.filter(s => s.status !== 'ended')
   const featured = circles.filter(c => c.featured)
+  const { myCircles, mySubmissions, recommendedCircles, feedbackReceivedCount, userId } = personalization
 
   return (
     <>
       {usingDemoData && (
         <p className="v2-meta" style={{ marginBottom: 12 }}>
-          Previewing demo community data — circles and sessions will populate from your workspace once seeded.
+          Previewing demo community data — run migrations to seed live circles and sessions.
         </p>
       )}
+
+      {userId && myCircles.length > 0 && (
+        <section className="v2-section" style={{ marginTop: 0 }}>
+          <V2SectionHeader title="My circles" lead="Rooms you have joined." action={<Link href={V2_ROUTES.circles} className="v2-btn secondary sm">All circles</Link>} />
+          <div className="v2-grid cols-4">
+            {myCircles.slice(0, 4).map(circle => (
+              <V2CircleCard key={circle.id} circle={circle} />
+            ))}
+          </div>
+        </section>
+      )}
+
       <section
         className="v2-hero v2-hero--image"
         style={{ ['--v2-hero-img' as string]: `url('${HERO_IMG}')` }}
@@ -40,7 +55,7 @@ export default function CommunityHomeClient({ sessions, circles, feedbackSongs, 
         <div className="v2-hero-inner">
           <div className="v2-eyebrow">
             <span className="v2-pulse" />
-            {V2_COMMUNITY_STATS.membersStreamingNow} members streaming now · {V2_COMMUNITY_STATS.sessionsTonight} sessions tonight
+            {V2_COMMUNITY_STATS.membersStreamingNow} members streaming now · {upcoming.length || V2_COMMUNITY_STATS.sessionsTonight} sessions upcoming
           </div>
           <h2>
             <span className="v2-gradient-text">Build your sound.</span>
@@ -51,38 +66,49 @@ export default function CommunityHomeClient({ sessions, circles, feedbackSongs, 
             ViaTone 2.0 brings independent artists, AI creators, playlist streamers and curators into one community built around Circles, Sessions and shared playlist growth.
           </p>
           <div className="v2-hero-actions">
-            <Link href={V2_ROUTES.sessions} className="v2-btn hot">Join tonight&apos;s session</Link>
+            <Link href={V2_ROUTES.sessions} className="v2-btn hot">Join a session</Link>
             <Link href={V2_ROUTES.circles} className="v2-btn secondary">Explore Circles</Link>
           </div>
         </div>
         <div className="v2-hero-stats">
-          <div className="v2-stat"><strong>{V2_COMMUNITY_STATS.songsSubmitted}</strong><span>songs submitted</span></div>
-          <div className="v2-stat"><strong>{V2_COMMUNITY_STATS.communityListeningHours}h</strong><span>community listening</span></div>
-          <div className="v2-stat"><strong>{V2_COMMUNITY_STATS.feedbackCompletionPercent}%</strong><span>feedback completion</span></div>
+          <div className="v2-stat"><strong>{mySubmissions.length || V2_COMMUNITY_STATS.songsSubmitted}</strong><span>songs submitted</span></div>
+          <div className="v2-stat"><strong>{feedbackReceivedCount || '—'}</strong><span>feedback received</span></div>
+          <div className="v2-stat"><strong>{myCircles.length}</strong><span>circles joined</span></div>
         </div>
       </section>
 
       <section className="v2-section">
         <V2SectionHeader
-          title="Upcoming sessions"
+          title={personalization.joinedSessions.length ? 'Sessions I joined' : 'Upcoming sessions'}
           lead="Live and planned listening events — stream together, react and give feedback."
           action={<Link href={V2_ROUTES.sessions} className="v2-btn secondary sm">All sessions</Link>}
         />
         <div className="v2-grid cols-2">
           {upcoming.slice(0, 2).map(session => (
-            <V2SessionCard
-              key={session.id}
-              session={session}
-              onJoin={() => showToast(`Joined ${session.title}`)}
-            />
+            <V2SessionCard key={session.id} session={session} onJoin={() => showToast(`Joined ${session.title}`)} />
           ))}
         </div>
       </section>
 
+      {userId && mySubmissions.length > 0 && (
+        <section className="v2-section">
+          <V2SectionHeader title="My submissions" lead="Tracks you sent to circles, sessions and playlist rooms." />
+          <div className="v2-card">
+            {mySubmissions.map(s => (
+              <div key={s.id} className="v2-track">
+                <span className="num">♪</span>
+                <div><b>{s.title}</b><span>{s.targetLabel} · {s.targetType}</span></div>
+                <span className="v2-tag">{s.status}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="v2-section">
         <V2SectionHeader
-          title="Featured Circles"
-          lead="Activity-based music rooms with sessions, playlists and clear expectations."
+          title={recommendedCircles.length ? 'Recommended for you' : 'Featured Circles'}
+          lead="Based on your artist genres and community activity."
           action={
             <button type="button" className="v2-btn secondary sm" onClick={() => showToast('Create Circle — Host Pro')}>
               Create Circle
@@ -90,12 +116,8 @@ export default function CommunityHomeClient({ sessions, circles, feedbackSongs, 
           }
         />
         <div className="v2-grid cols-4">
-          {featured.map(circle => (
-            <V2CircleCard
-              key={circle.id}
-              circle={circle}
-              onJoin={() => showToast(`Joined ${circle.name}`)}
-            />
+          {(recommendedCircles.length ? recommendedCircles : featured).slice(0, 4).map(circle => (
+            <V2CircleCard key={circle.id} circle={circle} onJoin={() => showToast(`Joined ${circle.name}`)} />
           ))}
         </div>
       </section>
@@ -116,22 +138,12 @@ export default function CommunityHomeClient({ sessions, circles, feedbackSongs, 
           <V2SectionHeader
             title="Submit song to a Session"
             lead="Add your track once, link platforms, and use it across Circles and Sessions."
-            action={
-              <div className="v2-tagrow">
-                <span className="v2-tag">Spotify</span>
-                <span className="v2-tag">YouTube</span>
-                <span className="v2-tag">Tidal</span>
-              </div>
-            }
           />
           <p className="v2-meta" style={{ marginBottom: 16 }}>
-            {/* TODO: wire session submission to v2_session_songs + Aigent4U Stream Engine queue */}
-            Select a session and submit from your song catalog.
+            Open a session or circle page to submit — host approval required before queue.
           </p>
           <div className="v2-hero-actions">
-            <button type="button" className="v2-btn hot" onClick={() => showToast('Song submitted — connect Stream Engine in Host Pro')}>
-              Submit to session
-            </button>
+            <Link href={V2_ROUTES.sessions} className="v2-btn hot">Browse sessions</Link>
             <Link href={V2_ROUTES.songs} className="v2-btn secondary">Manage songs</Link>
           </div>
         </div>

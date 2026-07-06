@@ -701,6 +701,31 @@ body.v2-community-page .chat-dock-root {
   opacity: 1;
 }
 
+.v2-select,
+.v2-textarea {
+  width: 100%;
+  margin-top: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  color: var(--v2-text);
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.v2-feedback-item {
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.v2-feedback-item:last-child {
+  border-bottom: 0;
+}
+
+.v2-submit-panel label {
+  display: block;
+}
+
 @media (max-width: 1120px) {
   .v2-app {
     grid-template-columns: 1fr;

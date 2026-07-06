@@ -17,7 +17,8 @@ export default function V2StreamEngineBlock() {
             Automate the playlist. Document the support.
           </h3>
           <p className="v2-meta" style={{ fontSize: 16 }}>
-            Hosts set rules: playlist queue, max minutes, pause between lists, shuffle per playlist, cloud session and report after completion. The community gets a real listening experience — not just a chat with links.
+            Hosts set rules: playlist queue, max minutes, pause between lists, shuffle per playlist, cloud session and report after completion.
+            <strong style={{ display: 'block', marginTop: 8, color: 'var(--v2-brand2)' }}>Stream Engine coming soon — Powered by Aigent4U</strong>
           </p>
           <div className="v2-tagrow">
             <span className="v2-tag">Auto-Switch</span>
