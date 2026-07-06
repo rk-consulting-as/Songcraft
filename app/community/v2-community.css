@@ -668,6 +668,18 @@ body.v2-community-page .chat-dock-root {
   color: var(--v2-brand2);
 }
 
+.v2-nav-legacy {
+  margin-top: 8px;
+  padding-top: 12px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--v2-muted) !important;
+  font-size: 13px;
+}
+
+.v2-nav-legacy:hover {
+  color: var(--v2-brand2) !important;
+}
+
 .v2-toast {
   position: fixed;
   right: 22px;

@@ -356,7 +356,7 @@ export default function OnboardingPage() {
   const skipOnboarding = async () => {
     setSkipped(true)
     await saveProgress({ skipped: true })
-    router.push('/dashboard')
+    router.push('/community')
   }
 
   const restart = () => {
@@ -382,7 +382,7 @@ export default function OnboardingPage() {
     <main style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0a0f 0%, #12071e 50%, #0a0f0a 100%)', color: '#e8e0d0', padding: 24 }}>
       <div style={{ maxWidth: 980, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 24, flexWrap: 'wrap' }}>
-          <Link href="/dashboard" style={{ color: '#d4a843', textDecoration: 'none', letterSpacing: 3, fontSize: 13 }}>VIATONE</Link>
+          <Link href="/community" style={{ color: '#d4a843', textDecoration: 'none', letterSpacing: 3, fontSize: 13 }}>VIATONE</Link>
           <div style={{ display: 'flex', gap: 8 }}>
             <Link href="/playbook" className="btn-outline" style={{ textDecoration: 'none' }}>{tx.onboardingGoPlaybook}</Link>
             <button className="btn-outline" onClick={skipOnboarding}>{tx.onboardingSkip}</button>
@@ -535,7 +535,7 @@ export default function OnboardingPage() {
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 18 }}>
                 {artistId && <Link href={`/artist/${artistId}`} className="btn-gold" style={{ textDecoration: 'none' }}>{tx.onboardingOpenArtist}</Link>}
                 {songId && <Link href={`/song/${songId}`} className="btn-outline" style={{ textDecoration: 'none' }}>{tx.onboardingOpenSong}</Link>}
-                <Link href="/dashboard" className="btn-outline" style={{ textDecoration: 'none' }}>{tx.dashboard}</Link>
+                <Link href="/community" className="btn-outline" style={{ textDecoration: 'none' }}>{tx.dashboard}</Link>
               </div>
             </section>
           )}

@@ -129,7 +129,7 @@ export async function resolvePostAuthPath(): Promise<string> {
   const supabase = createClient()
   const { isEssentialSetupComplete } = await import('./checks')
 
-  if (isEssentialSetupComplete(ctx)) return '/dashboard'
+  if (isEssentialSetupComplete(ctx)) return '/community'
 
   const { data: progress } = await supabase
     .from('onboarding_progress')
@@ -137,6 +137,6 @@ export async function resolvePostAuthPath(): Promise<string> {
     .eq('user_id', ctx.userId)
     .maybeSingle()
 
-  if (progress?.completed) return '/dashboard'
+  if (progress?.completed) return '/community'
   return '/playbook'
 }

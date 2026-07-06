@@ -31,6 +31,9 @@ export default function V2Sidebar() {
             </Link>
           )
         })}
+        <Link href={V2_ROUTES.legacyStudio} className="v2-nav-legacy">
+          Legacy Studio
+        </Link>
       </nav>
       <div className="v2-sidebar-card">
         <b>Powered by Aigent4U</b>
@@ -40,7 +43,7 @@ export default function V2Sidebar() {
         </button>
       </div>
       <p className="v2-legacy-link">
-        Studio tools: <Link href="/dashboard">Legacy dashboard</Link>
+        Full studio tools: <Link href={V2_ROUTES.legacyStudio}>Open Legacy Studio</Link>
       </p>
     </aside>
   )

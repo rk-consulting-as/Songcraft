@@ -5,29 +5,35 @@ import V2SectionHeader from '@/components/v2/V2SectionHeader'
 import V2SessionCard from '@/components/v2/V2SessionCard'
 import V2SongCard from '@/components/v2/V2SongCard'
 import {
-  getCircleBySlug,
-  getSessionsForCircle,
-  getSongsForCircle,
-  V2_CIRCLES,
-  V2_SUPPORTERS,
-} from '@/lib/v2/mockData'
+  fetchCommunityCircleBySlug,
+  fetchCommunityCircles,
+  fetchSessionsForCircle,
+  fetchSongsForCircle,
+} from '@/lib/v2/data/community'
+import { V2_SUPPORTERS } from '@/lib/v2/mockData'
 import { V2_ROUTES } from '@/lib/v2/routes'
+
+export const dynamic = 'force-dynamic'
 
 type Props = { params: { slug: string } }
 
-export function generateStaticParams() {
-  return V2_CIRCLES.map(c => ({ slug: c.slug }))
-}
-
-export default function CircleDetailPage({ params }: Props) {
-  const circle = getCircleBySlug(params.slug)
+export default async function CircleDetailPage({ params }: Props) {
+  const { circle, fromMock: circleMock } = await fetchCommunityCircleBySlug(params.slug)
   if (!circle) notFound()
 
-  const sessions = getSessionsForCircle(circle.slug)
-  const songs = getSongsForCircle(circle.slug)
+  const [{ sessions }, { songs, fromMock: songsMock }, { circles: allCircles }] = await Promise.all([
+    fetchSessionsForCircle(circle.slug, circle.id),
+    fetchSongsForCircle(circle.slug),
+    fetchCommunityCircles(),
+  ])
+
+  const related = allCircles.filter(c => c.slug !== circle.slug).slice(0, 3)
 
   return (
     <>
+      {circleMock && (
+        <p className="v2-meta" style={{ marginBottom: 12 }}>Demo circle — your hosted circles will appear from v2_circles.</p>
+      )}
       <div
         className="v2-detail-hero"
         style={{ ['--v2-cover-img' as string]: `url('${circle.coverImageUrl}')` }}
@@ -69,6 +75,12 @@ export default function CircleDetailPage({ params }: Props) {
 
       <section className="v2-section">
         <V2SectionHeader title="Recent song submissions" />
+        {songsMock && (
+          <p className="v2-meta" style={{ marginBottom: 12 }}>
+            {/* TODO: join v2_session_songs with songs table for circle-scoped submissions */}
+            Demo submissions until session songs are linked.
+          </p>
+        )}
         <div className="v2-grid cols-3">
           {songs.map(song => <V2SongCard key={song.id} song={song} />)}
         </div>
@@ -77,7 +89,7 @@ export default function CircleDetailPage({ params }: Props) {
       <section className="v2-section">
         <V2SectionHeader title="Related circles" />
         <div className="v2-grid cols-3">
-          {V2_CIRCLES.filter(c => c.slug !== circle.slug).slice(0, 3).map(c => (
+          {related.map(c => (
             <V2CircleCard key={c.id} circle={c} />
           ))}
         </div>

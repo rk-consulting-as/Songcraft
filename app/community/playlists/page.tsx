@@ -1,17 +1,26 @@
 import Link from 'next/link'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
-import { V2_PLAYLISTS } from '@/lib/v2/mockData'
+import { fetchPlaylistRooms } from '@/lib/v2/data/community'
 import { V2_ROUTES } from '@/lib/v2/routes'
 
-export default function PlaylistsIndexPage() {
+export const dynamic = 'force-dynamic'
+
+export default async function PlaylistsIndexPage() {
+  const { rooms, fromMock } = await fetchPlaylistRooms()
+
   return (
     <>
       <V2SectionHeader
         title="Playlist Rooms"
         lead="Persistent rooms around playlists — connected to the Stream Engine."
       />
+      {fromMock && (
+        <p className="v2-meta" style={{ marginBottom: 12 }}>
+          Demo playlist rooms — link creator_playlists to v2_playlist_rooms when ready.
+        </p>
+      )}
       <div className="v2-grid cols-2" style={{ marginTop: 16 }}>
-        {V2_PLAYLISTS.map(room => (
+        {rooms.map(room => (
           <article key={room.id} className="v2-card">
             <div className="v2-cover" style={{ ['--v2-cover-img' as string]: `url('${room.coverImageUrl}')` }} />
             <h4>{room.name}</h4>

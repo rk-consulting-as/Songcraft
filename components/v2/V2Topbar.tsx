@@ -21,7 +21,7 @@ export default function V2Topbar({ onSearch, showSubmit = true }: Props) {
         />
       </div>
       <div className="v2-topbar-actions">
-        <Link href="/dashboard" className="v2-btn secondary sm">Legacy studio</Link>
+        <Link href={V2_ROUTES.legacyStudio} className="v2-btn secondary sm">Legacy Studio</Link>
         <Link href={V2_ROUTES.artists} className="v2-btn secondary sm">+ Add artist</Link>
         {showSubmit && (
           <Link href={`${V2_ROUTES.home}#submit`} className="v2-btn sm">Submit song</Link>

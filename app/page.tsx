@@ -9,7 +9,7 @@ const i18n = {
   en: {
     navLogin: 'Log in',
     navGetStarted: 'Get started',
-    navOpenDashboard: 'Open dashboard →',
+    navOpenDashboard: 'Open community →',
     heroBadge: 'ONLINE ARTIST PLATFORM · FOR ARTISTS, PRODUCERS & MANAGERS',
     heroTitleA: 'From ',
     heroTitleHighlight1: 'idea',
@@ -18,7 +18,7 @@ const i18n = {
     heroTitleC: 'in one place.',
     heroSubtitle: 'Create, release, promote and grow your music. ViaTone brings lyrics, prompts, cover art, campaigns, fan pages and analytics into one artist operating system.',
     heroCtaPrimary: 'Get started free →',
-    heroCtaPrimaryLoggedIn: 'Open dashboard →',
+    heroCtaPrimaryLoggedIn: 'Open community →',
     heroCtaSecondary: 'See what you get',
     heroPoweredBy: 'Powered by Anthropic Claude · OpenAI · Spotify · Suno · fal.ai',
     flowHeader: 'THE CREATIVE FLOW',
@@ -64,13 +64,13 @@ const i18n = {
     ctaTitle: 'Ready to make the next track?',
     ctaBody: 'Free to start. Bring your own AI key (Anthropic + optional OpenAI) — we handle the rest.',
     ctaButton: 'Get started →',
-    ctaButtonLoggedIn: 'Open dashboard →',
+    ctaButtonLoggedIn: 'Open community →',
     footerTag: 'Online Artist Platform',
   },
   no: {
     navLogin: 'Logg inn',
     navGetStarted: 'Kom i gang',
-    navOpenDashboard: 'Åpne dashboard →',
+    navOpenDashboard: 'Åpne community →',
     heroBadge: 'ONLINE ARTIST PLATFORM · FOR ARTISTER, PRODUSENTER & MANAGERE',
     heroTitleA: 'Fra ',
     heroTitleHighlight1: 'idé',
@@ -79,7 +79,7 @@ const i18n = {
     heroTitleC: 'på samme sted.',
     heroSubtitle: 'Skap, release, promoter og voks med musikken din. ViaTone samler tekst, prompter, cover, kampanjer, fan-sider og analytics i ett artist-operativsystem.',
     heroCtaPrimary: 'Kom i gang gratis →',
-    heroCtaPrimaryLoggedIn: 'Åpne dashboard →',
+    heroCtaPrimaryLoggedIn: 'Åpne community →',
     heroCtaSecondary: 'Se hva du får',
     heroPoweredBy: 'Drevet av Anthropic Claude · OpenAI · Spotify · Suno · fal.ai',
     flowHeader: 'DEN KREATIVE FLYTEN',
@@ -125,7 +125,7 @@ const i18n = {
     ctaTitle: 'Klar til å lage neste låt?',
     ctaBody: 'Gratis å starte. Bring din egen AI-nøkkel (Anthropic + valgfritt OpenAI) — vi tar hånd om resten.',
     ctaButton: 'Kom i gang →',
-    ctaButtonLoggedIn: 'Åpne dashboard →',
+    ctaButtonLoggedIn: 'Åpne community →',
     footerTag: 'Online Artist Platform',
   },
 } as const
@@ -205,7 +205,7 @@ export default function Home() {
           </div>
 
           {loggedIn === true ? (
-            <Link href="/dashboard" style={{
+            <Link href="/community" style={{
               padding: '9px 22px', background: accent, color: '#0a0a0f',
               borderRadius: 4, textDecoration: 'none', fontWeight: 600, fontSize: 13,
             }}>{t.navOpenDashboard}</Link>
@@ -259,7 +259,7 @@ export default function Home() {
             {t.heroSubtitle}
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 40, flexWrap: 'wrap' }}>
-            <Link href="/login" style={{
+            <Link href={loggedIn ? '/community' : '/login'} style={{
               padding: '14px 30px', background: accent, color: '#0a0a0f',
               borderRadius: 6, textDecoration: 'none', fontWeight: 700, fontSize: 15,
               letterSpacing: '0.5px',
@@ -444,7 +444,7 @@ export default function Home() {
         <p style={{ color: '#a09080', fontSize: 15, maxWidth: 540, margin: '0 auto 32px', lineHeight: 1.6 }}>
           {t.ctaBody}
         </p>
-        <Link href="/login" style={{
+        <Link href={loggedIn ? '/community' : '/login'} style={{
           display: 'inline-block',
           padding: '16px 36px', background: accent, color: '#0a0a0f',
           borderRadius: 6, textDecoration: 'none', fontWeight: 700, fontSize: 15,

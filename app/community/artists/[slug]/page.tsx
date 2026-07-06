@@ -2,21 +2,23 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
 import V2SongCard from '@/components/v2/V2SongCard'
-import { getArtistBySlug, V2_ARTISTS, V2_SONGS } from '@/lib/v2/mockData'
+import { fetchCommunityArtistBySlug } from '@/lib/v2/data/artists'
+import { fetchSongsForArtistId } from '@/lib/v2/data/songs'
 import { V2_ROUTES } from '@/lib/v2/routes'
 import { clientPublicUrl } from '@/lib/appUrl'
 
+export const dynamic = 'force-dynamic'
+
 type Props = { params: { slug: string } }
 
-export function generateStaticParams() {
-  return V2_ARTISTS.map(a => ({ slug: a.slug }))
-}
-
-export default function ArtistDetailPage({ params }: Props) {
-  const artist = getArtistBySlug(params.slug)
+export default async function ArtistDetailPage({ params }: Props) {
+  const { artist, fromMock } = await fetchCommunityArtistBySlug(params.slug)
   if (!artist) notFound()
 
-  const songs = V2_SONGS.filter(s => s.artistSlug === artist.slug)
+  const songs = artist.legacyArtistId && !fromMock
+    ? await fetchSongsForArtistId(artist.legacyArtistId)
+    : []
+
   const publicUrl = artist.publicPageSlug ? clientPublicUrl(`/p/${artist.publicPageSlug}`) : null
 
   return (
@@ -40,32 +42,32 @@ export default function ArtistDetailPage({ params }: Props) {
               Public page ↗
             </a>
           )}
+          {artist.legacyArtistId && (
+            <Link href={`/artist/${artist.legacyArtistId}`} className="v2-btn secondary">
+              Legacy workspace
+            </Link>
+          )}
         </div>
       </div>
 
       <section className="v2-section" style={{ marginTop: 0 }}>
-        <V2SectionHeader title="Streaming links" lead="One place for fans to listen." />
-        <div className="v2-grid cols-2">
-          {artist.platforms.map(platform => (
-            <div key={platform} className="v2-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ textTransform: 'capitalize' }}>{platform}</span>
-              <span className="v2-btn secondary sm">Listen</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="v2-section">
         <V2SectionHeader title="Songs" action={<Link href={V2_ROUTES.songs} className="v2-btn secondary sm">All songs</Link>} />
-        <div className="v2-grid cols-3">
-          {songs.map(song => <V2SongCard key={song.id} song={song} />)}
-        </div>
+        {songs.length > 0 ? (
+          <div className="v2-grid cols-3">
+            {songs.map(song => <V2SongCard key={song.id} song={song} />)}
+          </div>
+        ) : (
+          <p className="v2-meta">No songs in catalog yet.{fromMock ? ' Demo profile.' : ' Create songs in Legacy Studio.'}</p>
+        )}
       </section>
 
       <section className="v2-section">
         <V2SectionHeader title="Circles & sessions" lead="Where this artist shows up in the community." />
         <div className="v2-card">
-          <p className="v2-meta">Active in {artist.circleCount} circles · Featured in Friday Dark Country Stream</p>
+          <p className="v2-meta">
+            Active in {artist.circleCount || 0} circles
+            {/* TODO: v2_circle_members + session_songs when community tables are seeded */}
+          </p>
           <Link href={V2_ROUTES.sessions} className="v2-btn sm" style={{ marginTop: 12 }}>Browse sessions</Link>
         </div>
       </section>

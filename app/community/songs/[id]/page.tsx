@@ -1,21 +1,22 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
-import { getSongById, V2_SONGS } from '@/lib/v2/mockData'
+import { fetchCommunitySongById } from '@/lib/v2/data/songs'
 import { V2_ROUTES } from '@/lib/v2/routes'
+
+export const dynamic = 'force-dynamic'
 
 type Props = { params: { id: string } }
 
-export function generateStaticParams() {
-  return V2_SONGS.map(s => ({ id: s.id }))
-}
-
-export default function SongDetailPage({ params }: Props) {
-  const song = getSongById(params.id)
+export default async function SongDetailPage({ params }: Props) {
+  const { song, fromMock } = await fetchCommunitySongById(params.id)
   if (!song) notFound()
 
   return (
     <>
+      {fromMock && (
+        <p className="v2-meta" style={{ marginBottom: 12 }}>Demo song — your catalog uses real song IDs from Legacy Studio.</p>
+      )}
       <div className="v2-grid cols-2" style={{ gap: 24 }}>
         <div
           className="v2-cover"
@@ -42,6 +43,9 @@ export default function SongDetailPage({ params }: Props) {
           <div className="v2-hero-actions" style={{ marginTop: 20 }}>
             <button type="button" className="v2-btn hot">Submit to session</button>
             <Link href={V2_ROUTES.sessions} className="v2-btn secondary">Find session</Link>
+            {song.legacySongId && !fromMock && (
+              <Link href={`/song/${song.legacySongId}`} className="v2-btn secondary">Song Studio</Link>
+            )}
           </div>
         </div>
       </div>
@@ -56,7 +60,7 @@ export default function SongDetailPage({ params }: Props) {
             </a>
           ))}
           {!Object.keys(song.platforms).length && (
-            <p className="v2-meta">No streaming links yet. Add links in Song Studio (legacy) or upcoming v2 editor.</p>
+            <p className="v2-meta">No streaming links yet — add them in Song Studio (legacy).</p>
           )}
         </div>
       </section>
