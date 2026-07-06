@@ -55,3 +55,32 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }
+
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  const auth = await requireV2User(req)
+  if (!auth) return NextResponse.json({ error: 'not_authenticated' }, { status: 401 })
+  const { sb, userId } = auth
+
+  const { data: session } = await resolveSession(params.id)
+  if (!session) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+
+  const body = await req.json().catch(() => ({}))
+  const patch: Record<string, unknown> = {}
+
+  if (body.listened === true) patch.listened_at = new Date().toISOString()
+  if (typeof body.note === 'string') patch.participation_note = body.note.slice(0, 300)
+
+  if (!Object.keys(patch).length) return NextResponse.json({ error: 'invalid_payload' }, { status: 400 })
+
+  const { data, error } = await sb
+    .from('v2_session_participation')
+    .update(patch)
+    .eq('session_id', session.id)
+    .eq('user_id', userId)
+    .select('id, listened_at, participation_note')
+    .maybeSingle()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!data) return NextResponse.json({ error: 'join_first' }, { status: 400 })
+  return NextResponse.json({ participation: data })
+}

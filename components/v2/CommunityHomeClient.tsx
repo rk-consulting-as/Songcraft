@@ -27,7 +27,7 @@ export default function CommunityHomeClient({ sessions, circles, feedbackSongs, 
 
   const upcoming = sessions.filter(s => s.status !== 'ended')
   const featured = circles.filter(c => c.featured)
-  const { myCircles, mySubmissions, recommendedCircles, feedbackReceivedCount, userId } = personalization
+  const { myCircles, mySubmissions, recommendedCircles, feedbackReceivedCount, userId, liveSessions, recentCompletedSessions, recentRoomActivity, myParticipationSummary } = personalization
 
   return (
     <>
@@ -89,6 +89,58 @@ export default function CommunityHomeClient({ sessions, circles, feedbackSongs, 
           ))}
         </div>
       </section>
+
+      {liveSessions.length > 0 && (
+        <section className="v2-section">
+          <V2SectionHeader title="Live now" lead="Stream Engine beta — join a listening room." action={<Link href={V2_ROUTES.sessions} className="v2-btn secondary sm">All sessions</Link>} />
+          <div className="v2-grid cols-2">
+            {liveSessions.map(session => (
+              <V2SessionCard key={session.id} session={session} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {userId && (
+        <section className="v2-section">
+          <V2SectionHeader title="My participation" lead="Your community listening activity." />
+          <div className="v2-grid cols-3">
+            <div className="v2-stat"><strong>{myParticipationSummary.sessionsJoined}</strong><span>sessions joined</span></div>
+            <div className="v2-stat"><strong>{myParticipationSummary.sessionsListened}</strong><span>sessions listened</span></div>
+            <div className="v2-stat"><strong>{myParticipationSummary.playlistSubmissions}</strong><span>playlist submits</span></div>
+          </div>
+        </section>
+      )}
+
+      {recentCompletedSessions.length > 0 && (
+        <section className="v2-section">
+          <V2SectionHeader title="Recent session recaps" lead="Completed listening rooms — powered by Stream Engine beta." />
+          <div className="v2-grid cols-2">
+            {recentCompletedSessions.map(recap => (
+              <article key={recap.sessionId} className="v2-card v2-recap">
+                <h4 style={{ margin: '0 0 8px' }}>{recap.title}</h4>
+                <p className="v2-meta">{recap.songsPlayed.length} songs · {recap.participantCount} participants · {recap.feedbackCount} feedback</p>
+                <Link href={V2_ROUTES.session(recap.sessionId)} className="v2-btn secondary sm" style={{ marginTop: 12 }}>View recap</Link>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {recentRoomActivity.length > 0 && (
+        <section className="v2-section">
+          <V2SectionHeader title="Playlist room activity" action={<Link href={V2_ROUTES.playlists} className="v2-btn secondary sm">All rooms</Link>} />
+          <div className="v2-card">
+            {recentRoomActivity.map(room => (
+              <div key={room.roomSlug} className="v2-track">
+                <span className="num">♫</span>
+                <div><b>{room.roomName}</b><span>{room.lastPlayedTitle ? `Last: ${room.lastPlayedTitle}` : 'No plays yet'} · {room.roundStatus}</span></div>
+                <Link href={V2_ROUTES.playlistRoom(room.roomSlug)} className="v2-btn sm secondary">Open</Link>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {userId && mySubmissions.length > 0 && (
         <section className="v2-section">

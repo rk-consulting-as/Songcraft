@@ -1,24 +1,13 @@
 import { createServerSupabase } from '@/lib/supabase/server'
 import { fetchCommunityCircles, fetchCommunitySessions, mapCircleRow, mapSessionRow } from '@/lib/v2/data/community'
-import type { V2Circle, V2Session } from '@/lib/v2/types'
+import {
+  fetchLiveSessions,
+  fetchRecentCompletedRecaps,
+  fetchRecentRoomActivity,
+} from '@/lib/v2/data/streamEngine'
+import type { CommunityPersonalization, V2Circle, V2Session } from '@/lib/v2/types'
 
-export type CommunityPersonalization = {
-  userId: string | null
-  myCircles: V2Circle[]
-  joinedSessions: V2Session[]
-  mySubmissions: {
-    id: string
-    title: string
-    artistName: string
-    targetType: 'circle' | 'session' | 'playlist'
-    targetLabel: string
-    status: 'pending' | 'approved' | 'removed'
-    createdAt: string
-  }[]
-  recommendedCircles: V2Circle[]
-  feedbackReceivedCount: number
-  upcomingSessions: V2Session[]
-}
+export type { CommunityPersonalization } from '@/lib/v2/types'
 
 export async function fetchCommunityPersonalization(): Promise<CommunityPersonalization> {
   const supabase = createServerSupabase()
@@ -28,7 +17,8 @@ export async function fetchCommunityPersonalization(): Promise<CommunityPersonal
 
   if (!user) {
     const { circles } = await fetchCommunityCircles()
-    return {
+    const liveSessions = await fetchLiveSessions()
+  return {
       userId: null,
       myCircles: [],
       joinedSessions: [],
@@ -36,6 +26,10 @@ export async function fetchCommunityPersonalization(): Promise<CommunityPersonal
       recommendedCircles: circles.filter(c => c.featured).slice(0, 4),
       feedbackReceivedCount: 0,
       upcomingSessions,
+      liveSessions,
+      recentCompletedSessions: [],
+      recentRoomActivity: await fetchRecentRoomActivity(),
+      myParticipationSummary: { sessionsJoined: 0, sessionsListened: 0, playlistSubmissions: 0 },
     }
   }
 
@@ -88,10 +82,11 @@ export async function fetchCommunityPersonalization(): Promise<CommunityPersonal
     .slice(0, 4)
     .map(r => mapCircleRow(r as Record<string, unknown>))
 
-  const [{ data: circleSubs }, { data: sessionSubs }, { data: playlistSubs }] = await Promise.all([
+  const [{ data: circleSubs }, { data: sessionSubs }, { data: playlistSubs }, { count: listenedCount }] = await Promise.all([
     supabase.from('v2_circle_songs').select('id, status, created_at, songs(title), v2_circles(name)').eq('submitted_by', user.id).order('created_at', { ascending: false }).limit(12),
     supabase.from('v2_session_songs').select('id, status, created_at, title, artist_name, v2_sessions(title)').eq('submitted_by', user.id).order('created_at', { ascending: false }).limit(12),
     supabase.from('v2_playlist_room_items').select('id, created_at, title, artist_name, v2_playlist_rooms(name)').eq('submitted_by', user.id).order('created_at', { ascending: false }).limit(12),
+    supabase.from('v2_session_participation').select('id', { count: 'exact', head: true }).eq('user_id', user.id).not('listened_at', 'is', null),
   ])
 
   const mySubmissions = [
@@ -126,6 +121,12 @@ export async function fetchCommunityPersonalization(): Promise<CommunityPersonal
 
   const { circles } = await fetchCommunityCircles()
 
+  const [liveSessions, recentCompletedSessions, recentRoomActivity] = await Promise.all([
+    fetchLiveSessions(),
+    fetchRecentCompletedRecaps(3),
+    fetchRecentRoomActivity(),
+  ])
+
   return {
     userId: user.id,
     myCircles,
@@ -134,5 +135,13 @@ export async function fetchCommunityPersonalization(): Promise<CommunityPersonal
     recommendedCircles: recommended.length ? recommended : circles.filter(c => c.featured).slice(0, 4),
     feedbackReceivedCount: feedbackCountRes.count || 0,
     upcomingSessions,
+    liveSessions,
+    recentCompletedSessions,
+    recentRoomActivity,
+    myParticipationSummary: {
+      sessionsJoined: joinedSessions.length,
+      sessionsListened: listenedCount || 0,
+      playlistSubmissions: (playlistSubs || []).length,
+    },
   }
 }

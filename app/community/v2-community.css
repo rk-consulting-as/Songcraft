@@ -726,6 +726,19 @@ body.v2-community-page .chat-dock-root {
   display: block;
 }
 
+.v2-now-playing {
+  border-color: rgba(255, 80, 120, 0.35);
+  box-shadow: 0 0 40px rgba(255, 60, 100, 0.12);
+}
+
+.v2-recap {
+  border-color: rgba(120, 200, 255, 0.2);
+}
+
+.v2-engine-header {
+  margin-bottom: 12px;
+}
+
 @media (max-width: 1120px) {
   .v2-app {
     grid-template-columns: 1fr;

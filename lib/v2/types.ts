@@ -24,6 +24,53 @@ export type V2Circle = {
 
 export type V2SessionStatus = 'live' | 'upcoming' | 'ended'
 
+/** UI label: ended = completed */
+export type V2SessionDisplayStatus = 'upcoming' | 'live' | 'completed'
+
+export type V2SessionPlayLog = {
+  id: string
+  sessionId: string
+  sessionSongId?: string
+  songId?: string
+  title: string
+  artistName: string
+  playedByName: string
+  playedAt: string
+  source: 'manual_host' | 'auto'
+  note?: string
+}
+
+export type V2SessionParticipant = {
+  id: string
+  userId: string
+  displayName: string
+  status: 'joined' | 'reserved' | 'left'
+  joinedAt: string
+  listenedAt?: string
+  note?: string
+}
+
+export type V2SessionRecap = {
+  sessionId: string
+  title: string
+  songsPlayed: V2SessionPlayLog[]
+  participantCount: number
+  listenedCount: number
+  feedbackCount: number
+  topSupporters: { name: string; count: number }[]
+  hostNotes: string[]
+  completedAt?: string
+}
+
+export type V2PlaylistRoomActivity = {
+  recentSubmissions: { id: string; title: string; artistName: string; createdAt: string }[]
+  lastPlayed: { id: string; title: string; artistName: string; playedAt: string }[]
+  listenedCount: number
+  roundStatus: 'active' | 'completed'
+  lastCompletedAt?: string
+  linkedSessions: { id: string; title: string; status: V2SessionStatus }[]
+}
+
 export type V2QueueTrack = {
   position: number
   title: string
@@ -95,8 +142,12 @@ export type V2PlaylistRoom = {
   coverImageUrl: string
   trackCount: number
   circleSlug?: string
+  circleId?: string
   platform: PlatformTag
   campaignId?: string
+  ownerUserId?: string
+  roundStatus?: 'active' | 'completed'
+  lastCompletedAt?: string
 }
 
 export type V2Supporter = {
@@ -132,17 +183,24 @@ export type V2SessionSongRow = {
   status: V2SubmissionStatus
   position: number
   submittedBy?: string
+  submittedByName?: string
   isNowPlaying?: boolean
   duration?: string
+  playedAt?: string
 }
 
-export type V2CommunityPersonalization = {
+export type CommunityPersonalization = {
   userId: string | null
   myCircles: V2Circle[]
   joinedSessions: V2Session[]
   mySubmissions: { id: string; title: string; artistName: string; targetType: 'circle' | 'session' | 'playlist'; targetLabel: string; status: V2SubmissionStatus; createdAt: string }[]
   recommendedCircles: V2Circle[]
   feedbackReceivedCount: number
+  upcomingSessions: V2Session[]
+  liveSessions: V2Session[]
+  recentCompletedSessions: V2SessionRecap[]
+  recentRoomActivity: { roomSlug: string; roomName: string; lastPlayedTitle?: string; roundStatus: string }[]
+  myParticipationSummary: { sessionsJoined: number; sessionsListened: number; playlistSubmissions: number }
 }
 
 export type V2CommunityStats = {

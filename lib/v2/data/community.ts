@@ -113,10 +113,17 @@ export async function fetchCommunitySessionById(id: string): Promise<{
   session.isHost = user?.id === data.host_user_id
   const { data: queueRows } = await supabase
     .from('v2_session_songs')
-    .select('id, session_id, song_id, title, artist_name, duration_label, is_now_playing, status, position, submitted_by')
+    .select('id, session_id, song_id, title, artist_name, duration_label, is_now_playing, status, position, submitted_by, played_at')
     .eq('session_id', data.id)
     .neq('status', 'removed')
     .order('position', { ascending: true })
+
+  const submitterIds = Array.from(new Set((queueRows || []).map(q => q.submitted_by).filter(Boolean))) as string[]
+  let submitterNames: Record<string, string> = {}
+  if (submitterIds.length) {
+    const { data: profiles } = await supabase.from('profiles').select('id, display_name').in('id', submitterIds)
+    submitterNames = Object.fromEntries((profiles || []).map(p => [p.id, p.display_name || 'Member']))
+  }
 
   const mappedRows: import('@/lib/v2/types').V2SessionSongRow[] = (queueRows || []).map(q => ({
     id: q.id,
@@ -127,12 +134,14 @@ export async function fetchCommunitySessionById(id: string): Promise<{
     status: (q.status || 'approved') as import('@/lib/v2/types').V2SubmissionStatus,
     position: q.position,
     submittedBy: q.submitted_by ?? undefined,
+    submittedByName: q.submitted_by ? submitterNames[q.submitted_by] : undefined,
     isNowPlaying: q.is_now_playing,
     duration: q.duration_label || '',
+    playedAt: q.played_at ?? undefined,
   }))
 
   if (mappedRows.length) {
-    session.queue = mappedRows.filter(r => r.status === 'approved').map(q => ({
+    session.queue = mappedRows.filter(r => r.status === 'approved' && !r.playedAt).map(q => ({
       position: q.position,
       title: q.title,
       artistName: q.artistName,
@@ -261,7 +270,11 @@ export async function fetchPlaylistRoomBySlug(slug: string): Promise<{ room: V2P
       trackCount: Number(data.track_count || 0),
       platform: (data.platform as PlatformTag) || 'spotify',
       circleSlug: circle?.slug,
+      circleId: data.circle_id ? String(data.circle_id) : undefined,
       campaignId: data.creator_playlist_id ? String(data.creator_playlist_id) : undefined,
+      ownerUserId: data.owner_user_id ? String(data.owner_user_id) : undefined,
+      roundStatus: (data.round_status as 'active' | 'completed') || 'active',
+      lastCompletedAt: data.last_completed_at ?? undefined,
     },
     fromMock: false,
   }

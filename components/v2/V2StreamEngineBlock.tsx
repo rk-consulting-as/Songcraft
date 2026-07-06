@@ -1,10 +1,9 @@
 'use client'
 
-import { useV2Toast } from './V2Toast'
+import Link from 'next/link'
+import { V2_ROUTES } from '@/lib/v2/routes'
 
 export default function V2StreamEngineBlock() {
-  const { showToast } = useV2Toast()
-
   return (
     <div className="v2-card v2-engine">
       <div className="v2-engine-grid">
@@ -14,21 +13,21 @@ export default function V2StreamEngineBlock() {
             ViaTone Stream Engine · Powered by Aigent4U
           </div>
           <h3 style={{ fontSize: 38, margin: '0 0 10px', letterSpacing: '-0.05em' }}>
-            Automate the playlist. Document the support.
+            Manual-first listening rooms. Real play logs.
           </h3>
           <p className="v2-meta" style={{ fontSize: 16 }}>
-            Hosts set rules: playlist queue, max minutes, pause between lists, shuffle per playlist, cloud session and report after completion.
-            <strong style={{ display: 'block', marginTop: 8, color: 'var(--v2-brand2)' }}>Stream Engine coming soon — Powered by Aigent4U</strong>
+            Beta hosts start sessions, mark tracks played, and generate recaps. Full Spotify Auto-Switch automation arrives via Aigent4U.
+            <strong style={{ display: 'block', marginTop: 8, color: 'var(--v2-brand2)' }}>Stream Engine Beta — host-controlled playback</strong>
           </p>
           <div className="v2-tagrow">
-            <span className="v2-tag">Auto-Switch</span>
-            <span className="v2-tag">Cloud queue</span>
             <span className="v2-tag">Play log</span>
-            <span className="v2-tag">Proof report</span>
+            <span className="v2-tag">Live queue</span>
+            <span className="v2-tag">Session recap</span>
+            <span className="v2-tag">Participation</span>
           </div>
-          <button type="button" className="v2-btn hot sm" style={{ marginTop: 14 }} onClick={() => showToast('Stream Engine — Host Pro integration TODO')}>
-            Open engine
-          </button>
+          <Link href={V2_ROUTES.sessions} className="v2-btn hot sm" style={{ marginTop: 14, display: 'inline-block' }}>
+            Browse sessions
+          </Link>
         </div>
         <div>
           <div className="v2-bars" aria-hidden="true">
@@ -42,18 +41,18 @@ export default function V2StreamEngineBlock() {
           <div className="v2-queue">
             <div className="v2-track now">
               <span className="num">▶</span>
-              <div><b>Now switching</b><span>Dark Country Rotation</span></div>
-              <span>02:14</span>
+              <div><b>Mark played</b><span>Host logs each track</span></div>
+              <span>BETA</span>
             </div>
             <div className="v2-track">
-              <span className="num">↻</span>
-              <div><b>Shuffle songs</b><span>Enabled per playlist</span></div>
+              <span className="num">👂</span>
+              <div><b>I listened</b><span>Member participation</span></div>
               <span>ON</span>
             </div>
             <div className="v2-track">
               <span className="num">◎</span>
-              <div><b>Session report</b><span>Generated after completion</span></div>
-              <span>PRO</span>
+              <div><b>Session recap</b><span>After host ends session</span></div>
+              <span>LOG</span>
             </div>
           </div>
         </div>

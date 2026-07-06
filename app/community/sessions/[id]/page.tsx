@@ -2,10 +2,16 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import V2ReportButton from '@/components/v2/V2ReportButton'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
-import V2SessionWorkspace from '@/components/v2/V2SessionWorkspace'
 import V2StreamEngineBlock from '@/components/v2/V2StreamEngineBlock'
+import V2StreamEnginePanel from '@/components/v2/V2StreamEnginePanel'
 import V2SubmitSongPanel from '@/components/v2/V2SubmitSongPanel'
 import { fetchCommunitySessionById } from '@/lib/v2/data/community'
+import {
+  fetchSessionParticipants,
+  fetchSessionPlayLogs,
+  fetchSessionRecap,
+  parseStreamMeta,
+} from '@/lib/v2/data/streamEngine'
 import { formatSessionBadge } from '@/lib/v2/mockData'
 import { V2_ROUTES } from '@/lib/v2/routes'
 import { createServerSupabase } from '@/lib/supabase/server'
@@ -22,6 +28,33 @@ export default async function SessionDetailPage({ params }: Props) {
   const { session, fromMock, queueRows, isHost, userJoined } = await fetchCommunitySessionById(params.id)
   if (!session) notFound()
 
+  let playLogs: Awaited<ReturnType<typeof fetchSessionPlayLogs>> = []
+  let participants: Awaited<ReturnType<typeof fetchSessionParticipants>> = []
+  let hostNotes: string[] = []
+  let recap = null
+  let userListened = false
+
+  if (!fromMock) {
+    const { data: raw } = await supabase.from('v2_sessions').select('stream_engine_meta').eq('id', session.id).maybeSingle()
+    hostNotes = parseStreamMeta(raw?.stream_engine_meta).host_notes || []
+    ;[playLogs, participants] = await Promise.all([
+      fetchSessionPlayLogs(session.id),
+      fetchSessionParticipants(session.id),
+    ])
+    if (session.status === 'ended') {
+      recap = await fetchSessionRecap(session.id, session.title)
+    }
+    if (user && userJoined) {
+      const { data: part } = await supabase
+        .from('v2_session_participation')
+        .select('listened_at')
+        .eq('session_id', session.id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+      userListened = !!part?.listened_at
+    }
+  }
+
   const badge = formatSessionBadge(session)
   const statusLabel = session.status === 'ended' ? 'Completed' : session.status === 'live' ? 'Live now' : 'Upcoming'
 
@@ -32,7 +65,7 @@ export default async function SessionDetailPage({ params }: Props) {
     <>
       {fromMock && (
         <p className="v2-meta" style={{ marginBottom: 12 }}>
-          Demo session — live queue sync will connect via Aigent4U Stream Engine.
+          Demo session — apply migrations and seed for Stream Engine beta controls.
         </p>
       )}
       <div
@@ -40,7 +73,7 @@ export default async function SessionDetailPage({ params }: Props) {
         style={{ ['--v2-cover-img' as string]: `url('${session.coverImageUrl}')` }}
       >
         <div className="v2-eyebrow">
-          <span className="v2-pulse" />
+          {session.status === 'live' && <span className="v2-pulse" />}
           {badge} · {statusLabel} · {session.platform}
         </div>
         <h1>{session.title}</h1>
@@ -54,36 +87,37 @@ export default async function SessionDetailPage({ params }: Props) {
         </p>
         <div className="v2-tagrow">
           {session.features.map(f => <span key={f} className="v2-tag">{f}</span>)}
+          <span className="v2-tag">Powered by Aigent4U</span>
         </div>
         {!fromMock && <div style={{ marginTop: 12 }}><V2ReportButton targetType="session" targetId={session.id} /></div>}
       </div>
 
       <div className="v2-grid cols-2">
         <section className="v2-section" style={{ marginTop: 0 }}>
-          <V2SectionHeader title="Queue / playlist" lead="Approved tracks — Stream Engine coming soon." />
-          <V2SessionWorkspace
+          <V2SectionHeader title="Stream Engine" lead="Manual host-controlled playback — beta safe." />
+          <V2StreamEnginePanel
             sessionId={session.id}
+            sessionStatus={session.status}
             queue={queueRows}
+            playLogs={playLogs}
+            participants={participants}
+            hostNotes={hostNotes}
+            recap={recap}
             isHost={isHost}
             demoMode={fromMock}
             userJoined={userJoined}
+            userListened={userListened}
           />
         </section>
         <section className="v2-section" style={{ marginTop: 0 }}>
-          <V2SectionHeader title="Submit your song" lead={session.status === 'ended' ? 'Session completed.' : 'Pending host approval before queue.'} />
-          <div className="v2-card">
-            {session.status === 'ended' ? (
-              <p className="v2-meta">This session has ended. Browse upcoming sessions for the next round.</p>
-            ) : (
-              <V2SubmitSongPanel target={{ type: 'session', id: session.id, label: session.title }} songs={submitSongs} demoMode={fromMock} />
-            )}
-          </div>
-          <div className="v2-card" style={{ marginTop: 16 }}>
-            <div className="v2-queue">
-              <div className="v2-track"><span className="num">👥</span><div><b>{session.joinedCount} joined</b><span>Listeners</span></div></div>
-              <div className="v2-track"><span className="num">📋</span><div><b>Session recap</b><span>After session ends</span></div></div>
-            </div>
-          </div>
+          {session.status !== 'ended' && (
+            <>
+              <V2SectionHeader title="Submit your song" lead="Host approval before queue." />
+              <div className="v2-card">
+                <V2SubmitSongPanel target={{ type: 'session', id: session.id, label: session.title }} songs={submitSongs} demoMode={fromMock} />
+              </div>
+            </>
+          )}
         </section>
       </div>
 

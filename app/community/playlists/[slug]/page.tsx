@@ -1,8 +1,10 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import V2PlaylistRoomEngine from '@/components/v2/V2PlaylistRoomEngine'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
 import V2SubmitSongPanel from '@/components/v2/V2SubmitSongPanel'
 import { fetchPlaylistRoomBySlug } from '@/lib/v2/data/community'
+import { fetchPlaylistRoomActivity } from '@/lib/v2/data/streamEngine'
 import { V2_ROUTES } from '@/lib/v2/routes'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { fetchCommunitySongs } from '@/lib/v2/data/songs'
@@ -18,33 +20,36 @@ export default async function PlaylistRoomPage({ params }: Props) {
   const { room, fromMock } = await fetchPlaylistRoomBySlug(params.slug)
   if (!room) notFound()
 
+  const activityData = fromMock
+    ? { recentSubmissions: [], lastPlayed: [], listenedCount: 0, roundStatus: 'active' as const, linkedSessions: [] }
+    : await fetchPlaylistRoomActivity(room.id, room.circleId)
+
+  const isHost = user?.id === room.ownerUserId
+  const { songs: mySongs } = user ? await fetchCommunitySongs() : { songs: [] }
+
   const { data: items } = fromMock
     ? { data: null }
     : await supabase
       .from('v2_playlist_room_items')
-      .select('id, title, artist_name, position, external_url, created_at')
+      .select('id, title, artist_name, position, external_url, created_at, played_at')
       .eq('room_id', room.id)
       .order('position', { ascending: true })
-
-  const { songs: mySongs } = user ? await fetchCommunitySongs() : { songs: [] }
 
   return (
     <>
       {fromMock && <p className="v2-meta" style={{ marginBottom: 12 }}>Demo playlist room — seed migrations for live data.</p>}
       <div className="v2-detail-hero" style={{ ['--v2-cover-img' as string]: `url('${room.coverImageUrl}')` }}>
-        <div className="v2-eyebrow">{room.platform} · {room.trackCount} tracks</div>
+        <div className="v2-eyebrow">{room.platform} · {room.trackCount} tracks · Stream Engine Beta</div>
         <h1>{room.name}</h1>
         <p className="v2-meta" style={{ fontSize: 16, maxWidth: 640 }}>{room.description}</p>
-        {room.circleSlug && (
-          <Link href={V2_ROUTES.circle(room.circleSlug)} className="v2-btn secondary sm" style={{ marginTop: 12 }}>
-            View circle
-          </Link>
-        )}
-        {room.campaignId && (
-          <Link href={`/playlist-campaigns/${room.campaignId}`} className="v2-btn secondary sm" style={{ marginTop: 12, marginLeft: 8 }}>
-            Playlist campaign ↗
-          </Link>
-        )}
+        <div className="v2-hero-actions" style={{ marginTop: 12 }}>
+          {room.circleSlug && (
+            <Link href={V2_ROUTES.circle(room.circleSlug)} className="v2-btn secondary sm">View circle</Link>
+          )}
+          {room.campaignId && (
+            <Link href={`/playlist-campaigns/${room.campaignId}`} className="v2-btn secondary sm">Playlist campaign ↗</Link>
+          )}
+        </div>
       </div>
 
       <section className="v2-section">
@@ -55,21 +60,22 @@ export default async function PlaylistRoomPage({ params }: Props) {
       </section>
 
       <section className="v2-section">
-        <V2SectionHeader title="Room queue" />
+        <V2SectionHeader title="Room activity" />
+        <V2PlaylistRoomEngine roomSlug={room.slug} roomId={room.id} isHost={isHost} demoMode={fromMock} activity={activityData} />
+      </section>
+
+      <section className="v2-section">
+        <V2SectionHeader title="Full queue" />
         <div className="v2-card">
-          {(items || []).length === 0 && <p className="v2-meta">No tracks yet — be the first to submit.</p>}
+          {(items || []).length === 0 && <p className="v2-meta">No tracks yet.</p>}
           {(items || []).map(item => (
             <div key={item.id} className="v2-track">
               <span className="num">{item.position}</span>
-              <div><b>{item.title}</b><span>{item.artist_name}</span></div>
+              <div><b>{item.title}</b><span>{item.artist_name}{item.played_at ? ' · played' : ''}</span></div>
               {item.external_url && <a href={item.external_url} target="_blank" rel="noopener noreferrer" className="v2-meta">Open ↗</a>}
             </div>
           ))}
         </div>
-        <p className="v2-meta" style={{ marginTop: 12 }}>
-          {/* TODO: Aigent4U Stream Engine — sync playlist room playback */}
-          Powered by Aigent4U Stream Engine — live rotation coming soon.
-        </p>
       </section>
     </>
   )
