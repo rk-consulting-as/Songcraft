@@ -56,7 +56,9 @@ export default function MobileBottomNav() {
     pathname.startsWith('/p/') ||
     pathname.startsWith('/s/') ||
     pathname.startsWith('/epk/') ||
-    pathname.startsWith('/admin')
+    pathname.startsWith('/admin') ||
+    pathname === '/community' ||
+    pathname.startsWith('/community/')
   ) return null
 
   const { songsHref, artistsHref, campaignHref, artistId } = resolveNavHrefs(pathname)

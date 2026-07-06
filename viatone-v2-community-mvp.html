@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ViaTone 2.0 Community MVP</title>
+  <style>
+    :root {
+      --bg: #05060d;
+      --bg2: #0b1020;
+      --panel: rgba(255,255,255,.07);
+      --panel2: rgba(255,255,255,.11);
+      --stroke: rgba(255,255,255,.14);
+      --text: #f7f7ff;
+      --muted: #a7acc4;
+      --soft: #d8dcff;
+      --brand: #8b5cf6;
+      --brand2: #00e5ff;
+      --hot: #ff477e;
+      --gold: #ffd166;
+      --green: #44e59a;
+      --shadow: 0 30px 90px rgba(0,0,0,.45);
+      --radius: 24px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(139,92,246,.35), transparent 32%),
+        radial-gradient(circle at 85% 5%, rgba(0,229,255,.22), transparent 30%),
+        radial-gradient(circle at 70% 70%, rgba(255,71,126,.17), transparent 32%),
+        linear-gradient(180deg, #05060d 0%, #08101f 55%, #05060d 100%);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button, input, select { font: inherit; }
+
+    .noise {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .08;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.45'/%3E%3C/svg%3E");
+      z-index: 50;
+    }
+
+    .app { display: grid; grid-template-columns: 260px minmax(0,1fr); min-height: 100vh; }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 24px 18px;
+      background: rgba(2,4,12,.58);
+      border-right: 1px solid var(--stroke);
+      backdrop-filter: blur(26px);
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 26px;
+      padding: 8px;
+    }
+    .logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 15px;
+      background: linear-gradient(135deg, var(--brand), var(--brand2));
+      display: grid;
+      place-items: center;
+      box-shadow: 0 18px 45px rgba(139,92,246,.35);
+      font-weight: 900;
+    }
+    .brand h1 { margin: 0; font-size: 18px; letter-spacing: -.03em; }
+    .brand span { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .nav { display: grid; gap: 7px; }
+    .nav a {
+      padding: 12px 13px;
+      border-radius: 16px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: .2s ease;
+    }
+    .nav a:hover, .nav a.active {
+      background: rgba(255,255,255,.09);
+      color: var(--text);
+    }
+    .nav small {
+      color: var(--brand2);
+      font-size: 11px;
+      background: rgba(0,229,255,.1);
+      border: 1px solid rgba(0,229,255,.2);
+      border-radius: 999px;
+      padding: 3px 8px;
+    }
+
+    .sidebar-card {
+      margin-top: 26px;
+      padding: 16px;
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: linear-gradient(145deg, rgba(139,92,246,.22), rgba(0,229,255,.08));
+    }
+    .sidebar-card b { display: block; margin-bottom: 6px; }
+    .sidebar-card p { color: var(--muted); font-size: 13px; line-height: 1.45; margin: 0 0 14px; }
+
+    .main { min-width: 0; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 9;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 28px;
+      background: rgba(5,6,13,.66);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(24px);
+    }
+
+    .search {
+      flex: 1;
+      max-width: 560px;
+      position: relative;
+    }
+    .search input {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,.13);
+      background: rgba(255,255,255,.07);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 13px 18px 13px 44px;
+      outline: none;
+    }
+    .search span { position: absolute; left: 17px; top: 12px; color: var(--muted); }
+
+    .btn {
+      border: 0;
+      color: white;
+      background: linear-gradient(135deg, var(--brand), #5b8cff);
+      border-radius: 999px;
+      padding: 12px 18px;
+      font-weight: 750;
+      cursor: pointer;
+      box-shadow: 0 16px 42px rgba(91,140,255,.22);
+      transition: transform .18s ease, filter .18s ease;
+      white-space: nowrap;
+    }
+    .btn:hover { transform: translateY(-1px); filter: brightness(1.08); }
+    .btn.secondary {
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.15);
+      box-shadow: none;
+    }
+    .btn.hot { background: linear-gradient(135deg, var(--hot), var(--brand)); }
+
+    .content { padding: 28px; max-width: 1480px; margin: 0 auto; }
+
+    .hero {
+      min-height: 470px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 34px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: var(--shadow);
+      background:
+        linear-gradient(90deg, rgba(5,6,13,.95), rgba(5,6,13,.64), rgba(5,6,13,.26)),
+        url('https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=1800&q=80') center/cover;
+      padding: 48px;
+      display: flex;
+      align-items: center;
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0 0;
+      height: 45%;
+      background: linear-gradient(transparent, rgba(5,6,13,.92));
+      pointer-events: none;
+    }
+    .hero-inner { max-width: 760px; position: relative; z-index: 1; }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--soft);
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.08);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 13px;
+      margin-bottom: 22px;
+    }
+    .pulse {
+      width: 9px; height: 9px; border-radius: 999px; background: var(--green);
+      box-shadow: 0 0 0 7px rgba(68,229,154,.13);
+    }
+    .hero h2 {
+      font-size: clamp(40px, 6vw, 82px);
+      line-height: .92;
+      letter-spacing: -.08em;
+      margin: 0 0 18px;
+    }
+    .gradient-text { background: linear-gradient(135deg, #fff, #bcd8ff 35%, #d0a8ff 70%, #80f7ff); -webkit-background-clip: text; color: transparent; }
+    .hero p { color: #d8dcff; font-size: 19px; line-height: 1.55; margin: 0 0 28px; max-width: 690px; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+
+    .hero-stats {
+      position: absolute;
+      right: 34px;
+      bottom: 28px;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      width: min(540px, 48%);
+    }
+    .stat {
+      background: rgba(255,255,255,.09);
+      border: 1px solid rgba(255,255,255,.14);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 16px;
+    }
+    .stat strong { display: block; font-size: 24px; }
+    .stat span { color: var(--muted); font-size: 12px; }
+
+    .section { margin-top: 34px; }
+    .section-head {
+      display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 16px;
+    }
+    .section h3 { margin: 0; font-size: 26px; letter-spacing: -.04em; }
+    .section p.lead { margin: 6px 0 0; color: var(--muted); }
+
+    .grid { display: grid; gap: 16px; }
+    .grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .card {
+      position: relative;
+      border: 1px solid rgba(255,255,255,.12);
+      background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.045));
+      border-radius: var(--radius);
+      padding: 20px;
+      overflow: hidden;
+      box-shadow: 0 18px 60px rgba(0,0,0,.18);
+    }
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 20% 0, rgba(139,92,246,.18), transparent 38%);
+      pointer-events: none;
+    }
+    .card > * { position: relative; z-index: 1; }
+
+    .circle-cover {
+      height: 126px;
+      border-radius: 20px;
+      margin: -4px -4px 16px;
+      background: linear-gradient(135deg, rgba(139,92,246,.88), rgba(0,229,255,.45)), var(--img) center/cover;
+      border: 1px solid rgba(255,255,255,.13);
+    }
+    .tagrow { display: flex; gap: 7px; flex-wrap: wrap; margin: 12px 0; }
+    .tag {
+      font-size: 12px;
+      color: #e9ecff;
+      background: rgba(255,255,255,.09);
+      border: 1px solid rgba(255,255,255,.12);
+      padding: 6px 9px;
+      border-radius: 999px;
+    }
+    .tag.ai { color: #ffdfef; border-color: rgba(255,71,126,.34); background: rgba(255,71,126,.12); }
+    .tag.human { color: #d9fff0; border-color: rgba(68,229,154,.30); background: rgba(68,229,154,.10); }
+    .meta { color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .minirow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
+    .avatars { display: flex; }
+    .avatar {
+      width: 30px; height: 30px; border-radius: 999px; border: 2px solid #111827; margin-left: -8px;
+      background: linear-gradient(135deg, var(--brand), var(--hot));
+    }
+    .avatar:first-child { margin-left: 0; }
+
+    .session-card { display: grid; grid-template-columns: 190px 1fr; gap: 18px; align-items: stretch; }
+    .session-art {
+      border-radius: 22px;
+      min-height: 210px;
+      background: linear-gradient(135deg, rgba(255,71,126,.75), rgba(139,92,246,.72)), var(--img) center/cover;
+      border: 1px solid rgba(255,255,255,.13);
+      display: flex;
+      align-items: end;
+      padding: 14px;
+    }
+    .live-badge { background: rgba(255,71,126,.95); padding: 7px 10px; border-radius: 999px; font-size: 12px; font-weight: 850; }
+    .queue { display: grid; gap: 9px; margin-top: 15px; }
+    .track {
+      display: grid;
+      grid-template-columns: 34px 1fr auto;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .track.now { background: rgba(0,229,255,.11); border-color: rgba(0,229,255,.28); }
+    .num { color: var(--muted); font-size: 12px; }
+    .track b { display: block; font-size: 14px; }
+    .track span { color: var(--muted); font-size: 12px; }
+
+    .artist-card { min-height: 360px; padding: 0; }
+    .artist-hero {
+      height: 170px;
+      background: linear-gradient(135deg, rgba(0,0,0,.1), rgba(139,92,246,.55)), var(--img) center/cover;
+      position: relative;
+    }
+    .artist-info { padding: 20px; }
+    .artist-logo {
+      width: 76px; height: 76px; border-radius: 24px; border: 4px solid #111827; margin-top: -58px;
+      background: linear-gradient(135deg, var(--brand), var(--brand2));
+      display: grid; place-items: center; font-size: 28px; font-weight: 900;
+    }
+
+    .formgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 14px; }
+    .field { display: grid; gap: 7px; }
+    .field label { color: var(--muted); font-size: 12px; }
+    .field input, .field select {
+      width: 100%;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.13);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 12px;
+      outline: none;
+    }
+    option { background: #101423; }
+
+    .pricing .card { display: flex; flex-direction: column; min-height: 390px; }
+    .price { font-size: 42px; font-weight: 900; letter-spacing: -.05em; margin: 12px 0 4px; }
+    .price small { font-size: 14px; color: var(--muted); font-weight: 500; }
+    .features { color: var(--muted); line-height: 1.85; padding-left: 19px; margin: 18px 0 22px; }
+    .pricing .btn { margin-top: auto; text-align: center; }
+    .featured-price { border-color: rgba(0,229,255,.34); box-shadow: 0 30px 80px rgba(0,229,255,.08); }
+
+    .public-preview {
+      display: grid;
+      grid-template-columns: 1fr 1.1fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+    .phone {
+      max-width: 360px;
+      margin: 0 auto;
+      border: 1px solid rgba(255,255,255,.17);
+      background: #060914;
+      border-radius: 36px;
+      padding: 12px;
+      box-shadow: 0 40px 90px rgba(0,0,0,.42);
+    }
+    .phone-screen {
+      border-radius: 28px;
+      overflow: hidden;
+      min-height: 520px;
+      background: linear-gradient(180deg, rgba(139,92,246,.24), rgba(5,6,13,1));
+    }
+    .phone-cover { height: 190px; background: linear-gradient(135deg, rgba(0,0,0,.18), rgba(139,92,246,.5)), url('https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=900&q=80') center/cover; }
+    .phone-body { padding: 18px; }
+    .linkpill { display: flex; justify-content: space-between; align-items: center; padding: 13px 14px; border-radius: 16px; background: rgba(255,255,255,.09); margin-top: 9px; color: #fff; }
+
+    .engine {
+      background:
+        radial-gradient(circle at 10% 20%, rgba(0,229,255,.22), transparent 28%),
+        radial-gradient(circle at 90% 0%, rgba(139,92,246,.25), transparent 35%),
+        rgba(255,255,255,.065);
+    }
+    .engine-grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 18px; align-items: center; }
+    .bars { display: flex; gap: 7px; align-items: end; height: 92px; margin: 20px 0; }
+    .bar { flex: 1; border-radius: 999px; background: linear-gradient(180deg, var(--brand2), var(--brand)); animation: bounce 1.4s ease-in-out infinite; opacity: .9; }
+    .bar:nth-child(2){height:70%;animation-delay:.1s}.bar:nth-child(3){height:45%;animation-delay:.2s}.bar:nth-child(4){height:90%;animation-delay:.3s}.bar:nth-child(5){height:55%;animation-delay:.4s}.bar:nth-child(6){height:80%;animation-delay:.5s}.bar:nth-child(1){height:40%}
+    @keyframes bounce { 0%,100%{ transform: scaleY(.65);} 50%{ transform: scaleY(1);} }
+
+    .toast {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      background: rgba(10,16,31,.92);
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 18px;
+      padding: 14px 16px;
+      color: white;
+      box-shadow: var(--shadow);
+      transform: translateY(120px);
+      opacity: 0;
+      transition: .25s ease;
+      z-index: 100;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    .mobilebar { display: none; }
+
+    @media (max-width: 1120px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .mobilebar { display: flex; position: sticky; top: 0; z-index: 20; padding: 12px 16px; justify-content: space-between; align-items: center; background: rgba(5,6,13,.8); border-bottom: 1px solid rgba(255,255,255,.1); backdrop-filter: blur(18px); }
+      .topbar { top: 63px; }
+      .hero-stats { position: relative; right: auto; bottom: auto; width: 100%; margin-top: 28px; }
+      .hero { display: block; padding: 34px; }
+      .grid.cols-4 { grid-template-columns: repeat(2, 1fr); }
+      .grid.cols-3 { grid-template-columns: repeat(2, 1fr); }
+      .public-preview, .engine-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 720px) {
+      .content { padding: 18px; }
+      .topbar { padding: 12px 16px; align-items: stretch; flex-direction: column; }
+      .hero { border-radius: 24px; padding: 26px; min-height: auto; }
+      .hero p { font-size: 16px; }
+      .hero-stats { grid-template-columns: 1fr; }
+      .grid.cols-4, .grid.cols-3, .grid.cols-2 { grid-template-columns: 1fr; }
+      .session-card { grid-template-columns: 1fr; }
+      .formgrid { grid-template-columns: 1fr; }
+      .section-head { align-items: start; flex-direction: column; }
+      .btn { width: 100%; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="noise"></div>
+  <div class="mobilebar">
+    <div class="brand" style="margin:0;padding:0"><div class="logo">V</div><div><h1>ViaTone</h1><span>Community first</span></div></div>
+    <button class="btn secondary" onclick="demoToast('Menu kommer i appversjon')">☰</button>
+  </div>
+
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">V</div>
+        <div><h1>ViaTone</h1><span>v2.0 Community</span></div>
+      </div>
+      <nav class="nav">
+        <a class="active" href="#community">Community <small>Live</small></a>
+        <a href="#circles">Circles</a>
+        <a href="#sessions">Sessions <small>3</small></a>
+        <a href="#artists">My Artists</a>
+        <a href="#submit">Submit Song</a>
+        <a href="#engine">Stream Engine</a>
+        <a href="#sites">Artist Sites</a>
+        <a href="#pricing">Pricing</a>
+      </nav>
+      <div class="sidebar-card">
+        <b>Powered by Aigent4U</b>
+        <p>Playlist queue, Auto-Switch, shuffle, play logs og session reports samlet som ViaTone Stream Engine.</p>
+        <button class="btn hot" onclick="demoToast('Host mode aktivert i prototype')">Host session</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="search"><span>⌕</span><input placeholder="Søk etter circles, sessions, artister eller låter…" oninput="filterCards(this.value)" /></div>
+        <button class="btn secondary" onclick="demoToast('Artist wizard åpnet')">+ Add artist</button>
+        <button class="btn" onclick="document.querySelector('#submit').scrollIntoView({behavior:'smooth'})">Submit song</button>
+      </header>
+
+      <div class="content">
+        <section id="community" class="hero">
+          <div class="hero-inner">
+            <div class="eyebrow"><span class="pulse"></span> 14 members streaming now · 3 sessions tonight</div>
+            <h2><span class="gradient-text">Build your sound.</span><br/>Get heard together.</h2>
+            <p>ViaTone 2.0 samler independent artists, AI creators, playlist streamers og curators i ett community bygget rundt Circles, Sessions og felles playlist-growth.</p>
+            <div class="hero-actions">
+              <button class="btn hot" onclick="document.querySelector('#sessions').scrollIntoView({behavior:'smooth'})">Join tonight’s session</button>
+              <button class="btn secondary" onclick="document.querySelector('#circles').scrollIntoView({behavior:'smooth'})">Explore Circles</button>
+            </div>
+          </div>
+          <div class="hero-stats">
+            <div class="stat"><strong>128</strong><span>songs submitted</span></div>
+            <div class="stat"><strong>42h</strong><span>community listening</span></div>
+            <div class="stat"><strong>91%</strong><span>feedback completion</span></div>
+          </div>
+        </section>
+
+        <section id="circles" class="section">
+          <div class="section-head">
+            <div><h3>Featured Circles</h3><p class="lead">Små musikkrom med egne sessions, playlists og tydelige regler.</p></div>
+            <button class="btn secondary" onclick="demoToast('Create Circle er en Host Pro-funksjon')">Create Circle</button>
+          </div>
+          <div class="grid cols-4 searchable">
+            <article class="card" data-search="dark country ai human spotify">
+              <div class="circle-cover" style="--img:url('https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=900&q=80')"></div>
+              <h4>Dark Country Circle</h4>
+              <p class="meta">For outlaw country, cinematic western rock og gritty storytelling.</p>
+              <div class="tagrow"><span class="tag human">Human</span><span class="tag ai">AI-assisted</span><span class="tag">Spotify</span></div>
+              <div class="minirow"><div class="avatars"><i class="avatar"></i><i class="avatar"></i><i class="avatar"></i></div><button class="btn secondary" onclick="demoToast('Du ble med i Dark Country Circle')">Join</button></div>
+            </article>
+            <article class="card" data-search="ai metal rock youtube spotify">
+              <div class="circle-cover" style="--img:url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80')"></div>
+              <h4>AI Metal Lab</h4>
+              <p class="meta">For AI metal, hybrid production, heavy prompts og feedback.</p>
+              <div class="tagrow"><span class="tag ai">Fully AI</span><span class="tag">YouTube</span><span class="tag">Feedback</span></div>
+              <div class="minirow"><div class="avatars"><i class="avatar"></i><i class="avatar"></i></div><button class="btn secondary" onclick="demoToast('Du ble med i AI Metal Lab')">Join</button></div>
+            </article>
+            <article class="card" data-search="tidal indie discovery nordic">
+              <div class="circle-cover" style="--img:url('https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=900&q=80')"></div>
+              <h4>Nordic Indie Discovery</h4>
+              <p class="meta">For nordiske artister, soft releases og Tidal/Spotify discovery.</p>
+              <div class="tagrow"><span class="tag human">Human-made</span><span class="tag">Tidal</span><span class="tag">Indie</span></div>
+              <div class="minirow"><div class="avatars"><i class="avatar"></i><i class="avatar"></i><i class="avatar"></i></div><button class="btn secondary" onclick="demoToast('Du ble med i Nordic Indie Discovery')">Join</button></div>
+            </article>
+            <article class="card" data-search="release support playlist streamer">
+              <div class="circle-cover" style="--img:url('https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?auto=format&fit=crop&w=900&q=80')"></div>
+              <h4>Release Support Room</h4>
+              <p class="meta">Send inn én låt, delta i sessions, gi feedback og bygg momentum.</p>
+              <div class="tagrow"><span class="tag">Release</span><span class="tag">Playlist</span><span class="tag">Support</span></div>
+              <div class="minirow"><div class="avatars"><i class="avatar"></i><i class="avatar"></i></div><button class="btn secondary" onclick="demoToast('Du ble med i Release Support Room')">Join</button></div>
+            </article>
+          </div>
+        </section>
+
+        <section id="sessions" class="section">
+          <div class="section-head">
+            <div><h3>Tonight’s Listening Sessions</h3><p class="lead">Live og planlagte økter der communityet streamer, reagerer og gir feedback.</p></div>
+            <button class="btn" onclick="demoToast('Create Session krever Host Pro')">+ Create Session</button>
+          </div>
+          <div class="grid cols-2 searchable">
+            <article class="card session-card" data-search="friday dark country stream spotify hellwater saints">
+              <div class="session-art" style="--img:url('https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=700&q=80')"><span class="live-badge">LIVE IN 24 MIN</span></div>
+              <div>
+                <div class="tagrow"><span class="tag">Spotify</span><span class="tag">Auto-Switch</span><span class="tag ai">AI + Human</span></div>
+                <h3 style="margin:0 0 6px">Friday Dark Country Stream</h3>
+                <p class="meta">Hosted by Rune · 22 tracks · 14 artists · proof log enabled</p>
+                <div class="queue">
+                  <div class="track now"><span class="num">01</span><div><b>We Don’t Burn</b><span>Hellwater Saints</span></div><span>3:58</span></div>
+                  <div class="track"><span class="num">02</span><div><b>Midnight Mercy</b><span>Hellwater Saints</span></div><span>4:14</span></div>
+                  <div class="track"><span class="num">03</span><div><b>Black River Choir</b><span>Community Pick</span></div><span>3:42</span></div>
+                </div>
+                <div class="minirow"><span class="meta">12 joined · 7 feedback pending</span><button class="btn hot" onclick="demoToast('Du joinet sessionen')">Join session</button></div>
+              </div>
+            </article>
+            <article class="card session-card" data-search="youtube premiere ai metal feedback">
+              <div class="session-art" style="--img:url('https://images.unsplash.com/photo-1520166012956-add9ba0835cb?auto=format&fit=crop&w=700&q=80')"><span class="live-badge">20:30</span></div>
+              <div>
+                <div class="tagrow"><span class="tag">YouTube</span><span class="tag">Feedback</span><span class="tag ai">AI Metal</span></div>
+                <h3 style="margin:0 0 6px">AI Metal Feedback Night</h3>
+                <p class="meta">Hosted by Metal Lab · 16 tracks · comments required</p>
+                <div class="queue">
+                  <div class="track now"><span class="num">01</span><div><b>Steel Cathedral</b><span>Nordfire</span></div><span>4:28</span></div>
+                  <div class="track"><span class="num">02</span><div><b>Ghost Circuit</b><span>Syntralis</span></div><span>3:55</span></div>
+                  <div class="track"><span class="num">03</span><div><b>Machine Psalm</b><span>Community Pick</span></div><span>4:01</span></div>
+                </div>
+                <div class="minirow"><span class="meta">8 joined · 4 seats open</span><button class="btn secondary" onclick="demoToast('Du meldte deg på AI Metal Feedback Night')">Reserve seat</button></div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section id="artists" class="section">
+          <div class="section-head">
+            <div><h3>Artist Growth Hub</h3><p class="lead">Enklere enn dagens studio: artist, låter, lenker, community og offentlig side.</p></div>
+            <button class="btn secondary" onclick="demoToast('Artist Site Studio åpnet')">Edit site</button>
+          </div>
+          <div class="grid cols-3 searchable">
+            <article class="card artist-card" data-search="hellwater saints dark country spotify tidal youtube">
+              <div class="artist-hero" style="--img:url('https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=900&q=80')"></div>
+              <div class="artist-info">
+                <div class="artist-logo">H</div>
+                <h3 style="margin:10px 0 4px">Hellwater Saints</h3>
+                <p class="meta">Dark outlaw country · 12 songs · 3 active circles</p>
+                <div class="tagrow"><span class="tag">Spotify</span><span class="tag">YouTube</span><span class="tag">Tidal</span></div>
+                <button class="btn" onclick="document.querySelector('#sites').scrollIntoView({behavior:'smooth'})">Preview artist page</button>
+              </div>
+            </article>
+            <article class="card">
+              <h3>Community tasks</h3>
+              <p class="meta">Denne uken bør du:</p>
+              <div class="queue">
+                <div class="track"><span class="num">✓</span><div><b>Submit 1 song</b><span>Release Support Room</span></div><span>+20</span></div>
+                <div class="track"><span class="num">•</span><div><b>Give 5 feedbacks</b><span>Unlock trusted listener badge</span></div><span>+50</span></div>
+                <div class="track"><span class="num">•</span><div><b>Join Friday Stream</b><span>Dark Country Circle</span></div><span>+30</span></div>
+              </div>
+            </article>
+            <article class="card">
+              <h3>Song list builder</h3>
+              <p class="meta">Lag fine lister av låter du eier og send dem til sessions eller offentlige sider.</p>
+              <div class="queue">
+                <div class="track"><span class="num">01</span><div><b>We Don’t Burn</b><span>Ready for session</span></div><span>🔥</span></div>
+                <div class="track"><span class="num">02</span><div><b>Paid in Full</b><span>Needs YouTube link</span></div><span>⚠</span></div>
+                <div class="track"><span class="num">03</span><div><b>Midnight Mercy</b><span>Public</span></div><span>✓</span></div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section id="submit" class="section">
+          <div class="card">
+            <div class="section-head" style="margin:0 0 10px">
+              <div><h3>Submit song to a Session</h3><p class="lead">Legg inn låt én gang, koble alle plattformer, og bruk den i Circles/Sessions.</p></div>
+              <div class="tagrow"><span class="tag">Spotify</span><span class="tag">YouTube</span><span class="tag">Tidal</span><span class="tag">Apple</span></div>
+            </div>
+            <div class="formgrid">
+              <div class="field"><label>Artist</label><input value="Hellwater Saints" /></div>
+              <div class="field"><label>Song title</label><input value="We Don’t Burn" /></div>
+              <div class="field"><label>Creation type</label><select><option>Hybrid / AI-assisted</option><option>Human-made</option><option>Fully AI-generated</option></select></div>
+              <div class="field"><label>Target Circle</label><select><option>Dark Country Circle</option><option>Release Support Room</option><option>AI Metal Lab</option></select></div>
+              <div class="field"><label>Spotify URL</label><input placeholder="https://open.spotify.com/track/..." /></div>
+              <div class="field"><label>YouTube URL</label><input placeholder="https://youtube.com/watch?v=..." /></div>
+              <div class="field"><label>Tidal URL</label><input placeholder="https://tidal.com/browse/track/..." /></div>
+              <div class="field"><label>Feedback wanted</label><select><option>Production + chorus + overall vibe</option><option>Lyrics only</option><option>Playlist fit</option></select></div>
+            </div>
+            <div style="margin-top:16px; display:flex; gap:12px; flex-wrap:wrap"><button class="btn hot" onclick="demoToast('Låten ble sendt inn til Dark Country Circle')">Submit to session</button><button class="btn secondary" onclick="demoToast('Lagret som draft')">Save draft</button></div>
+          </div>
+        </section>
+
+        <section id="engine" class="section">
+          <div class="card engine">
+            <div class="engine-grid">
+              <div>
+                <div class="eyebrow"><span class="pulse"></span> ViaTone Stream Engine · Powered by Aigent4U</div>
+                <h3 style="font-size:38px;margin:0 0 10px;letter-spacing:-.05em">Automate the playlist. Document the support.</h3>
+                <p class="meta" style="font-size:16px">Host setter regler: spillelistekø, maks minutter, pause mellom lister, shuffle per playlist, cloud session og rapport etterpå. Communityet får en ryddig lytteøkt – ikke bare en chat med lenker.</p>
+                <div class="tagrow"><span class="tag">Auto-Switch</span><span class="tag">Cloud queue</span><span class="tag">Play log</span><span class="tag">Proof report</span></div>
+              </div>
+              <div>
+                <div class="bars"><i class="bar"></i><i class="bar"></i><i class="bar"></i><i class="bar"></i><i class="bar"></i><i class="bar"></i></div>
+                <div class="queue">
+                  <div class="track now"><span class="num">▶</span><div><b>Now switching</b><span>Dark Country Rotation</span></div><span>02:14</span></div>
+                  <div class="track"><span class="num">↻</span><div><b>Shuffle songs</b><span>Enabled per playlist</span></div><span>ON</span></div>
+                  <div class="track"><span class="num">◎</span><div><b>Session report</b><span>Generated after completion</span></div><span>PRO</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="sites" class="section">
+          <div class="section-head">
+            <div><h3>Sexy Artist Websites</h3><p class="lead">Offentlig artist-hjemmeside med sanger, story, socials og community proof.</p></div>
+          </div>
+          <div class="card public-preview">
+            <div class="phone">
+              <div class="phone-screen">
+                <div class="phone-cover"></div>
+                <div class="phone-body">
+                  <h2 style="margin:0">Hellwater Saints</h2>
+                  <p class="meta">Dark outlaw country from the edge of the storm.</p>
+                  <div class="linkpill"><span>Spotify</span><b>Listen</b></div>
+                  <div class="linkpill"><span>YouTube</span><b>Watch</b></div>
+                  <div class="linkpill"><span>Tidal</span><b>HiFi</b></div>
+                  <div class="linkpill"><span>Join next session</span><b>Friday</b></div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <h3 style="font-size:34px;margin-top:0;letter-spacing:-.05em">Mer enn en link-in-bio.</h3>
+              <p class="meta" style="font-size:16px">Artist-siden bør vise musikken, historien, plattformlenker, featured songs, kommende sessions, newsletter og community proof. Det gjør artisten mer levende og gir ViaTone en tydeligere verdi.</p>
+              <div class="grid cols-2" style="margin-top:18px">
+                <div class="card"><b>Public songs</b><p class="meta">Spotify, YouTube, Tidal, Apple og SoundCloud samlet per låt.</p></div>
+                <div class="card"><b>Community proof</b><p class="meta">Vis “featured in 3 sessions” og support fra Circles.</p></div>
+                <div class="card"><b>Premium themes</b><p class="meta">Dark cinematic, minimal, neon, country, metal og label-style.</p></div>
+                <div class="card"><b>Release CTA</b><p class="meta">Send fans til låt, session, newsletter eller pre-save.</p></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="pricing" class="section pricing">
+          <div class="section-head">
+            <div><h3>Simple monetization</h3><p class="lead">Gratis å delta. Betalt for artister som vil vokse og hosts som driver sessions.</p></div>
+          </div>
+          <div class="grid cols-3">
+            <article class="card">
+              <h3>Free</h3>
+              <div class="price">0 <small>/mnd</small></div>
+              <p class="meta">For å komme inn i communityet.</p>
+              <ul class="features"><li>1 artist</li><li>5 songs</li><li>Join Circles</li><li>Join Sessions</li><li>Basic artist page</li></ul>
+              <button class="btn secondary" onclick="demoToast('Free valgt')">Start free</button>
+            </article>
+            <article class="card featured-price">
+              <h3>Pro Artist</h3>
+              <div class="price">99 kr <small>/mnd</small></div>
+              <p class="meta">For artister som vil se proffe ut og få mer ut av communityet.</p>
+              <ul class="features"><li>Unlimited songs</li><li>Premium artist pages</li><li>EPK + release tools</li><li>More submissions</li><li>Analytics + QR tracking</li></ul>
+              <button class="btn hot" onclick="demoToast('Pro Artist valgt')">Upgrade artist</button>
+            </article>
+            <article class="card">
+              <h3>Host Pro</h3>
+              <div class="price">149 kr <small>/mnd</small></div>
+              <p class="meta">For curators og streamers som vil drive Circles og sessions.</p>
+              <ul class="features"><li>Create Circles</li><li>Host Sessions</li><li>Aigent4U cloud engine</li><li>Reports + proof logs</li><li>Leaderboards</li></ul>
+              <button class="btn" onclick="demoToast('Host Pro valgt')">Become host</button>
+            </article>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="card" style="text-align:center;padding:42px">
+            <div class="eyebrow"><span class="pulse"></span> MVP concept ready</div>
+            <h3 style="font-size:42px;margin:0 0 10px;letter-spacing:-.06em">Community is the product.</h3>
+            <p class="meta" style="max-width:720px;margin:0 auto 24px;font-size:16px">ViaTone 2.0 bør starte med én sterk opplevelse: artister legger inn låter, blir med i Circles, deltar i Sessions og bruker Aigent4U-motoren til å gjøre playlist-support konkret.</p>
+            <button class="btn hot" onclick="window.scrollTo({top:0,behavior:'smooth'})">Back to top</button>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="toast">Demo action</div>
+
+  <script>
+    function demoToast(text) {
+      const t = document.getElementById('toast');
+      t.textContent = text;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2300);
+    }
+
+    function filterCards(query) {
+      const q = query.trim().toLowerCase();
+      document.querySelectorAll('.searchable > .card').forEach(card => {
+        const hay = (card.innerText + ' ' + (card.dataset.search || '')).toLowerCase();
+        card.style.display = !q || hay.includes(q) ? '' : 'none';
+      });
+    }
+
+    document.querySelectorAll('.nav a').forEach(a => {
+      a.addEventListener('click', () => {
+        document.querySelectorAll('.nav a').forEach(x => x.classList.remove('active'));
+        a.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

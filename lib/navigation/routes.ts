@@ -8,6 +8,7 @@ export function isSidebarNavExcluded(pathname: string | null): boolean {
   if (pathname.startsWith('/s/')) return true
   if (pathname.startsWith('/epk/')) return true
   if (pathname.startsWith('/admin')) return true
+  if (pathname === '/community' || pathname.startsWith('/community/')) return true
   return false
 }
 
