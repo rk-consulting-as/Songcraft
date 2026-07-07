@@ -1,6 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase'
+import { formatV2ApiError } from '@/lib/v2/apiErrors'
 
 export async function v2ApiFetch<T = unknown>(path: string, init?: RequestInit): Promise<T> {
   const supabase = createClient()
@@ -13,7 +14,10 @@ export async function v2ApiFetch<T = unknown>(path: string, init?: RequestInit):
   const res = await fetch(path, { ...init, headers })
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
-    throw new Error((json as { error?: string }).error || `request_failed_${res.status}`)
+    const code = (json as { error?: string }).error || `request_failed_${res.status}`
+    throw new Error(formatV2ApiError(code))
   }
   return json as T
 }
+
+export { formatV2ApiError } from '@/lib/v2/apiErrors'
