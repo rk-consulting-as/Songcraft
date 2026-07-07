@@ -739,6 +739,89 @@ body.v2-community-page .chat-dock-root {
   margin-bottom: 12px;
 }
 
+.v2-profile-card__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.v2-profile-card__avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 18px;
+  background: linear-gradient(135deg, rgba(255, 90, 130, 0.35), rgba(90, 160, 255, 0.35));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.v2-profile-card__score {
+  margin-left: auto;
+  text-align: right;
+}
+
+.v2-profile-card__score strong {
+  display: block;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.v2-profile-card.compact .v2-profile-card__score strong {
+  font-size: 22px;
+}
+
+.v2-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.v2-supporter-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.v2-stat--highlight {
+  border-color: rgba(255, 120, 160, 0.35);
+  background: rgba(255, 80, 120, 0.08);
+}
+
+.v2-evidence-hint {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(90, 160, 255, 0.08);
+  border: 1px solid rgba(90, 160, 255, 0.2);
+}
+
+.v2-suggested-action {
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.v2-host-cta,
+.v2-host-upgrade {
+  border-color: rgba(255, 140, 90, 0.25);
+  background: linear-gradient(135deg, rgba(255, 100, 80, 0.08), rgba(90, 120, 255, 0.06));
+}
+
+.v2-input {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  color: inherit;
+  padding: 10px 12px;
+  font: inherit;
+}
+
 @media (max-width: 1120px) {
   .v2-app {
     grid-template-columns: 1fr;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { clipText, requireV2User, v2ServiceClient } from '@/lib/v2/apiAuth'
+import { canManageSessionHost } from '@/lib/v2/hostAccess'
 import { parseStreamMeta } from '@/lib/v2/data/streamEngine'
 
 export const runtime = 'nodejs'
@@ -34,7 +35,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const { data: session } = await resolveSession(params.id)
   if (!session) return NextResponse.json({ error: 'not_found' }, { status: 404 })
-  if (session.host_user_id !== userId) return NextResponse.json({ error: 'host_only' }, { status: 403 })
+  const canHost = await canManageSessionHost(sb, userId, session.host_user_id)
+  if (!canHost) return NextResponse.json({ error: 'host_only' }, { status: 403 })
 
   const body = await req.json().catch(() => ({}))
   const action = typeof body.action === 'string' ? body.action : ''

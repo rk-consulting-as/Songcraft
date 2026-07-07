@@ -1,4 +1,5 @@
 import { createServerSupabase } from '@/lib/supabase/server'
+import { fetchPlaylistRoomParticipationCount, fetchPlaylistRoomSupporters } from '@/lib/v2/data/supporters'
 import { mapSessionRow } from '@/lib/v2/data/community'
 import type {
   V2PlaylistRoomActivity,
@@ -171,11 +172,14 @@ export async function fetchPlaylistRoomActivity(roomId: string, circleId?: strin
     .map(i => ({ id: i.id, title: i.title, artistName: i.artist_name || '', playedAt: i.played_at as string }))
 
   const listenedCount = allItems.filter(i => i.played_at).length
+  const participationCount = await fetchPlaylistRoomParticipationCount(roomId)
+  const { recent: recentSupporters, topThisWeek: topSupportersThisWeek } = await fetchPlaylistRoomSupporters(roomId)
 
   return {
     recentSubmissions,
     lastPlayed,
     listenedCount,
+    participationCount,
     roundStatus: (room?.round_status as 'active' | 'completed') || 'active',
     lastCompletedAt: room?.last_completed_at ?? undefined,
     linkedSessions: (sessions || []).map(s => ({
@@ -183,6 +187,8 @@ export async function fetchPlaylistRoomActivity(roomId: string, circleId?: strin
       title: s.title,
       status: s.status as V2Session['status'],
     })),
+    recentSupporters,
+    topSupportersThisWeek,
   }
 }
 

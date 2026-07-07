@@ -1,4 +1,5 @@
 import { createServerSupabase } from '@/lib/supabase/server'
+import { fetchIsV2Admin } from '@/lib/v2/hostAccess'
 import {
   V2_CIRCLES,
   V2_PLAYLISTS,
@@ -110,7 +111,8 @@ export async function fetchCommunitySessionById(id: string): Promise<{
     if (profile?.display_name) hostName = profile.display_name
   }
   const session = mapSessionRow(data as Record<string, unknown>, circle, hostName)
-  session.isHost = user?.id === data.host_user_id
+  const isAdmin = user ? await fetchIsV2Admin(supabase, user.id) : false
+  session.isHost = user?.id === data.host_user_id || isAdmin
   const { data: queueRows } = await supabase
     .from('v2_session_songs')
     .select('id, session_id, song_id, title, artist_name, duration_label, is_now_playing, status, position, submitted_by, played_at')

@@ -5,7 +5,9 @@ import V2SectionHeader from '@/components/v2/V2SectionHeader'
 import V2StreamEngineBlock from '@/components/v2/V2StreamEngineBlock'
 import V2StreamEnginePanel from '@/components/v2/V2StreamEnginePanel'
 import V2SubmitSongPanel from '@/components/v2/V2SubmitSongPanel'
+import V2SupporterProfileCard from '@/components/v2/V2SupporterProfileCard'
 import { fetchCommunitySessionById } from '@/lib/v2/data/community'
+import { fetchUserCommunityProfile } from '@/lib/v2/data/supporters'
 import {
   fetchSessionParticipants,
   fetchSessionPlayLogs,
@@ -60,6 +62,7 @@ export default async function SessionDetailPage({ params }: Props) {
 
   const { songs: mySongs } = user ? await fetchCommunitySongs() : { songs: [] }
   const submitSongs = mySongs.filter(s => s.legacySongId)
+  const myProfile = user && !fromMock ? await fetchUserCommunityProfile(user.id) : null
 
   return (
     <>
@@ -110,6 +113,11 @@ export default async function SessionDetailPage({ params }: Props) {
           />
         </section>
         <section className="v2-section" style={{ marginTop: 0 }}>
+          {myProfile && (
+            <div style={{ marginBottom: 16 }}>
+              <V2SupporterProfileCard profile={myProfile} compact />
+            </div>
+          )}
           {session.status !== 'ended' && (
             <>
               <V2SectionHeader title="Submit your song" lead="Host approval before queue." />

@@ -3,7 +3,9 @@ import { notFound } from 'next/navigation'
 import V2FeedbackPanel from '@/components/v2/V2FeedbackPanel'
 import V2ReportButton from '@/components/v2/V2ReportButton'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
+import V2SupporterProfileCard from '@/components/v2/V2SupporterProfileCard'
 import { fetchSongFeedback } from '@/lib/v2/data/feedback'
+import { fetchUserCommunityProfile } from '@/lib/v2/data/supporters'
 import { fetchCommunitySongById } from '@/lib/v2/data/songs'
 import { V2_ROUTES } from '@/lib/v2/routes'
 import { createServerSupabase } from '@/lib/supabase/server'
@@ -22,9 +24,13 @@ export default async function SongDetailPage({ params }: Props) {
   const songId = song.legacySongId || song.id
   const feedback = fromMock ? [] : await fetchSongFeedback(songId)
   let isOwner = false
-  if (!fromMock && user && song.legacySongId) {
-    const { data: owned } = await supabase.from('songs').select('id').eq('id', song.legacySongId).eq('user_id', user.id).maybeSingle()
-    isOwner = !!owned
+  let myProfile = null
+  if (!fromMock && user) {
+    if (song.legacySongId) {
+      const { data: owned } = await supabase.from('songs').select('id').eq('id', song.legacySongId).eq('user_id', user.id).maybeSingle()
+      isOwner = !!owned
+    }
+    myProfile = await fetchUserCommunityProfile(user.id)
   }
 
   return (
@@ -68,6 +74,13 @@ export default async function SongDetailPage({ params }: Props) {
           )}
         </div>
       </div>
+
+      {myProfile && (
+        <section className="v2-section">
+          <V2SectionHeader title="Your supporter profile" lead="Participation and badges as a community listener." />
+          <V2SupporterProfileCard profile={myProfile} showHistoryLink compact />
+        </section>
+      )}
 
       <section className="v2-section">
         <V2SectionHeader title="Community feedback" lead="Ratings, reactions and notes from listeners." />

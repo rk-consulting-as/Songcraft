@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import V2CircleCard from '@/components/v2/V2CircleCard'
+import V2SupporterProfileCard from '@/components/v2/V2SupporterProfileCard'
 import V2FeedbackPanel from '@/components/v2/V2FeedbackPanel'
 import V2JoinCircleButton from '@/components/v2/V2JoinCircleButton'
 import V2ReportButton from '@/components/v2/V2ReportButton'
@@ -15,6 +16,7 @@ import {
   fetchSessionsForCircle,
   fetchSongsForCircle,
 } from '@/lib/v2/data/community'
+import { fetchCircleTopSupporters, fetchUserCommunityProfile } from '@/lib/v2/data/supporters'
 import { V2_SUPPORTERS } from '@/lib/v2/mockData'
 import { V2_ROUTES } from '@/lib/v2/routes'
 import { createServerSupabase } from '@/lib/supabase/server'
@@ -33,11 +35,20 @@ export default async function CircleDetailPage({ params }: Props) {
 
   const isMember = user ? await fetchCircleMembership(circle.slug, user.id) : false
 
-  const [{ sessions }, { songs, fromMock: songsMock }, { circles: allCircles }, userSongsRes] = await Promise.all([
+  const supportersPromise = !circleMock && circle.id
+    ? fetchCircleTopSupporters(circle.id)
+    : Promise.resolve(V2_SUPPORTERS)
+  const profilePromise = user && !circleMock
+    ? fetchUserCommunityProfile(user.id)
+    : Promise.resolve(null)
+
+  const [{ sessions }, { songs, fromMock: songsMock }, { circles: allCircles }, userSongsRes, supporters, myProfile] = await Promise.all([
     fetchSessionsForCircle(circle.slug, circle.id),
     fetchSongsForCircle(circle.slug, circle.id),
     fetchCommunityCircles(),
     user ? fetchCommunitySongs() : Promise.resolve({ songs: [], fromMock: false }),
+    supportersPromise,
+    profilePromise,
   ])
 
   const related = allCircles.filter(c => c.slug !== circle.slug).slice(0, 3)
@@ -72,6 +83,13 @@ export default async function CircleDetailPage({ params }: Props) {
         </div>
       </section>
 
+      {myProfile && (
+        <section className="v2-section">
+          <V2SectionHeader title="Your community profile" lead="Participation count and badges in this community." />
+          <V2SupporterProfileCard profile={myProfile} showHistoryLink compact />
+        </section>
+      )}
+
       <div className="v2-grid cols-2">
         <section className="v2-section" style={{ marginTop: 0 }}>
           <V2SectionHeader title="Sessions" />
@@ -82,12 +100,13 @@ export default async function CircleDetailPage({ params }: Props) {
           </div>
         </section>
         <section className="v2-section" style={{ marginTop: 0 }}>
-          <V2SectionHeader title="Top supporters" />
+          <V2SectionHeader title="Top supporters" lead="Circle participation — listening, feedback and support." />
           <div className="v2-card">
-            {V2_SUPPORTERS.map(s => (
+            {supporters.length === 0 && <p className="v2-meta">No supporters ranked yet.</p>}
+            {supporters.map(s => (
               <div key={s.id} className="v2-track">
                 <span className="num">★</span>
-                <div><b>{s.name}</b><span>{s.badge}</span></div>
+                <div><b>{s.name}</b><span>{s.badge || 'Supporter'}</span></div>
                 <span>{s.score}</span>
               </div>
             ))}

@@ -11,6 +11,8 @@ export const V2_ROUTES = {
   song: (id: string) => `/community/songs/${id}`,
   playlists: '/community/playlists',
   playlistRoom: (slug: string) => `/community/playlists/${slug}`,
+  participation: '/community/participation',
+  host: '/community/host',
   pricing: '/community/pricing',
   submit: '/community#submit',
 } as const

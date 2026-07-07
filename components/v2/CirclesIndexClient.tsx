@@ -1,9 +1,11 @@
 'use client'
 
+import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import V2CircleCard from '@/components/v2/V2CircleCard'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
 import { useV2Toast } from '@/components/v2/V2Toast'
+import { V2_ROUTES } from '@/lib/v2/routes'
 import type { V2Circle } from '@/lib/v2/types'
 
 type Props = {
@@ -39,9 +41,7 @@ export default function CirclesIndexClient({ circles, fromMock }: Props) {
         title="Circles"
         lead="Genre-based communities with sessions, playlists and shared rules."
         action={
-          <button type="button" className="v2-btn secondary sm" onClick={() => showToast('Create Circle — Host Pro')}>
-            Create Circle
-          </button>
+          <Link href={V2_ROUTES.host} className="v2-btn secondary sm">Create Circle — Host Pro</Link>
         }
       />
       {fromMock && (

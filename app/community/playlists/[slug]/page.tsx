@@ -1,10 +1,13 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import V2PlaylistListenButton from '@/components/v2/V2PlaylistListenButton'
 import V2PlaylistRoomEngine from '@/components/v2/V2PlaylistRoomEngine'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
 import V2SubmitSongPanel from '@/components/v2/V2SubmitSongPanel'
 import { fetchPlaylistRoomBySlug } from '@/lib/v2/data/community'
 import { fetchPlaylistRoomActivity } from '@/lib/v2/data/streamEngine'
+import { fetchIsV2Admin } from '@/lib/v2/hostAccess'
+import { fetchUserPlaylistRoomListened } from '@/lib/v2/data/supporters'
 import { V2_ROUTES } from '@/lib/v2/routes'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { fetchCommunitySongs } from '@/lib/v2/data/songs'
@@ -21,10 +24,21 @@ export default async function PlaylistRoomPage({ params }: Props) {
   if (!room) notFound()
 
   const activityData = fromMock
-    ? { recentSubmissions: [], lastPlayed: [], listenedCount: 0, roundStatus: 'active' as const, linkedSessions: [] }
+    ? {
+      recentSubmissions: [],
+      lastPlayed: [],
+      listenedCount: 0,
+      participationCount: 0,
+      roundStatus: 'active' as const,
+      linkedSessions: [],
+      recentSupporters: [],
+      topSupportersThisWeek: [],
+    }
     : await fetchPlaylistRoomActivity(room.id, room.circleId)
 
-  const isHost = user?.id === room.ownerUserId
+  const isAdmin = user ? await fetchIsV2Admin(supabase, user.id) : false
+  const isHost = user?.id === room.ownerUserId || isAdmin
+  const userListened = user && !fromMock ? await fetchUserPlaylistRoomListened(room.id, user.id) : false
   const { songs: mySongs } = user ? await fetchCommunitySongs() : { songs: [] }
 
   const { data: items } = fromMock
@@ -61,6 +75,9 @@ export default async function PlaylistRoomPage({ params }: Props) {
 
       <section className="v2-section">
         <V2SectionHeader title="Room activity" />
+        {user && !isHost && (
+          <V2PlaylistListenButton roomSlug={room.slug} initialListened={userListened} demoMode={fromMock} />
+        )}
         <V2PlaylistRoomEngine roomSlug={room.slug} roomId={room.id} isHost={isHost} demoMode={fromMock} activity={activityData} />
       </section>
 

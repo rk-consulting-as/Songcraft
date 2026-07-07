@@ -42,7 +42,8 @@ export default function V2PlaylistRoomEngine({ roomSlug, roomId, isHost, demoMod
         <span className={`v2-tag${activity.roundStatus === 'active' ? ' hot' : ''}`}>
           Round {activity.roundStatus}
         </span>
-        <span className="v2-tag">{activity.listenedCount} played</span>
+        <span className="v2-tag">{activity.listenedCount} tracks played</span>
+        <span className="v2-tag">{activity.participationCount} listeners confirmed</span>
         <span className="v2-tag">Stream Engine Beta</span>
       </div>
 
@@ -101,6 +102,36 @@ export default function V2PlaylistRoomEngine({ roomSlug, roomId, isHost, demoMod
               <div key={s.id} className="v2-track">
                 <span className="num">◎</span>
                 <div><b>{s.title}</b><span>{s.status}</span></div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {activity.recentSupporters.length > 0 && (
+        <section className="v2-section">
+          <h4 style={{ margin: '0 0 8px' }}>Recent supporters</h4>
+          <div className="v2-card">
+            {activity.recentSupporters.map(s => (
+              <div key={s.id} className="v2-track">
+                <span className="num">★</span>
+                <div><b>{s.name}</b><span>{s.badge || 'Supporter'}</span></div>
+                <span>{s.score}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {activity.topSupportersThisWeek.length > 0 && (
+        <section className="v2-section">
+          <h4 style={{ margin: '0 0 8px' }}>Top supporters this week</h4>
+          <div className="v2-card">
+            {activity.topSupportersThisWeek.map(s => (
+              <div key={s.id} className="v2-track">
+                <span className="num">♥</span>
+                <div><b>{s.name}</b><span>{s.badge || 'Supporter'}</span></div>
+                <span>{s.score}</span>
               </div>
             ))}
           </div>

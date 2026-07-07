@@ -15,6 +15,7 @@ export const V2_NAV_ITEMS: V2NavItem[] = [
   { id: 'artists', label: 'Artists', href: V2_ROUTES.artists, matchPrefix: '/community/artists' },
   { id: 'songs', label: 'Songs', href: V2_ROUTES.songs, matchPrefix: '/community/songs' },
   { id: 'playlists', label: 'Playlists', href: V2_ROUTES.playlists, matchPrefix: '/community/playlists' },
+  { id: 'host', label: 'Host', href: V2_ROUTES.host, matchPrefix: '/community/host' },
   { id: 'pricing', label: 'Pricing', href: V2_ROUTES.pricing, matchPrefix: '/community/pricing' },
 ]
 

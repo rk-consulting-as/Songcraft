@@ -4,11 +4,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { V2_NAV_ITEMS } from '@/lib/v2/navigation'
 import { V2_ROUTES } from '@/lib/v2/routes'
-import { useV2Toast } from './V2Toast'
 
 export default function V2Sidebar() {
   const pathname = usePathname() || ''
-  const { showToast } = useV2Toast()
 
   return (
     <aside className="v2-sidebar">
@@ -38,9 +36,9 @@ export default function V2Sidebar() {
       <div className="v2-sidebar-card">
         <b>Powered by Aigent4U</b>
         <p>Playlist queue, Auto-Switch, shuffle, play logs and session reports — unified as the ViaTone Stream Engine.</p>
-        <button type="button" className="v2-btn hot" onClick={() => showToast('Host mode — connect Stream Engine in Host Pro')}>
-          Host session
-        </button>
+        <Link href={V2_ROUTES.host} className="v2-btn hot">
+          Host dashboard
+        </Link>
       </div>
       <p className="v2-legacy-link">
         Full studio tools: <Link href={V2_ROUTES.legacyStudio}>Open Legacy Studio</Link>

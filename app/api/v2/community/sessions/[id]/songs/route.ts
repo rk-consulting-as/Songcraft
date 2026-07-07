@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireV2User, v2ServiceClient } from '@/lib/v2/apiAuth'
+import { canManageSessionHost } from '@/lib/v2/hostAccess'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -88,7 +89,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const { data: session } = await resolveSession(params.id)
   if (!session) return NextResponse.json({ error: 'not_found' }, { status: 404 })
-  if (session.host_user_id !== userId) return NextResponse.json({ error: 'host_only' }, { status: 403 })
+  const canHost = await canManageSessionHost(sb, userId, session.host_user_id)
+  if (!canHost) return NextResponse.json({ error: 'host_only' }, { status: 403 })
 
   const body = await req.json().catch(() => ({}))
   const rowId = typeof body.row_id === 'string' ? body.row_id : ''

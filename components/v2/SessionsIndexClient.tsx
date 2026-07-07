@@ -1,9 +1,11 @@
 'use client'
 
+import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
 import V2SessionCard from '@/components/v2/V2SessionCard'
 import { useV2Toast } from '@/components/v2/V2Toast'
+import { V2_ROUTES } from '@/lib/v2/routes'
 import type { V2Session } from '@/lib/v2/types'
 
 type Props = {
@@ -26,9 +28,7 @@ export default function SessionsIndexClient({ sessions, fromMock }: Props) {
         title="Listening Sessions"
         lead="Organized events where the community streams, reacts and gives feedback."
         action={
-          <button type="button" className="v2-btn sm" onClick={() => showToast('Create Session — Host Pro')}>
-            + Create Session
-          </button>
+          <Link href={V2_ROUTES.host} className="v2-btn sm">+ Create Session</Link>
         }
       />
       {fromMock && (

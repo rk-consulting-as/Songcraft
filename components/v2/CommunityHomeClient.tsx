@@ -6,6 +6,7 @@ import V2SessionCard from '@/components/v2/V2SessionCard'
 import V2SongCard from '@/components/v2/V2SongCard'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
 import V2StreamEngineBlock from '@/components/v2/V2StreamEngineBlock'
+import V2SupporterBadges, { V2SupporterScoreGrid } from '@/components/v2/V2SupporterBadges'
 import { useV2Toast } from '@/components/v2/V2Toast'
 import { V2_COMMUNITY_STATS } from '@/lib/v2/mockData'
 import { V2_ROUTES } from '@/lib/v2/routes'
@@ -27,7 +28,7 @@ export default function CommunityHomeClient({ sessions, circles, feedbackSongs, 
 
   const upcoming = sessions.filter(s => s.status !== 'ended')
   const featured = circles.filter(c => c.featured)
-  const { myCircles, mySubmissions, recommendedCircles, feedbackReceivedCount, userId, liveSessions, recentCompletedSessions, recentRoomActivity, myParticipationSummary } = personalization
+  const { myCircles, mySubmissions, recommendedCircles, feedbackReceivedCount, userId, liveSessions, recentCompletedSessions, recentRoomActivity, myParticipationSummary, supporterScore, badges, suggestedAction, activityEvidenceAvailable, hostCta } = personalization
 
   return (
     <>
@@ -35,6 +36,26 @@ export default function CommunityHomeClient({ sessions, circles, feedbackSongs, 
         <p className="v2-meta" style={{ marginBottom: 12 }}>
           Previewing demo community data — run migrations to seed live circles and sessions.
         </p>
+      )}
+
+      {userId && hostCta && (
+        <section className="v2-section" style={{ marginTop: 0 }}>
+          <div className="v2-card v2-host-cta">
+            {hostCta === 'dashboard' ? (
+              <>
+                <h4 style={{ margin: '0 0 8px' }}>Your host dashboard</h4>
+                <p className="v2-meta">Manage sessions, submissions, playlist rooms and participation.</p>
+                <Link href={V2_ROUTES.host} className="v2-btn hot sm">Open Host Dashboard</Link>
+              </>
+            ) : (
+              <>
+                <h4 style={{ margin: '0 0 8px' }}>Become a Host</h4>
+                <p className="v2-meta">Run circles, sessions and playlist rooms with Host Pro curator tools.</p>
+                <Link href={V2_ROUTES.host} className="v2-btn hot sm">Explore hosting</Link>
+              </>
+            )}
+          </div>
+        </section>
       )}
 
       {userId && myCircles.length > 0 && (
@@ -103,10 +124,38 @@ export default function CommunityHomeClient({ sessions, circles, feedbackSongs, 
 
       {userId && (
         <section className="v2-section">
-          <V2SectionHeader title="My participation" lead="Your community listening activity." />
+          <V2SectionHeader
+            title="My supporter score"
+            lead="Participation, listening activity, support and feedback — not verified streams."
+            action={<Link href={V2_ROUTES.participation} className="v2-btn secondary sm">Full history</Link>}
+          />
+          <div className="v2-card">
+            <V2SupporterScoreGrid summary={supporterScore} compact />
+            <div style={{ marginTop: 16 }}>
+              <h4 style={{ margin: '0 0 8px', fontSize: 14 }}>Active badges</h4>
+              <V2SupporterBadges badges={badges} compact />
+            </div>
+            {activityEvidenceAvailable && (
+              <p className="v2-meta v2-evidence-hint" style={{ marginTop: 12, marginBottom: 0 }}>
+                Activity evidence available from Last.fm or playlist campaigns — optional bridge, not merged yet.
+              </p>
+            )}
+            {suggestedAction && (
+              <div className="v2-suggested-action" style={{ marginTop: 16 }}>
+                <p className="v2-meta" style={{ margin: '0 0 8px' }}>{suggestedAction.reason}</p>
+                <Link href={suggestedAction.href} className="v2-btn hot sm">{suggestedAction.label}</Link>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {userId && (
+        <section className="v2-section">
+          <V2SectionHeader title="My participation" lead="Quick summary of your community listening activity." />
           <div className="v2-grid cols-3">
             <div className="v2-stat"><strong>{myParticipationSummary.sessionsJoined}</strong><span>sessions joined</span></div>
-            <div className="v2-stat"><strong>{myParticipationSummary.sessionsListened}</strong><span>sessions listened</span></div>
+            <div className="v2-stat"><strong>{myParticipationSummary.sessionsListened}</strong><span>listening confirmed</span></div>
             <div className="v2-stat"><strong>{myParticipationSummary.playlistSubmissions}</strong><span>playlist submits</span></div>
           </div>
         </section>
@@ -162,9 +211,7 @@ export default function CommunityHomeClient({ sessions, circles, feedbackSongs, 
           title={recommendedCircles.length ? 'Recommended for you' : 'Featured Circles'}
           lead="Based on your artist genres and community activity."
           action={
-            <button type="button" className="v2-btn secondary sm" onClick={() => showToast('Create Circle — Host Pro')}>
-              Create Circle
-            </button>
+            <Link href={V2_ROUTES.host} className="v2-btn secondary sm">Create Circle</Link>
           }
         />
         <div className="v2-grid cols-4">

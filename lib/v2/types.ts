@@ -66,9 +66,12 @@ export type V2PlaylistRoomActivity = {
   recentSubmissions: { id: string; title: string; artistName: string; createdAt: string }[]
   lastPlayed: { id: string; title: string; artistName: string; playedAt: string }[]
   listenedCount: number
+  participationCount: number
   roundStatus: 'active' | 'completed'
   lastCompletedAt?: string
   linkedSessions: { id: string; title: string; status: V2SessionStatus }[]
+  recentSupporters: V2Supporter[]
+  topSupportersThisWeek: V2Supporter[]
 }
 
 export type V2QueueTrack = {
@@ -150,11 +153,111 @@ export type V2PlaylistRoom = {
   lastCompletedAt?: string
 }
 
+export type V2SupporterBadgeId =
+  | 'new_supporter'
+  | 'active_listener'
+  | 'feedback_giver'
+  | 'trusted_supporter'
+  | 'session_regular'
+
+export type V2SupporterBadge = {
+  id: V2SupporterBadgeId
+  label: string
+  description: string
+}
+
+export type V2SupporterScoreSummary = {
+  score: number
+  sessionsJoined: number
+  sessionsListened: number
+  feedbackGiven: number
+  songsSupported: number
+  playlistRoomParticipation: number
+  circlesJoined: number
+}
+
+export type V2ParticipationHistoryItem = {
+  id: string
+  type: 'session_joined' | 'session_listened' | 'feedback' | 'song_submission' | 'playlist_listened'
+  title: string
+  subtitle: string
+  at: string
+  href?: string
+}
+
+export type V2SuggestedParticipationAction = {
+  label: string
+  href: string
+  reason: string
+}
+
+export type V2HostCapabilities = {
+  tier: V2PlanTier
+  isAdmin: boolean
+  hostProActive: boolean
+  softGating: boolean
+  isExistingHost: boolean
+  canCreateCircle: boolean
+  canCreateSession: boolean
+  canCreatePlaylistRoom: boolean
+  canViewRecaps: boolean
+  canViewSupporterReports: boolean
+  showUpgradePrompt: boolean
+}
+
+export type V2HostPendingSubmission = {
+  id: string
+  title: string
+  artistName: string
+  sessionId: string
+  sessionTitle: string
+  status: V2SubmissionStatus
+  createdAt: string
+}
+
+export type V2HostRecentParticipation = {
+  sessionId: string
+  sessionTitle: string
+  participantCount: number
+  listenedCount: number
+  completedAt?: string
+}
+
+export type V2HostAnalytics = {
+  totalParticipants: number
+  songsSubmitted: number
+  songsPlayed: number
+  feedbackCount: number
+  completionRate: number
+  topSupporters: V2Supporter[]
+}
+
+export type V2HostDashboard = {
+  access: V2HostCapabilities
+  circles: V2Circle[]
+  sessions: V2Session[]
+  playlistRooms: V2PlaylistRoom[]
+  pendingSubmissions: V2HostPendingSubmission[]
+  upcomingSessions: V2Session[]
+  recentParticipation: V2HostRecentParticipation[]
+  analytics: V2HostAnalytics
+}
+
+export type V2CommunityProfileCard = {
+  userId: string
+  displayName: string
+  avatarInitial: string
+  scoreSummary: V2SupporterScoreSummary
+  badges: V2SupporterBadge[]
+  activityEvidenceAvailable: boolean
+}
+
 export type V2Supporter = {
   id: string
   name: string
   score: number
   badge?: string
+  badges?: V2SupporterBadge[]
 }
 
 export type V2FeedbackReaction = 'fire' | 'love' | 'idea' | 'clap'
@@ -201,6 +304,13 @@ export type CommunityPersonalization = {
   recentCompletedSessions: V2SessionRecap[]
   recentRoomActivity: { roomSlug: string; roomName: string; lastPlayedTitle?: string; roundStatus: string }[]
   myParticipationSummary: { sessionsJoined: number; sessionsListened: number; playlistSubmissions: number }
+  supporterScore: V2SupporterScoreSummary
+  badges: V2SupporterBadge[]
+  participationHistory: V2ParticipationHistoryItem[]
+  suggestedAction: V2SuggestedParticipationAction | null
+  activityEvidenceAvailable: boolean
+  hostCta: 'dashboard' | 'become_host' | null
+  hostAccess: V2HostCapabilities | null
 }
 
 export type V2CommunityStats = {
