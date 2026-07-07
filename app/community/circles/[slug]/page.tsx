@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import V2CircleCard from '@/components/v2/V2CircleCard'
+import V2EmptyState from '@/components/v2/V2EmptyState'
 import V2SupporterProfileCard from '@/components/v2/V2SupporterProfileCard'
 import V2FeedbackPanel from '@/components/v2/V2FeedbackPanel'
 import V2JoinCircleButton from '@/components/v2/V2JoinCircleButton'
@@ -79,6 +80,9 @@ export default async function CircleDetailPage({ params }: Props) {
       <section className="v2-section">
         <V2SectionHeader title="Submit your song" lead="Share a track with this circle for feedback and sessions." />
         <div className="v2-card">
+          {user && !isMember && (
+            <p className="v2-permission-hint" style={{ marginTop: 0 }}>Join this circle before submitting a song.</p>
+          )}
           <V2SubmitSongPanel target={{ type: 'circle', slug: circle.slug, label: circle.name }} songs={mySongs} demoMode={circleMock} />
         </div>
       </section>
@@ -117,9 +121,19 @@ export default async function CircleDetailPage({ params }: Props) {
       <section className="v2-section">
         <V2SectionHeader title="Song submissions" />
         {songsMock && <p className="v2-meta" style={{ marginBottom: 12 }}>Demo submissions until circle songs are linked.</p>}
-        <div className="v2-grid cols-3">
-          {songs.map(song => <V2SongCard key={song.id} song={song} />)}
-        </div>
+        {songs.length === 0 ? (
+          <V2EmptyState
+            icon="♪"
+            title="No songs submitted yet"
+            description="This is where circle members share tracks for feedback and sessions. Join and submit your song to get things started."
+            actionLabel="Submit a song"
+            actionHref={V2_ROUTES.circle(circle.slug)}
+          />
+        ) : (
+          <div className="v2-grid cols-3">
+            {songs.map(song => <V2SongCard key={song.id} song={song} />)}
+          </div>
+        )}
       </section>
 
       {songs[0] && !songsMock && (

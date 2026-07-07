@@ -53,7 +53,8 @@ export default function V2SubmitSongPanel({ target, songs, demoMode }: Props) {
   if (!songs.length) {
     return (
       <p className="v2-meta">
-        Add songs in <a href="/dashboard" style={{ color: 'var(--v2-brand2)' }}>Legacy Studio</a> to submit here.
+        You need at least one song before submitting. Add songs in{' '}
+        <a href="/dashboard" style={{ color: 'var(--v2-brand2)' }}>Legacy Studio</a>, then come back to submit here.
       </p>
     )
   }

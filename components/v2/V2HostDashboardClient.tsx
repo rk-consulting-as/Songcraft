@@ -4,7 +4,7 @@ import Link from 'next/link'
 import V2CircleCard from '@/components/v2/V2CircleCard'
 import V2EmptyState from '@/components/v2/V2EmptyState'
 import V2HostCreatePanel from '@/components/v2/V2HostCreatePanel'
-import V2HostOnboarding from '@/components/v2/V2HostOnboarding'
+import V2HostIntro from '@/components/v2/V2HostIntro'
 import V2HostPendingPanel from '@/components/v2/V2HostPendingPanel'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
 import V2SessionCard from '@/components/v2/V2SessionCard'
@@ -32,15 +32,7 @@ export default function V2HostDashboardClient({ dashboard }: Props) {
         }
       />
 
-      <V2HostOnboarding dashboard={dashboard} />
-
-      {access.showUpgradePrompt && !access.isExistingHost && (
-        <div className="v2-card v2-host-upgrade" style={{ marginBottom: 24 }}>
-          <h4 style={{ margin: '0 0 8px' }}>Become a Host</h4>
-          <p className="v2-meta">Host Pro unlocks circle creation, session hosting, playlist rooms, recaps and supporter reports.</p>
-          <Link href={V2_ROUTES.pricing} className="v2-btn hot sm">View Host Pro</Link>
-        </div>
-      )}
+      <V2HostIntro dashboard={dashboard} />
 
       <section className="v2-section" style={{ marginTop: 0 }}>
         <V2SectionHeader title="Host analytics" lead="Participation across your hosted listening rooms." />

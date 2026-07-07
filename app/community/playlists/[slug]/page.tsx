@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import V2EmptyState from '@/components/v2/V2EmptyState'
 import V2PlaylistListenButton from '@/components/v2/V2PlaylistListenButton'
 import V2PlaylistRoomEngine from '@/components/v2/V2PlaylistRoomEngine'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
@@ -84,7 +85,15 @@ export default async function PlaylistRoomPage({ params }: Props) {
       <section className="v2-section">
         <V2SectionHeader title="Full queue" />
         <div className="v2-card">
-          {(items || []).length === 0 && <p className="v2-meta">No tracks yet.</p>}
+          {(items || []).length === 0 && (
+            <V2EmptyState
+              icon="♫"
+              title="No songs in this room yet"
+              description="Playlist rooms organize listening rounds and shared support. Submit a song above to add the first track."
+              actionLabel="Submit a song"
+              actionHref={V2_ROUTES.playlistRoom(room.slug)}
+            />
+          )}
           {(items || []).map(item => (
             <div key={item.id} className="v2-track">
               <span className="num">{item.position}</span>

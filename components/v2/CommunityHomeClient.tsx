@@ -1,8 +1,13 @@
 'use client'
 
 import Link from 'next/link'
+import { useState } from 'react'
 import V2CircleCard from '@/components/v2/V2CircleCard'
-import V2CommunityOnboarding from '@/components/v2/V2CommunityOnboarding'
+import V2CommunityBenefits from '@/components/v2/V2CommunityBenefits'
+import V2CommunityHowItWorks from '@/components/v2/V2CommunityHowItWorks'
+import V2CommunityStartHere from '@/components/v2/V2CommunityStartHere'
+import V2CommunityWelcome from '@/components/v2/V2CommunityWelcome'
+import V2CommunityWelcomeModal from '@/components/v2/V2CommunityWelcomeModal'
 import V2EmptyState from '@/components/v2/V2EmptyState'
 import V2GuidedFirstActions from '@/components/v2/V2GuidedFirstActions'
 import V2SessionCard from '@/components/v2/V2SessionCard'
@@ -53,9 +58,30 @@ export default function CommunityHomeClient({ sessions, circles, feedbackSongs, 
   const firstCircleSlug = myCircles[0]?.slug || recommendedCircles[0]?.slug || featured[0]?.slug
   const firstSessionId = joinedSessions[0]?.id || upcoming[0]?.id || liveSessions[0]?.id
 
+  const [howItWorksOpen, setHowItWorksOpen] = useState(false)
+
+  const activityScore =
+    myCircles.length +
+    myParticipationSummary.sessionsJoined +
+    myParticipationSummary.sessionsListened +
+    mySubmissions.length
+  const lowActivity = !!userId && activityScore < 3
+
+  const scrollToStart = () => {
+    if (typeof document === 'undefined') return
+    const el = document.getElementById('v2-start-here') || document.getElementById('v2-welcome-title')
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <>
-      <V2CommunityOnboarding loggedIn={!!userId} />
+      {userId && <V2CommunityWelcomeModal onHowItWorks={() => setHowItWorksOpen(true)} />}
+      <V2CommunityHowItWorks open={howItWorksOpen} onClose={() => setHowItWorksOpen(false)} />
+
+      <V2CommunityWelcome
+        onHowItWorks={() => setHowItWorksOpen(true)}
+        onStartHere={scrollToStart}
+      />
 
       {usingDemoData && (
         <p className="v2-meta" style={{ marginBottom: 12 }}>
@@ -63,7 +89,9 @@ export default function CommunityHomeClient({ sessions, circles, feedbackSongs, 
         </p>
       )}
 
-      {userId && (
+      {lowActivity && <V2CommunityStartHere />}
+
+      {lowActivity && (
         <V2GuidedFirstActions
           artistCount={catalogSnapshot.artistCount}
           songCount={catalogSnapshot.songCount}
@@ -328,6 +356,8 @@ export default function CommunityHomeClient({ sessions, circles, feedbackSongs, 
           </div>
         </div>
       </section>
+
+      <V2CommunityBenefits />
 
       <section className="v2-section">
         <V2StreamEngineBlock />

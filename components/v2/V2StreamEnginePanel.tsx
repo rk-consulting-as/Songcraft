@@ -234,7 +234,11 @@ export default function V2StreamEnginePanel({
             isNowPlaying: r.isNowPlaying,
           }))} />
         ) : !isLive && (
-          <p className="v2-meta">Queue empty — approve submissions or wait for host to go live.</p>
+          <p className="v2-meta">
+            {isHost
+              ? 'No submissions yet. Approve songs as they arrive or invite artists to submit, then go live.'
+              : 'No songs in the queue yet. Submit your song or wait for the host to build the lineup.'}
+          </p>
         )}
         {isLive && playLogs.length > 0 && (
           <div style={{ marginTop: 12 }}>
@@ -271,6 +275,12 @@ export default function V2StreamEnginePanel({
               <div><b>{p.displayName}</b>{p.note && <span>{p.note}</span>}</div>
             </div>
           ))}
+        </div>
+      )}
+
+      {participants.length === 0 && !demoMode && (isLive || isCompleted) && (
+        <div className="v2-card" style={{ marginTop: 16 }}>
+          <p className="v2-meta" style={{ margin: 0 }}>No participants yet — listeners show up here once they join and confirm listening.</p>
         </div>
       )}
 
