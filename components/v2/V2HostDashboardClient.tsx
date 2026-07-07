@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import V2CircleCard from '@/components/v2/V2CircleCard'
+import V2CommunityNextActions from '@/components/v2/V2CommunityNextActions'
 import V2EmptyState from '@/components/v2/V2EmptyState'
 import V2HostCreatePanel from '@/components/v2/V2HostCreatePanel'
 import V2HostIntro from '@/components/v2/V2HostIntro'
@@ -9,13 +10,14 @@ import V2HostPendingPanel from '@/components/v2/V2HostPendingPanel'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
 import V2SessionCard from '@/components/v2/V2SessionCard'
 import { V2_ROUTES } from '@/lib/v2/routes'
-import type { V2HostDashboard } from '@/lib/v2/types'
+import type { V2CommunityReminder, V2HostDashboard } from '@/lib/v2/types'
 
 type Props = {
   dashboard: V2HostDashboard
+  hostReminders?: V2CommunityReminder[]
 }
 
-export default function V2HostDashboardClient({ dashboard }: Props) {
+export default function V2HostDashboardClient({ dashboard, hostReminders = [] }: Props) {
   const { access, circles, sessions, playlistRooms, pendingSubmissions, upcomingSessions, recentParticipation, analytics } = dashboard
 
   return (
@@ -33,6 +35,17 @@ export default function V2HostDashboardClient({ dashboard }: Props) {
       />
 
       <V2HostIntro dashboard={dashboard} />
+
+      <section className="v2-section" style={{ marginTop: 0 }}>
+        <V2SectionHeader title="Host alerts" lead="What needs your attention across circles, sessions and rooms." />
+        <V2CommunityNextActions
+          reminders={hostReminders}
+          title="Host inbox"
+          emptyHint="No new host alerts right now. Run a session or open a playlist room to start building activity."
+          emptyCtaLabel="Browse sessions"
+          emptyCtaHref={V2_ROUTES.sessions}
+        />
+      </section>
 
       <section className="v2-section" style={{ marginTop: 0 }}>
         <V2SectionHeader title="Host analytics" lead="Participation across your hosted listening rooms." />

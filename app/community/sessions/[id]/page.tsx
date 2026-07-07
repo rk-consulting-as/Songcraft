@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import V2ReportButton from '@/components/v2/V2ReportButton'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
+import V2SessionRecapCard from '@/components/v2/V2SessionRecapCard'
 import V2StreamEngineBlock from '@/components/v2/V2StreamEngineBlock'
 import V2StreamEnginePanel from '@/components/v2/V2StreamEnginePanel'
 import V2SubmitSongPanel from '@/components/v2/V2SubmitSongPanel'
@@ -94,6 +95,17 @@ export default async function SessionDetailPage({ params }: Props) {
         </div>
         {!fromMock && <div style={{ marginTop: 12 }}><V2ReportButton targetType="session" targetId={session.id} /></div>}
       </div>
+
+      {recap && session.status === 'ended' && (
+        <section className="v2-section">
+          <V2SectionHeader title="Session recap" lead="How this listening room wrapped up." />
+          <V2SessionRecapCard
+            recap={recap}
+            circleName={session.circleName}
+            circleSlug={session.circleSlug || undefined}
+          />
+        </section>
+      )}
 
       <div className="v2-grid cols-2">
         <section className="v2-section" style={{ marginTop: 0 }}>

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireV2User, v2ServiceClient } from '@/lib/v2/apiAuth'
 import { canManageSessionHost } from '@/lib/v2/hostAccess'
+import { createCommunityNotification } from '@/lib/v2/data/communityNotifications'
+import { buildSessionSubmissionApproved, buildSessionSubmissionRemoved } from '@/lib/v2/communityNotifications'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -104,7 +106,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     .update({ status })
     .eq('id', rowId)
     .eq('session_id', session.id)
-    .select('id, status')
+    .select('id, status, title, submitted_by')
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -115,6 +117,24 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     .eq('session_id', session.id)
     .eq('status', 'approved')
   await sb.from('v2_sessions').update({ track_count: count || 0 }).eq('id', session.id)
+
+  // Notify submitter on approve/remove (skip host acting on own submission)
+  const submitterId = data.submitted_by as string | null
+  if (submitterId && submitterId !== userId && (status === 'approved' || status === 'removed')) {
+    const service = v2ServiceClient()
+    const payload = {
+      userId: submitterId,
+      sessionId: session.id,
+      sessionTitle: session.title as string,
+      songTitle: (data.title as string) || 'Your song',
+    }
+    await createCommunityNotification(
+      service,
+      status === 'approved'
+        ? buildSessionSubmissionApproved(payload)
+        : buildSessionSubmissionRemoved(payload),
+    )
+  }
 
   return NextResponse.json({ row: data })
 }

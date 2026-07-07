@@ -2,6 +2,35 @@ import { NextRequest, NextResponse } from 'next/server'
 import { clipText, requireV2User, v2ServiceClient } from '@/lib/v2/apiAuth'
 import { canManageSessionHost } from '@/lib/v2/hostAccess'
 import { parseStreamMeta } from '@/lib/v2/data/streamEngine'
+import { createManyCommunityNotifications } from '@/lib/v2/data/communityNotifications'
+import { buildSessionCompleted, buildSessionStarted } from '@/lib/v2/communityNotifications'
+import type { V2NotificationInput } from '@/lib/v2/types'
+
+async function notifyJoinedMembers(
+  sessionId: string,
+  sessionTitle: string,
+  hostUserId: string,
+  build: (p: { userId: string; sessionId: string; sessionTitle: string }) => V2NotificationInput,
+) {
+  const service = v2ServiceClient()
+  const { data: members } = await service
+    .from('v2_session_participation')
+    .select('user_id')
+    .eq('session_id', sessionId)
+    .eq('status', 'joined')
+
+  const inputs = (members || [])
+    .map(m => m.user_id as string)
+    .filter(uid => uid && uid !== hostUserId)
+    .map(uid => build({ userId: uid, sessionId, sessionTitle }))
+
+  await createManyCommunityNotifications(service, inputs)
+}
+
+async function fetchSessionTitle(sessionId: string): Promise<string> {
+  const { data } = await v2ServiceClient().from('v2_sessions').select('title').eq('id', sessionId).maybeSingle()
+  return (data?.title as string) || 'Session'
+}
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -49,6 +78,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       await sb.from('v2_session_songs').update({ is_now_playing: false }).eq('session_id', session.id)
       await sb.from('v2_session_songs').update({ is_now_playing: true }).eq('id', nextId)
     }
+    const title = await fetchSessionTitle(session.id)
+    await notifyJoinedMembers(session.id, title, session.host_user_id, buildSessionStarted)
     return NextResponse.json({ ok: true, status: 'live' })
   }
 
@@ -59,6 +90,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       stream_engine_meta: { ...meta, completed_at: new Date().toISOString(), host_notes: notes },
     }).eq('id', session.id)
     await sb.from('v2_session_songs').update({ is_now_playing: false }).eq('session_id', session.id)
+    const title = await fetchSessionTitle(session.id)
+    await notifyJoinedMembers(session.id, title, session.host_user_id, buildSessionCompleted)
     return NextResponse.json({ ok: true, status: 'ended' })
   }
 

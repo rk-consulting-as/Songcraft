@@ -314,6 +314,97 @@ export type CommunityPersonalization = {
   catalogSnapshot: { artistCount: number; songCount: number }
 }
 
+export type V2CommunityNotificationKind =
+  | 'session_submission_approved'
+  | 'session_submission_removed'
+  | 'session_started'
+  | 'session_completed'
+  | 'song_received_feedback'
+  | 'song_feedback_reaction'
+  | 'supporter_badge_earned'
+  | 'top_supporter_this_week'
+  | 'playlist_room_round_completed'
+  | 'playlist_room_submission_added'
+  | 'feedback_needed'
+  | 'session_needs_participation'
+  | 'host_submission_pending'
+  | 'room_activity_waiting'
+
+export type V2NotificationTone = 'positive' | 'info' | 'attention' | 'celebrate'
+
+/** Row shape as stored / read from v2_community_notifications. */
+export type V2CommunityNotificationRow = {
+  id: string
+  userId: string
+  kind: V2CommunityNotificationKind | string
+  title: string
+  body?: string
+  ctaLabel?: string
+  ctaHref?: string
+  entityType?: string
+  entityId?: string
+  metadata: Record<string, unknown>
+  isRead: boolean
+  createdAt: string
+}
+
+/** Normalized model for rendering a notification row. */
+export type V2CommunityNotificationView = {
+  id: string
+  kind: V2CommunityNotificationKind | string
+  icon: string
+  tone: V2NotificationTone
+  title: string
+  body?: string
+  cta?: { label: string; href: string }
+  isRead: boolean
+  createdAt: string
+}
+
+/** Payload used when creating a notification (user_id added by data layer). */
+export type V2NotificationInput = {
+  userId: string
+  kind: V2CommunityNotificationKind
+  title: string
+  body?: string
+  ctaLabel?: string
+  ctaHref?: string
+  entityType?: string
+  entityId?: string
+  metadata?: Record<string, unknown>
+}
+
+export type V2CommunityReminderKind =
+  | 'feedback_needed'
+  | 'session_live_now'
+  | 'session_needs_participation'
+  | 'submission_pending'
+  | 'room_activity'
+  | 'host_submission_pending'
+  | 'host_session_no_participants'
+  | 'host_room_new_songs'
+  | 'host_session_soon'
+
+export type V2CommunityReminder = {
+  id: string
+  kind: V2CommunityReminderKind
+  icon: string
+  tone: V2NotificationTone
+  title: string
+  body?: string
+  cta: { label: string; href: string }
+}
+
+export type V2WeeklyDigest = {
+  hasActivity: boolean
+  sessionsJoined: number
+  listeningConfirmations: number
+  feedbackGiven: number
+  songsSupported: number
+  playlistRoomParticipation: number
+  badgeEarnedThisWeek?: string
+}
+
 export type V2CommunityStats = {
   membersStreamingNow: number
   sessionsTonight: number

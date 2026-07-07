@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireV2User, v2ServiceClient } from '@/lib/v2/apiAuth'
+import { maybeNotifyNewBadges } from '@/lib/v2/data/communityNotifications'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -82,5 +83,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!data) return NextResponse.json({ error: 'join_first' }, { status: 400 })
+
+  if (body.listened === true) {
+    await maybeNotifyNewBadges(v2ServiceClient(), userId)
+  }
+
   return NextResponse.json({ participation: data })
 }

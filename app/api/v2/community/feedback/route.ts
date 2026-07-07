@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { clipText, requireV2User, v2ServiceClient } from '@/lib/v2/apiAuth'
+import { createCommunityNotification, maybeNotifyNewBadges } from '@/lib/v2/data/communityNotifications'
+import { buildSongReceivedFeedback } from '@/lib/v2/communityNotifications'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -32,6 +34,29 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await sb.from('v2_song_feedback').insert(row).select('id, created_at').single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  const service = v2ServiceClient()
+
+  // Notify the song owner (skip self-feedback)
+  const { data: song } = await service
+    .from('songs')
+    .select('user_id, title')
+    .eq('id', songId)
+    .maybeSingle()
+  if (song?.user_id && song.user_id !== userId) {
+    await createCommunityNotification(
+      service,
+      buildSongReceivedFeedback({
+        userId: song.user_id as string,
+        songId,
+        songTitle: (song.title as string) || 'your song',
+      }),
+    )
+  }
+
+  // The feedback author may have just earned a supporter badge
+  await maybeNotifyNewBadges(service, userId)
+
   return NextResponse.json({ feedback: data })
 }
 

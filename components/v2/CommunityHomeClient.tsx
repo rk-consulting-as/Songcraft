@@ -4,13 +4,17 @@ import Link from 'next/link'
 import { useState } from 'react'
 import V2CircleCard from '@/components/v2/V2CircleCard'
 import V2CommunityBenefits from '@/components/v2/V2CommunityBenefits'
+import V2CommunityDigest from '@/components/v2/V2CommunityDigest'
 import V2CommunityHowItWorks from '@/components/v2/V2CommunityHowItWorks'
+import V2CommunityNextActions from '@/components/v2/V2CommunityNextActions'
+import V2CommunityNotificationCenter from '@/components/v2/V2CommunityNotificationCenter'
 import V2CommunityStartHere from '@/components/v2/V2CommunityStartHere'
 import V2CommunityWelcome from '@/components/v2/V2CommunityWelcome'
 import V2CommunityWelcomeModal from '@/components/v2/V2CommunityWelcomeModal'
 import V2EmptyState from '@/components/v2/V2EmptyState'
 import V2GuidedFirstActions from '@/components/v2/V2GuidedFirstActions'
 import V2SessionCard from '@/components/v2/V2SessionCard'
+import V2SessionRecapCard from '@/components/v2/V2SessionRecapCard'
 import V2SongCard from '@/components/v2/V2SongCard'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
 import V2StreamEngineBlock from '@/components/v2/V2StreamEngineBlock'
@@ -19,7 +23,14 @@ import { useV2Toast } from '@/components/v2/V2Toast'
 import { V2_COMMUNITY_STATS } from '@/lib/v2/mockData'
 import { V2_ROUTES } from '@/lib/v2/routes'
 import type { CommunityPersonalization } from '@/lib/v2/data/personalization'
-import type { V2Circle, V2Session, V2Song } from '@/lib/v2/types'
+import type {
+  V2Circle,
+  V2CommunityNotificationView,
+  V2CommunityReminder,
+  V2Session,
+  V2Song,
+  V2WeeklyDigest,
+} from '@/lib/v2/types'
 
 const HERO_IMG = 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=1800&q=80'
 
@@ -29,9 +40,23 @@ type Props = {
   feedbackSongs: V2Song[]
   usingDemoData?: boolean
   personalization: CommunityPersonalization
+  notifications: V2CommunityNotificationView[]
+  unreadCount: number
+  reminders: V2CommunityReminder[]
+  weeklyDigest: V2WeeklyDigest
 }
 
-export default function CommunityHomeClient({ sessions, circles, feedbackSongs, usingDemoData, personalization }: Props) {
+export default function CommunityHomeClient({
+  sessions,
+  circles,
+  feedbackSongs,
+  usingDemoData,
+  personalization,
+  notifications,
+  unreadCount,
+  reminders,
+  weeklyDigest,
+}: Props) {
   const { showToast } = useV2Toast()
 
   const upcoming = sessions.filter(s => s.status !== 'ended')
@@ -120,6 +145,25 @@ export default function CommunityHomeClient({ sessions, circles, feedbackSongs, 
               </>
             )}
           </div>
+        </section>
+      )}
+
+      {userId && (!lowActivity || notifications.length > 0 || reminders.length > 0) && (
+        <section className="v2-section" style={{ marginTop: 0 }}>
+          <div className="v2-activity-grid">
+            <V2CommunityNotificationCenter
+              initialNotifications={notifications}
+              initialUnread={unreadCount}
+              maxCollapsed={5}
+            />
+            <V2CommunityNextActions reminders={reminders} />
+          </div>
+        </section>
+      )}
+
+      {userId && !lowActivity && (
+        <section className="v2-section" style={{ marginTop: 0 }}>
+          <V2CommunityDigest digest={weeklyDigest} />
         </section>
       )}
 
@@ -253,11 +297,7 @@ export default function CommunityHomeClient({ sessions, circles, feedbackSongs, 
           <V2SectionHeader title="Recent session recaps" lead="Completed listening rooms — powered by Stream Engine beta." />
           <div className="v2-grid cols-2">
             {recentCompletedSessions.map(recap => (
-              <article key={recap.sessionId} className="v2-card v2-recap">
-                <h4 style={{ margin: '0 0 8px' }}>{recap.title}</h4>
-                <p className="v2-meta">{recap.songsPlayed.length} songs · {recap.participantCount} participants · {recap.feedbackCount} feedback</p>
-                <Link href={V2_ROUTES.session(recap.sessionId)} className="v2-btn secondary sm" style={{ marginTop: 12 }}>View recap</Link>
-              </article>
+              <V2SessionRecapCard key={recap.sessionId} recap={recap} compact />
             ))}
           </div>
         </section>
