@@ -26,6 +26,7 @@ const EMPTY_PERSONALIZATION_EXTRAS = {
   activityEvidenceAvailable: false,
   hostCta: null as CommunityPersonalization['hostCta'],
   hostAccess: null,
+  catalogSnapshot: { artistCount: 0, songCount: 0 },
 }
 
 export async function fetchCommunityPersonalization(): Promise<CommunityPersonalization> {
@@ -64,6 +65,8 @@ export async function fetchCommunityPersonalization(): Promise<CommunityPersonal
     participationCounts,
     activityEvidenceAvailable,
     participationHistory,
+    { count: artistCount },
+    { count: songCount },
   ] = await Promise.all([
     supabase.from('v2_circle_members').select('circle_id, v2_circles(*)').eq('user_id', user.id).order('joined_at', { ascending: false }),
     supabase.from('v2_session_participation').select('session_id, v2_sessions(*, v2_circles(slug, name))').eq('user_id', user.id).eq('status', 'joined'),
@@ -74,6 +77,8 @@ export async function fetchCommunityPersonalization(): Promise<CommunityPersonal
     fetchUserParticipationCounts(user.id),
     fetchActivityEvidenceAvailable(user.id),
     fetchUserParticipationHistory(user.id, 12),
+    supabase.from('artists').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+    supabase.from('songs').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
   ])
 
   const supporterScore = {
@@ -189,5 +194,6 @@ export async function fetchCommunityPersonalization(): Promise<CommunityPersonal
     activityEvidenceAvailable,
     hostCta,
     hostAccess,
+    catalogSnapshot: { artistCount: artistCount || 0, songCount: songCount || 0 },
   }
 }

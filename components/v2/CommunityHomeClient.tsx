@@ -2,6 +2,9 @@
 
 import Link from 'next/link'
 import V2CircleCard from '@/components/v2/V2CircleCard'
+import V2CommunityOnboarding from '@/components/v2/V2CommunityOnboarding'
+import V2EmptyState from '@/components/v2/V2EmptyState'
+import V2GuidedFirstActions from '@/components/v2/V2GuidedFirstActions'
 import V2SessionCard from '@/components/v2/V2SessionCard'
 import V2SongCard from '@/components/v2/V2SongCard'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
@@ -28,14 +31,48 @@ export default function CommunityHomeClient({ sessions, circles, feedbackSongs, 
 
   const upcoming = sessions.filter(s => s.status !== 'ended')
   const featured = circles.filter(c => c.featured)
-  const { myCircles, mySubmissions, recommendedCircles, feedbackReceivedCount, userId, liveSessions, recentCompletedSessions, recentRoomActivity, myParticipationSummary, supporterScore, badges, suggestedAction, activityEvidenceAvailable, hostCta } = personalization
+  const {
+    myCircles,
+    joinedSessions,
+    mySubmissions,
+    recommendedCircles,
+    feedbackReceivedCount,
+    userId,
+    liveSessions,
+    recentCompletedSessions,
+    recentRoomActivity,
+    myParticipationSummary,
+    supporterScore,
+    badges,
+    suggestedAction,
+    activityEvidenceAvailable,
+    hostCta,
+    catalogSnapshot,
+  } = personalization
+
+  const firstCircleSlug = myCircles[0]?.slug || recommendedCircles[0]?.slug || featured[0]?.slug
+  const firstSessionId = joinedSessions[0]?.id || upcoming[0]?.id || liveSessions[0]?.id
 
   return (
     <>
+      <V2CommunityOnboarding loggedIn={!!userId} />
+
       {usingDemoData && (
         <p className="v2-meta" style={{ marginBottom: 12 }}>
           Previewing demo community data — run migrations to seed live circles and sessions.
         </p>
+      )}
+
+      {userId && (
+        <V2GuidedFirstActions
+          artistCount={catalogSnapshot.artistCount}
+          songCount={catalogSnapshot.songCount}
+          circlesJoined={myCircles.length}
+          submissionsCount={mySubmissions.length}
+          sessionsJoined={myParticipationSummary.sessionsJoined}
+          firstCircleSlug={firstCircleSlug}
+          firstSessionId={firstSessionId}
+        />
       )}
 
       {userId && hostCta && (
@@ -58,7 +95,7 @@ export default function CommunityHomeClient({ sessions, circles, feedbackSongs, 
         </section>
       )}
 
-      {userId && myCircles.length > 0 && (
+      {userId && myCircles.length > 0 ? (
         <section className="v2-section" style={{ marginTop: 0 }}>
           <V2SectionHeader title="My circles" lead="Rooms you have joined." action={<Link href={V2_ROUTES.circles} className="v2-btn secondary sm">All circles</Link>} />
           <div className="v2-grid cols-4">
@@ -67,7 +104,17 @@ export default function CommunityHomeClient({ sessions, circles, feedbackSongs, 
             ))}
           </div>
         </section>
-      )}
+      ) : userId ? (
+        <section className="v2-section" style={{ marginTop: 0 }}>
+          <V2EmptyState
+            icon="○"
+            title="No circles joined yet"
+            description="Join a circle to submit songs, see sessions and connect with listeners in your genre."
+            actionLabel="Browse circles"
+            actionHref={V2_ROUTES.circles}
+          />
+        </section>
+      ) : null}
 
       <section
         className="v2-hero v2-hero--image"
@@ -100,15 +147,27 @@ export default function CommunityHomeClient({ sessions, circles, feedbackSongs, 
 
       <section className="v2-section">
         <V2SectionHeader
-          title={personalization.joinedSessions.length ? 'Sessions I joined' : 'Upcoming sessions'}
+          title={joinedSessions.length ? 'Sessions I joined' : 'Upcoming sessions'}
           lead="Live and planned listening events — stream together, react and give feedback."
           action={<Link href={V2_ROUTES.sessions} className="v2-btn secondary sm">All sessions</Link>}
         />
-        <div className="v2-grid cols-2">
-          {upcoming.slice(0, 2).map(session => (
-            <V2SessionCard key={session.id} session={session} onJoin={() => showToast(`Joined ${session.title}`)} />
-          ))}
-        </div>
+        {upcoming.length > 0 ? (
+          <div className="v2-grid cols-2">
+            {(joinedSessions.length ? joinedSessions.filter(s => s.status !== 'ended') : upcoming).slice(0, 2).map(session => (
+              <V2SessionCard key={session.id} session={session} onJoin={() => showToast(`Joined ${session.title}`)} />
+            ))}
+          </div>
+        ) : userId ? (
+          <V2EmptyState
+            icon="◎"
+            title="No sessions joined yet"
+            description="Pick an upcoming listening session, join the room, and confirm when you listened."
+            actionLabel="Find a session"
+            actionHref={V2_ROUTES.sessions}
+          />
+        ) : (
+          <p className="v2-meta">Log in to join sessions and track your participation.</p>
+        )}
       </section>
 
       {liveSessions.length > 0 && (
@@ -191,7 +250,7 @@ export default function CommunityHomeClient({ sessions, circles, feedbackSongs, 
         </section>
       )}
 
-      {userId && mySubmissions.length > 0 && (
+      {userId && mySubmissions.length > 0 ? (
         <section className="v2-section">
           <V2SectionHeader title="My submissions" lead="Tracks you sent to circles, sessions and playlist rooms." />
           <div className="v2-card">
@@ -203,6 +262,28 @@ export default function CommunityHomeClient({ sessions, circles, feedbackSongs, 
               </div>
             ))}
           </div>
+        </section>
+      ) : userId ? (
+        <section className="v2-section">
+          <V2EmptyState
+            icon="♪"
+            title="No songs submitted yet"
+            description="Add a song in Legacy Studio, join a circle, then submit it for feedback or a session queue."
+            actionLabel="Open Legacy Studio"
+            actionHref={V2_ROUTES.legacyStudio}
+          />
+        </section>
+      ) : null}
+
+      {userId && feedbackReceivedCount === 0 && (
+        <section className="v2-section">
+          <V2EmptyState
+            icon="💬"
+            title="No feedback received yet"
+            description="Submit songs to circles and sessions — listeners can leave ratings and notes on your tracks."
+            actionLabel="Browse songs"
+            actionHref={V2_ROUTES.songs}
+          />
         </section>
       )}
 

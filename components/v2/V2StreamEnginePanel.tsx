@@ -115,7 +115,7 @@ export default function V2StreamEnginePanel({
       showToast(status === 'approved' ? 'Approved' : 'Removed')
       router.refresh()
     } catch {
-      showToast('Host action failed')
+      showToast('Only the host can manage this session.')
     } finally {
       setBusy(false)
     }
@@ -166,6 +166,9 @@ export default function V2StreamEnginePanel({
       <div className="v2-engine-header">
         {isLive && <span className="v2-live-badge">LIVE · Stream Engine Beta</span>}
         {!isLive && !isCompleted && <span className="v2-tag">Upcoming</span>}
+        {!isHost && !demoMode && (
+          <p className="v2-permission-hint">Only the host can manage this session. Join below to participate as a listener.</p>
+        )}
         {isHost && !isCompleted && (
           <div className="v2-hero-actions" style={{ marginTop: 12 }}>
             {!isLive && (

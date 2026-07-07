@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useV2Toast } from '@/components/v2/V2Toast'
-import { v2ApiFetch } from '@/lib/v2/apiClient'
+import { v2ApiFetch, formatV2ApiError } from '@/lib/v2/apiClient'
 import { V2_ROUTES } from '@/lib/v2/routes'
 import type { V2HostPendingSubmission } from '@/lib/v2/types'
 
@@ -27,7 +27,7 @@ export default function V2HostPendingPanel({ submissions }: Props) {
       showToast(status === 'approved' ? 'Approved' : 'Removed')
       router.refresh()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed')
+      showToast(formatV2ApiError(e))
     } finally {
       setBusy(null)
     }

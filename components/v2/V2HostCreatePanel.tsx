@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useV2Toast } from '@/components/v2/V2Toast'
-import { v2ApiFetch } from '@/lib/v2/apiClient'
+import { v2ApiFetch, formatV2ApiError } from '@/lib/v2/apiClient'
 import { V2_ROUTES } from '@/lib/v2/routes'
 import type { V2HostCapabilities } from '@/lib/v2/types'
 
@@ -36,9 +36,7 @@ export default function V2HostCreatePanel({ access, circles }: Props) {
       showToast(`${label} created`)
       router.refresh()
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed'
-      if (msg.includes('host_pro')) showToast('Upgrade to Host Pro to create')
-      else showToast(msg)
+      showToast(formatV2ApiError(e))
     } finally {
       setBusy(false)
     }

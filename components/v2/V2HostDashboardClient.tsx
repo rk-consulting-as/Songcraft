@@ -2,7 +2,9 @@
 
 import Link from 'next/link'
 import V2CircleCard from '@/components/v2/V2CircleCard'
+import V2EmptyState from '@/components/v2/V2EmptyState'
 import V2HostCreatePanel from '@/components/v2/V2HostCreatePanel'
+import V2HostOnboarding from '@/components/v2/V2HostOnboarding'
 import V2HostPendingPanel from '@/components/v2/V2HostPendingPanel'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
 import V2SessionCard from '@/components/v2/V2SessionCard'
@@ -29,6 +31,8 @@ export default function V2HostDashboardClient({ dashboard }: Props) {
           </div>
         }
       />
+
+      <V2HostOnboarding dashboard={dashboard} />
 
       {access.showUpgradePrompt && !access.isExistingHost && (
         <div className="v2-card v2-host-upgrade" style={{ marginBottom: 24 }}>
@@ -60,6 +64,15 @@ export default function V2HostDashboardClient({ dashboard }: Props) {
             ))}
           </div>
         )}
+        {!access.isExistingHost && analytics.totalParticipants === 0 && (
+          <div style={{ marginTop: 16 }}>
+            <V2EmptyState
+              icon="◎"
+              title="No host activity yet"
+              description="Create your first circle or session below, approve submissions, then start a live listening room."
+            />
+          </div>
+        )}
       </section>
 
       <V2HostCreatePanel access={access} circles={circles.map(c => ({ id: c.id, name: c.name }))} />
@@ -72,7 +85,15 @@ export default function V2HostDashboardClient({ dashboard }: Props) {
       <section className="v2-section">
         <V2SectionHeader title="Upcoming sessions" action={<Link href={V2_ROUTES.sessions} className="v2-btn secondary sm">All sessions</Link>} />
         <div className="v2-grid cols-2">
-          {upcomingSessions.length === 0 && <p className="v2-meta">No upcoming sessions — create one above.</p>}
+          {upcomingSessions.length === 0 && (
+            <V2EmptyState
+              icon="◎"
+              title="No upcoming sessions"
+              description="Create a session linked to your circle, approve submissions, then go live from the session page."
+              actionLabel="Create session"
+              actionHref={V2_ROUTES.host}
+            />
+          )}
           {upcomingSessions.map(session => (
             <V2SessionCard key={session.id} session={session} />
           ))}
@@ -83,14 +104,26 @@ export default function V2HostDashboardClient({ dashboard }: Props) {
         <section className="v2-section">
           <V2SectionHeader title="My circles" />
           <div className="v2-grid" style={{ gap: 12 }}>
-            {circles.length === 0 && <p className="v2-meta">No circles yet.</p>}
+            {circles.length === 0 && (
+              <V2EmptyState
+                icon="○"
+                title="No circles yet"
+                description="Create a circle to gather members, sessions and playlist rooms in one place."
+              />
+            )}
             {circles.map(circle => <V2CircleCard key={circle.id} circle={circle} />)}
           </div>
         </section>
         <section className="v2-section">
           <V2SectionHeader title="My playlist rooms" action={<Link href={V2_ROUTES.playlists} className="v2-btn secondary sm">All rooms</Link>} />
           <div className="v2-card">
-            {playlistRooms.length === 0 && <p className="v2-meta">No playlist rooms yet.</p>}
+            {playlistRooms.length === 0 && (
+              <V2EmptyState
+                icon="♫"
+                title="No playlist rooms yet"
+                description="Open a room for ongoing submissions and listening rounds alongside your circle."
+              />
+            )}
             {playlistRooms.map(room => (
               <div key={room.id} className="v2-track">
                 <span className="num">♫</span>
@@ -105,7 +138,13 @@ export default function V2HostDashboardClient({ dashboard }: Props) {
       <section className="v2-section">
         <V2SectionHeader title="Recent participation" lead="Listener activity in your sessions." />
         <div className="v2-card">
-          {recentParticipation.length === 0 && <p className="v2-meta">No participation logged yet.</p>}
+          {recentParticipation.length === 0 && (
+            <V2EmptyState
+              icon="👂"
+              title="No participation logged yet"
+              description="When listeners join your sessions and confirm listening, activity appears here."
+            />
+          )}
           {recentParticipation.map(row => (
             <div key={row.sessionId} className="v2-track">
               <span className="num">◎</span>
@@ -122,7 +161,13 @@ export default function V2HostDashboardClient({ dashboard }: Props) {
       <section className="v2-section">
         <V2SectionHeader title="All hosted sessions" />
         <div className="v2-card">
-          {sessions.length === 0 && <p className="v2-meta">You have not hosted any sessions yet.</p>}
+          {sessions.length === 0 && (
+            <V2EmptyState
+              icon="●"
+              title="No hosted sessions yet"
+              description="Schedule a session, approve the queue, start live playback, and end with a recap."
+            />
+          )}
           {sessions.slice(0, 12).map(session => (
             <div key={session.id} className="v2-track">
               <span className="num">{session.status === 'live' ? '●' : '○'}</span>

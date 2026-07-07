@@ -22,6 +22,14 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
   if (!circle) return NextResponse.json({ error: 'not_found' }, { status: 404 })
   if (circle.visibility !== 'public') return NextResponse.json({ error: 'circle_not_public' }, { status: 403 })
 
+  const { data: member } = await sb
+    .from('v2_circle_members')
+    .select('id')
+    .eq('circle_id', circle.id)
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (!member) return NextResponse.json({ error: 'join_circle_first' }, { status: 403 })
+
   const { data: song } = await sb.from('songs').select('id, user_id').eq('id', songId).maybeSingle()
   if (!song || song.user_id !== userId) return NextResponse.json({ error: 'song_not_owned' }, { status: 403 })
 

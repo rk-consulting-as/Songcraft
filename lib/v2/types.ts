@@ -311,6 +311,7 @@ export type CommunityPersonalization = {
   activityEvidenceAvailable: boolean
   hostCta: 'dashboard' | 'become_host' | null
   hostAccess: V2HostCapabilities | null
+  catalogSnapshot: { artistCount: number; songCount: number }
 }
 
 export type V2CommunityStats = {
