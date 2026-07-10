@@ -4,6 +4,7 @@ import { canManageSessionHost } from '@/lib/v2/hostAccess'
 import { parseStreamMeta } from '@/lib/v2/data/streamEngine'
 import { createManyCommunityNotifications } from '@/lib/v2/data/communityNotifications'
 import { buildSessionCompleted, buildSessionStarted } from '@/lib/v2/communityNotifications'
+import { notifyHostFollowersSessionLive, notifySavedSessionUsers } from '@/lib/v2/data/followNotifications'
 import type { V2NotificationInput } from '@/lib/v2/types'
 
 async function notifyJoinedMembers(
@@ -80,6 +81,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
     const title = await fetchSessionTitle(session.id)
     await notifyJoinedMembers(session.id, title, session.host_user_id, buildSessionStarted)
+    await notifyHostFollowersSessionLive({ hostUserId: session.host_user_id, sessionId: session.id, sessionTitle: title })
+    await notifySavedSessionUsers({ sessionId: session.id, sessionTitle: title, kind: 'live', hostUserId: session.host_user_id })
     return NextResponse.json({ ok: true, status: 'live' })
   }
 

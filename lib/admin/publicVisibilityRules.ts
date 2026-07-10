@@ -77,4 +77,28 @@ export const PUBLIC_VISIBILITY_AUDIT: VisibilityAuditRule[] = [
     status: 'implemented',
     notes: 'Only owner + admin can read private assets.',
   },
+  {
+    id: 'v2_community_explore',
+    surface: 'ViaTone Community explore',
+    route: '/community/explore',
+    filters: ['v2_circles.visibility = public', 'sessions joined to public circles', 'playlist rooms joined to public circles', 'service-role explicit filters'],
+    status: 'implemented',
+    notes: 'Logged-out landing; no mock data on public discovery queries.',
+  },
+  {
+    id: 'v2_community_public_entities',
+    surface: 'Public community entities',
+    route: '/community/circles/[slug], /community/sessions/[id], /community/playlists/[slug], /community/hosts/[id]',
+    filters: ['circle visibility = public OR member/owner', 'default deny for private/invite', 'approved songs/queue only for anon', 'no participation notes or private feedback'],
+    status: 'implemented',
+    notes: 'Restricted state without leaking private circle content.',
+  },
+  {
+    id: 'v2_community_sitemap',
+    surface: 'Community sitemap',
+    route: '/sitemap.xml',
+    filters: ['public circles only', 'public upcoming/live sessions only', 'public playlist rooms only', 'public host profiles with content'],
+    status: 'implemented',
+    notes: 'See fetchPublicSitemapEntries in lib/v2/data/publicDiscovery.ts',
+  },
 ]

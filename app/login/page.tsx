@@ -17,12 +17,26 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [refCode, setRefCode] = useState<string | null>(null)
+  const [returnPath, setReturnPath] = useState<string | null>(null)
 
   useEffect(() => {
     setLangState(useLang())
     let urlRef: string | null = null
+    let next: string | null = null
+    let signup = false
     if (typeof window !== 'undefined') {
-      try { urlRef = new URLSearchParams(window.location.search).get('ref') } catch {}
+      try {
+        const sp = new URLSearchParams(window.location.search)
+        urlRef = sp.get('ref')
+        next = sp.get('next')
+        signup = sp.get('signup') === '1'
+      } catch {}
+    }
+    if (signup) setIsSignup(true)
+    if (next) {
+      import('@/lib/v2/authReturn').then(({ sanitizeAuthReturnPath }) => {
+        setReturnPath(sanitizeAuthReturnPath(next))
+      })
     }
     if (urlRef) {
       const cleaned = urlRef.trim().toUpperCase().slice(0, 32)
@@ -51,6 +65,12 @@ export default function LoginPage() {
     } catch (e) { console.warn('attribute_referral threw:', e) }
   }
 
+  const resolveRedirect = async () => {
+    if (returnPath) return returnPath
+    const { resolvePostAuthPath } = await import('@/lib/playbook/fetchContext')
+    return resolvePostAuthPath()
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true); setError(''); setMessage('')
@@ -63,8 +83,7 @@ export default function LoginPage() {
       else {
         try { localStorage.removeItem(REF_STORAGE_KEY) } catch {}
         if (data?.session) {
-          const { resolvePostAuthPath } = await import('@/lib/playbook/fetchContext')
-          router.push(await resolvePostAuthPath())
+          router.push(await resolveRedirect())
         }
         else setMessage(tx.confirmEmail)
       }
@@ -73,8 +92,7 @@ export default function LoginPage() {
       if (error) setError(error.message)
       else {
         await attributeReferralIfNeeded()
-        const { resolvePostAuthPath } = await import('@/lib/playbook/fetchContext')
-        router.push(await resolvePostAuthPath())
+        router.push(await resolveRedirect())
       }
     }
     setLoading(false)

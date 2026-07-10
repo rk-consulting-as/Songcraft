@@ -14,8 +14,9 @@ export async function fetchCommunityReminders(): Promise<V2CommunityReminder[]> 
   if (!user) return []
 
   const reminders: V2CommunityReminder[] = []
+  const now = Date.now()
 
-  const [{ data: participations }, { data: memberships }, { data: mySessionSubs }] = await Promise.all([
+  const [{ data: participations }, { data: memberships }, { data: mySessionSubs }, { data: myRsvps }, { data: savedItems }] = await Promise.all([
     supabase
       .from('v2_session_participation')
       .select('session_id, listened_at, v2_sessions(id, title, status)')
@@ -28,6 +29,16 @@ export async function fetchCommunityReminders(): Promise<V2CommunityReminder[]> 
       .eq('submitted_by', user.id)
       .eq('status', 'pending')
       .limit(5),
+    supabase
+      .from('v2_session_participation')
+      .select('session_id, rsvp_status, v2_sessions(id, title, status, starts_at)')
+      .eq('user_id', user.id)
+      .eq('rsvp_status', 'going'),
+    supabase
+      .from('v2_saved_community_items')
+      .select('entity_id, v2_sessions(id, title, status, starts_at, v2_circles(visibility))')
+      .eq('user_id', user.id)
+      .eq('entity_type', 'session'),
   ])
 
   // 1) Live session I joined
@@ -48,7 +59,77 @@ export async function fetchCommunityReminders(): Promise<V2CommunityReminder[]> 
     })
   }
 
-  // 2) Joined session (live or ended) with no listening confirmation
+  // 2) Session you RSVP'd Going starts within 2 hours
+  const soonMs = 2 * 60 * 60 * 1000
+  const rsvpGoingSoon = (myRsvps || []).find(r => {
+    const s = (r as { v2_sessions?: { status?: string; starts_at?: string } }).v2_sessions
+    if (!s || s.status === 'ended' || s.status === 'live') return false
+    const t = new Date(s.starts_at || 0).getTime()
+    return t > now && t - now < soonMs
+  })
+  if (rsvpGoingSoon) {
+    const s = (rsvpGoingSoon as { v2_sessions?: { id?: string; title?: string } }).v2_sessions
+    reminders.push({
+      id: `rsvp-soon-${s?.id}`,
+      kind: 'session_rsvp_going',
+      icon: '◷',
+      tone: 'attention',
+      title: `You RSVP'd Going — “${s?.title || 'A session'}” starts soon`,
+      body: 'Open the session and join when the host goes live.',
+      cta: { label: 'Open session', href: V2_ROUTES.session(String(s?.id)) },
+    })
+  }
+
+  // 2b) Saved session starting soon (not already covered by RSVP)
+  const savedSoon = (savedItems || []).find(r => {
+    const raw = (r as { v2_sessions?: { id?: string; status?: string; starts_at?: string; v2_circles?: { visibility?: string } } }).v2_sessions
+    if (!raw || raw.status === 'ended' || raw.status === 'live') return false
+    if (raw.v2_circles && raw.v2_circles.visibility !== 'public') return false
+    const t = new Date(raw.starts_at || 0).getTime()
+    const covered = String(raw.id) === String((rsvpGoingSoon as { v2_sessions?: { id?: string } } | undefined)?.v2_sessions?.id)
+    return !covered && t > now && t - now < soonMs
+  })
+  if (savedSoon) {
+    const s = (savedSoon as { v2_sessions?: { id?: string; title?: string } }).v2_sessions
+    reminders.push({
+      id: `saved-soon-${s?.id}`,
+      kind: 'session_starts_soon',
+      icon: '★',
+      tone: 'info',
+      title: `Saved session “${s?.title || 'A session'}” starts soon`,
+      body: 'You bookmarked this session — open it when the host goes live.',
+      cta: { label: 'Open session', href: V2_ROUTES.session(String(s?.id)) },
+    })
+  }
+
+  // 3) Upcoming session starting soon (any joined or interested RSVP not already covered)
+  const { data: interestedRsvps } = await supabase
+    .from('v2_session_participation')
+    .select('session_id, rsvp_status, v2_sessions(id, title, status, starts_at)')
+    .eq('user_id', user.id)
+    .in('rsvp_status', ['going', 'interested'])
+    .limit(10)
+
+  const startingSoon = (interestedRsvps || []).find(r => {
+    const s = (r as { v2_sessions?: { id?: string; status?: string; starts_at?: string } }).v2_sessions
+    if (!s || s.status === 'ended' || s.status === 'live') return false
+    const t = new Date(s.starts_at || 0).getTime()
+    return t > now && t - now < soonMs && String(s.id) !== String((rsvpGoingSoon as { v2_sessions?: { id?: string } } | undefined)?.v2_sessions?.id)
+  })
+  if (startingSoon) {
+    const s = (startingSoon as { v2_sessions?: { id?: string; title?: string } }).v2_sessions
+    reminders.push({
+      id: `starts-soon-${s?.id}`,
+      kind: 'session_starts_soon',
+      icon: '◷',
+      tone: 'info',
+      title: `“${s?.title || 'A session'}” starts soon`,
+      body: 'Get ready to listen along with the community.',
+      cta: { label: 'View session', href: V2_ROUTES.session(String(s?.id)) },
+    })
+  }
+
+  // 4) Joined session (live or ended) with no listening confirmation
   const needsParticipation = (participations || []).find(p => {
     const s = (p as { v2_sessions?: { status?: string } }).v2_sessions
     return !p.listened_at && (s?.status === 'live' || s?.status === 'ended')
@@ -66,7 +147,7 @@ export async function fetchCommunityReminders(): Promise<V2CommunityReminder[]> 
     })
   }
 
-  // 3) My pending session submission
+  // 5) My pending session submission
   const pending = (mySessionSubs || [])[0]
   if (pending) {
     const s = (pending as { v2_sessions?: { title?: string } }).v2_sessions
@@ -81,7 +162,7 @@ export async function fetchCommunityReminders(): Promise<V2CommunityReminder[]> 
     })
   }
 
-  // 4) A song in one of my circles is waiting for feedback (someone else's, unrated by me)
+  // 6) A song in one of my circles is waiting for feedback (someone else's, unrated by me)
   const circleIds = (memberships || []).map(m => m.circle_id as string)
   if (circleIds.length) {
     const { data: circleSongs } = await supabase
@@ -118,14 +199,13 @@ export async function fetchCommunityReminders(): Promise<V2CommunityReminder[]> 
     }
   }
 
-  // 5) Playlist room I participated in had recent activity
+  // 7) Playlist room I participated in had recent activity
   const { data: roomParticipation } = await supabase
     .from('v2_playlist_room_participation')
     .select('room_id, v2_playlist_rooms(slug, name, round_status, last_completed_at)')
     .eq('user_id', user.id)
     .limit(10)
 
-  const now = Date.now()
   const recentRoom = (roomParticipation || []).find(rp => {
     const room = (rp as { v2_playlist_rooms?: { last_completed_at?: string } }).v2_playlist_rooms
     if (!room?.last_completed_at) return false
@@ -153,6 +233,7 @@ export async function fetchCommunityReminders(): Promise<V2CommunityReminder[]> 
  */
 export function computeHostReminders(dashboard: V2HostDashboard): V2CommunityReminder[] {
   const reminders: V2CommunityReminder[] = []
+  const now = Date.now()
   const { pendingSubmissions, sessions, playlistRooms, recentParticipation } = dashboard
 
   if (pendingSubmissions.length) {
@@ -187,8 +268,46 @@ export function computeHostReminders(dashboard: V2HostDashboard): V2CommunityRem
     })
   }
 
+  // Upcoming session within 48h with zero RSVPs
+  const upcomingNoRsvp = sessions.find(s => {
+    if (s.status !== 'upcoming') return false
+    const t = new Date(s.startsAt).getTime()
+    if (t <= now || t - now > 48 * 60 * 60 * 1000) return false
+    return (s.rsvpCount ?? 0) === 0
+  })
+  if (upcomingNoRsvp) {
+    reminders.push({
+      id: `host-rsvp-${upcomingNoRsvp.id}`,
+      kind: 'host_session_no_rsvps',
+      icon: '📅',
+      tone: 'attention',
+      title: `“${upcomingNoRsvp.title}” has no RSVPs yet`,
+      body: 'Share the session link with your circle so listeners can mark Going.',
+      cta: { label: 'Open session', href: V2_ROUTES.session(upcomingNoRsvp.id) },
+    })
+  }
+
+  // Upcoming hosted session with pending submissions
+  const upcomingWithPending = sessions.find(s => {
+    if (s.status !== 'upcoming') return false
+    const t = new Date(s.startsAt).getTime()
+    if (t <= now) return false
+    return pendingSubmissions.some(p => p.sessionId === s.id)
+  })
+  if (upcomingWithPending) {
+    const pendingCount = pendingSubmissions.filter(p => p.sessionId === upcomingWithPending.id).length
+    reminders.push({
+      id: `host-subs-${upcomingWithPending.id}`,
+      kind: 'host_session_needs_submissions',
+      icon: '⧗',
+      tone: 'info',
+      title: `“${upcomingWithPending.title}” needs submission reviews`,
+      body: `${pendingCount} track${pendingCount > 1 ? 's' : ''} waiting before you go live.`,
+      cta: { label: 'Review queue', href: V2_ROUTES.session(upcomingWithPending.id) },
+    })
+  }
+
   // Upcoming session starting within 48h
-  const now = Date.now()
   const soon = sessions.find(s => {
     if (s.status !== 'upcoming') return false
     const t = new Date(s.startsAt).getTime()

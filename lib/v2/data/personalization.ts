@@ -8,6 +8,7 @@ import {
   fetchUserParticipationHistory,
   suggestNextParticipationAction,
 } from '@/lib/v2/data/supporters'
+import { fetchFollowedActivity, fetchUserFollowSaveLibrary } from '@/lib/v2/data/followsSaves'
 import { resolveV2HostCapabilities } from '@/lib/v2/hostAccess'
 import {
   fetchLiveSessions,
@@ -119,10 +120,12 @@ export async function fetchCommunityPersonalization(): Promise<CommunityPersonal
     .slice(0, 4)
     .map(r => mapCircleRow(r as Record<string, unknown>))
 
-  const [{ data: circleSubs }, { data: sessionSubs }, { data: playlistSubs }] = await Promise.all([
+  const [{ data: circleSubs }, { data: sessionSubs }, { data: playlistSubs }, followedActivity, followLibrary] = await Promise.all([
     supabase.from('v2_circle_songs').select('id, status, created_at, songs(title), v2_circles(name)').eq('submitted_by', user.id).order('created_at', { ascending: false }).limit(12),
     supabase.from('v2_session_songs').select('id, status, created_at, title, artist_name, v2_sessions(title)').eq('submitted_by', user.id).order('created_at', { ascending: false }).limit(12),
     supabase.from('v2_playlist_room_items').select('id, created_at, title, artist_name, v2_playlist_rooms(name)').eq('submitted_by', user.id).order('created_at', { ascending: false }).limit(12),
+    fetchFollowedActivity(user.id),
+    fetchUserFollowSaveLibrary(user.id),
   ])
 
   const mySubmissions = [
@@ -195,5 +198,8 @@ export async function fetchCommunityPersonalization(): Promise<CommunityPersonal
     hostCta,
     hostAccess,
     catalogSnapshot: { artistCount: artistCount || 0, songCount: songCount || 0 },
+    followedActivity,
+    savedSessions: followLibrary.savedSessions,
+    savedRooms: followLibrary.savedRooms,
   }
 }

@@ -20,9 +20,21 @@ export type V2Circle = {
   visibility: CircleVisibility
   featured?: boolean
   isMember?: boolean
+  ownerUserId?: string
+  followerCount?: number
 }
 
 export type V2SessionStatus = 'live' | 'upcoming' | 'ended'
+
+export type V2RsvpStatus = 'going' | 'interested' | 'declined'
+
+export type V2RecurrenceRule = 'weekly' | 'biweekly' | 'monthly'
+
+export type V2SessionRsvpCounts = {
+  going: number
+  interested: number
+  total: number
+}
 
 /** UI label: ended = completed */
 export type V2SessionDisplayStatus = 'upcoming' | 'live' | 'completed'
@@ -88,11 +100,20 @@ export type V2Session = {
   title: string
   hostName: string
   hostUserId?: string
+  description?: string
   circleSlug: string
   circleName: string
   circleId?: string
   status: V2SessionStatus
   startsAt: string
+  endsAt?: string
+  timezone?: string
+  isRecurring?: boolean
+  recurrenceRule?: V2RecurrenceRule | string
+  parentSessionId?: string
+  rsvpCount?: number
+  rsvpCounts?: V2SessionRsvpCounts
+  userRsvpStatus?: V2RsvpStatus | null
   platform: PlatformTag
   coverImageUrl: string
   trackCount: number
@@ -312,6 +333,13 @@ export type CommunityPersonalization = {
   hostCta: 'dashboard' | 'become_host' | null
   hostAccess: V2HostCapabilities | null
   catalogSnapshot: { artistCount: number; songCount: number }
+  followedActivity?: {
+    circleSessions: V2Session[]
+    hostSessions: V2Session[]
+    followedCircles: V2Circle[]
+  }
+  savedSessions?: V2Session[]
+  savedRooms?: V2PlaylistRoom[]
 }
 
 export type V2CommunityNotificationKind =
@@ -329,6 +357,12 @@ export type V2CommunityNotificationKind =
   | 'session_needs_participation'
   | 'host_submission_pending'
   | 'room_activity_waiting'
+  | 'followed_circle_session_scheduled'
+  | 'followed_host_session_live'
+  | 'saved_session_starting_soon'
+  | 'saved_playlist_round_completed'
+
+export type V2SavedEntityType = 'session' | 'playlist_room'
 
 export type V2NotificationTone = 'positive' | 'info' | 'attention' | 'celebrate'
 
@@ -380,8 +414,12 @@ export type V2CommunityReminderKind =
   | 'session_needs_participation'
   | 'submission_pending'
   | 'room_activity'
+  | 'session_starts_soon'
+  | 'session_rsvp_going'
   | 'host_submission_pending'
   | 'host_session_no_participants'
+  | 'host_session_no_rsvps'
+  | 'host_session_needs_submissions'
   | 'host_room_new_songs'
   | 'host_session_soon'
 
@@ -403,6 +441,49 @@ export type V2WeeklyDigest = {
   songsSupported: number
   playlistRoomParticipation: number
   badgeEarnedThisWeek?: string
+}
+
+export type V2CalendarView = 'upcoming' | 'this_week' | 'my_sessions' | 'hosting'
+
+export type V2CalendarSession = V2Session & {
+  hostName: string
+  userRsvpStatus?: V2RsvpStatus | null
+  isHosting?: boolean
+}
+
+export type V2CalendarDayGroup = {
+  dateKey: string
+  label: string
+  sessions: V2CalendarSession[]
+}
+
+export type V2PublicHostProfile = {
+  id: string
+  displayName: string
+  avatarUrl?: string
+  bio?: string
+  isHost: boolean
+  hostedCircleCount: number
+  completedSessionCount: number
+  upcomingSessions: V2Session[]
+  hostedCircles: V2Circle[]
+  playlistRooms: V2PlaylistRoom[]
+}
+
+export type V2PublicExploreFilters = {
+  genre?: string
+  platform?: string
+  status?: 'upcoming' | 'live' | 'ended' | 'all'
+  type?: 'all' | 'circle' | 'session' | 'playlist_room'
+}
+
+export type V2PublicExploreData = {
+  featuredCircles: V2Circle[]
+  upcomingSessions: V2Session[]
+  liveSessions: V2Session[]
+  playlistRooms: V2PlaylistRoom[]
+  genres: string[]
+  platforms: string[]
 }
 
 export type V2CommunityStats = {

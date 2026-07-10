@@ -1390,6 +1390,217 @@ body.v2-community-page .chat-dock-root {
   align-self: flex-start;
 }
 
+/* Phase 4G — Scheduling, RSVP & Calendar */
+.v2-schedule-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.v2-schedule-header__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.v2-schedule-header__when {
+  margin: 4px 0 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.v2-schedule-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  max-width: 320px;
+}
+
+.v2-rsvp-card .v2-rsvp-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.v2-rsvp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.v2-rsvp-actions .v2-btn {
+  min-height: 44px;
+  min-width: 88px;
+}
+
+.v2-calendar-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.v2-calendar-agenda {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.v2-calendar-day__label {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.v2-calendar-day__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.v2-agenda-card {
+  display: grid;
+  grid-template-columns: minmax(72px, 88px) 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.v2-agenda-card.live {
+  border-color: rgba(255, 90, 120, 0.35);
+  background: rgba(255, 90, 120, 0.06);
+}
+
+.v2-agenda-card__time {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+.v2-agenda-card__time strong {
+  font-size: 1rem;
+}
+
+.v2-agenda-card__title {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+
+.v2-agenda-card__title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.v2-agenda-card__title a:hover {
+  text-decoration: underline;
+}
+
+.v2-agenda-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.v2-agenda-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.v2-home-schedule__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.v2-home-schedule__block + .v2-home-schedule__block {
+  margin-top: 16px;
+}
+
+.v2-home-schedule__sub {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.v2-host-schedule {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+  .v2-host-schedule__block + .v2-host-schedule__block {
+    margin-top: 4px;
+  }
+
+/* Phase 5A — Public discovery & share */
+.v2-explore-filters__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.v2-explore-filters__row .v2-input {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.v2-share {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.v2-share.compact .v2-btn {
+  min-height: 36px;
+}
+
+.v2-public-auth-cta.compact {
+  padding: 14px;
+}
+
+.v2-restricted {
+  border-color: rgba(255, 180, 80, 0.25);
+}
+
+.v2-host-public {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.v2-host-public__avatar img,
+.v2-host-public__initial {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 2rem;
+  font-weight: 700;
+}
+
 @media (max-width: 1120px) {
   .v2-app {
     grid-template-columns: 1fr;
@@ -1520,12 +1731,119 @@ body.v2-community-page .chat-dock-root {
     margin-left: auto;
   }
 
+  .v2-agenda-card {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .v2-agenda-card__time {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .v2-agenda-card__actions {
+    justify-content: flex-start;
+  }
+
+  .v2-agenda-card__actions .v2-btn {
+    flex: 1 1 auto;
+    min-height: 44px;
+  }
+
+  .v2-calendar-tabs .v2-btn {
+    flex: 1 1 calc(50% - 4px);
+    min-height: 44px;
+  }
+
+  .v2-rsvp-actions .v2-btn {
+    flex: 1 1 calc(50% - 4px);
+  }
+
+  .v2-home-schedule__head {
+    flex-direction: column;
+  }
+
+  .v2-explore-filters__row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .v2-explore-filters__row .v2-input,
+  .v2-explore-filters__row .v2-btn {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .v2-share .v2-btn {
+    flex: 1 1 calc(50% - 4px);
+    min-height: 44px;
+  }
+
   .v2-modal {
     padding: 18px;
     max-height: 90vh;
   }
 
   .v2-modal__head {
+    flex-direction: column;
+  }
+}
+
+/* Phase 5B — follow / save CTAs */
+.v2-hero-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.v2-community-toggle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.v2-community-toggle.compact {
+  gap: 6px;
+}
+
+.v2-community-toggle__count {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.v2-follows-block .v2-home-schedule__sub {
+  margin: 16px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--v2-muted);
+}
+
+.v2-saved-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 768px) {
+  .v2-hero-cta-row .v2-community-toggle,
+  .v2-hero-cta-row .v2-btn {
+    flex: 1 1 calc(50% - 5px);
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .v2-community-toggle {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .v2-saved-row {
     flex-direction: column;
   }
 }

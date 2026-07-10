@@ -13,6 +13,10 @@ export const V2_ROUTES = {
   playlistRoom: (slug: string) => `/community/playlists/${slug}`,
   participation: '/community/participation',
   host: '/community/host',
+  calendar: '/community/calendar',
+  explore: '/community/explore',
+  hostProfile: (id: string) => `/community/hosts/${id}`,
+  saved: '/community/saved',
   pricing: '/community/pricing',
   submit: '/community#submit',
 } as const

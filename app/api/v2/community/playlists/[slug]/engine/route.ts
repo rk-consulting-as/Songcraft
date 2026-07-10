@@ -3,6 +3,7 @@ import { requireV2User, v2ServiceClient } from '@/lib/v2/apiAuth'
 import { canManagePlaylistRoomHost } from '@/lib/v2/hostAccess'
 import { createManyCommunityNotifications } from '@/lib/v2/data/communityNotifications'
 import { buildPlaylistRoomRoundCompleted } from '@/lib/v2/communityNotifications'
+import { notifySavedPlaylistRoundCompleted } from '@/lib/v2/data/followNotifications'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -50,6 +51,12 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
       last_completed_at: now,
     }).eq('id', room.id)
     await notifyRoundCompleted(room.id, room.slug, room.name as string, room.owner_user_id as string)
+    await notifySavedPlaylistRoundCompleted({
+      roomId: room.id as string,
+      roomSlug: room.slug as string,
+      roomName: room.name as string,
+      hostUserId: room.owner_user_id as string,
+    })
     return NextResponse.json({ ok: true, round_status: 'completed' })
   }
 

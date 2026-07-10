@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
+import V2EmptyState from '@/components/v2/V2EmptyState'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
 import V2SessionCard from '@/components/v2/V2SessionCard'
 import { useV2Toast } from '@/components/v2/V2Toast'
@@ -28,7 +29,10 @@ export default function SessionsIndexClient({ sessions, fromMock }: Props) {
         title="Listening Sessions"
         lead="Organized events where the community streams, reacts and gives feedback."
         action={
-          <Link href={V2_ROUTES.host} className="v2-btn sm">+ Create Session</Link>
+          <div className="v2-hero-actions">
+            <Link href={V2_ROUTES.calendar} className="v2-btn secondary sm">View Calendar</Link>
+            <Link href={V2_ROUTES.host} className="v2-btn sm">+ Create Session</Link>
+          </div>
         }
       />
       {fromMock && (
@@ -41,7 +45,15 @@ export default function SessionsIndexClient({ sessions, fromMock }: Props) {
         <button type="button" className="v2-btn sm secondary" onClick={() => setTab('recent')}>Recent</button>
       </div>
       <div className="v2-grid cols-2">
-        {filtered.map(session => (
+        {filtered.length === 0 ? (
+          <V2EmptyState
+            icon="📅"
+            title={tab === 'upcoming' ? 'No upcoming sessions' : 'No recent sessions'}
+            description="Browse the calendar for scheduled listening events, or host your own session for your circle."
+            actionLabel="View Calendar"
+            actionHref={V2_ROUTES.calendar}
+          />
+        ) : filtered.map(session => (
           <V2SessionCard
             key={session.id}
             session={session}

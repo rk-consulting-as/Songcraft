@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import V2CircleCard from '@/components/v2/V2CircleCard'
 import V2CommunityBenefits from '@/components/v2/V2CommunityBenefits'
+import V2CommunityFollowsBlock from '@/components/v2/V2CommunityFollowsBlock'
 import V2CommunityDigest from '@/components/v2/V2CommunityDigest'
 import V2CommunityHowItWorks from '@/components/v2/V2CommunityHowItWorks'
 import V2CommunityNextActions from '@/components/v2/V2CommunityNextActions'
@@ -13,6 +14,7 @@ import V2CommunityWelcome from '@/components/v2/V2CommunityWelcome'
 import V2CommunityWelcomeModal from '@/components/v2/V2CommunityWelcomeModal'
 import V2EmptyState from '@/components/v2/V2EmptyState'
 import V2GuidedFirstActions from '@/components/v2/V2GuidedFirstActions'
+import V2HomeScheduleBlock from '@/components/v2/V2HomeScheduleBlock'
 import V2SessionCard from '@/components/v2/V2SessionCard'
 import V2SessionRecapCard from '@/components/v2/V2SessionRecapCard'
 import V2SongCard from '@/components/v2/V2SongCard'
@@ -25,12 +27,21 @@ import { V2_ROUTES } from '@/lib/v2/routes'
 import type { CommunityPersonalization } from '@/lib/v2/data/personalization'
 import type {
   V2Circle,
+  V2CalendarSession,
   V2CommunityNotificationView,
   V2CommunityReminder,
   V2Session,
   V2Song,
   V2WeeklyDigest,
 } from '@/lib/v2/types'
+
+type HomeSchedule = {
+  liveNow: V2CalendarSession[]
+  startingSoon: V2CalendarSession[]
+  thisWeek: V2CalendarSession[]
+  myRsvps: V2CalendarSession[]
+  hostingSoon: V2CalendarSession[]
+}
 
 const HERO_IMG = 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=1800&q=80'
 
@@ -44,6 +55,7 @@ type Props = {
   unreadCount: number
   reminders: V2CommunityReminder[]
   weeklyDigest: V2WeeklyDigest
+  homeSchedule?: HomeSchedule
 }
 
 export default function CommunityHomeClient({
@@ -56,6 +68,7 @@ export default function CommunityHomeClient({
   unreadCount,
   reminders,
   weeklyDigest,
+  homeSchedule,
 }: Props) {
   const { showToast } = useV2Toast()
 
@@ -78,6 +91,9 @@ export default function CommunityHomeClient({
     activityEvidenceAvailable,
     hostCta,
     catalogSnapshot,
+    followedActivity,
+    savedSessions,
+    savedRooms,
   } = personalization
 
   const firstCircleSlug = myCircles[0]?.slug || recommendedCircles[0]?.slug || featured[0]?.slug
@@ -167,6 +183,27 @@ export default function CommunityHomeClient({
         </section>
       )}
 
+      {homeSchedule && (
+        <V2HomeScheduleBlock
+          liveNow={homeSchedule.liveNow}
+          startingSoon={homeSchedule.startingSoon}
+          thisWeek={homeSchedule.thisWeek}
+          myRsvps={homeSchedule.myRsvps}
+          hostingSoon={homeSchedule.hostingSoon}
+          lowActivity={lowActivity}
+        />
+      )}
+
+      {userId && followedActivity && (
+        <V2CommunityFollowsBlock
+          circleSessions={followedActivity.circleSessions}
+          hostSessions={followedActivity.hostSessions}
+          followedCircles={followedActivity.followedCircles}
+          savedSessions={savedSessions || []}
+          savedRooms={savedRooms || []}
+        />
+      )}
+
       {userId && myCircles.length > 0 ? (
         <section className="v2-section" style={{ marginTop: 0 }}>
           <V2SectionHeader title="My circles" lead="Rooms you have joined." action={<Link href={V2_ROUTES.circles} className="v2-btn secondary sm">All circles</Link>} />
@@ -221,7 +258,12 @@ export default function CommunityHomeClient({
         <V2SectionHeader
           title={joinedSessions.length ? 'Sessions I joined' : 'Upcoming sessions'}
           lead="Live and planned listening events — stream together, react and give feedback."
-          action={<Link href={V2_ROUTES.sessions} className="v2-btn secondary sm">All sessions</Link>}
+          action={
+            <div className="v2-hero-actions">
+              <Link href={V2_ROUTES.calendar} className="v2-btn secondary sm">View Calendar</Link>
+              <Link href={V2_ROUTES.sessions} className="v2-btn secondary sm">All sessions</Link>
+            </div>
+          }
         />
         {upcoming.length > 0 ? (
           <div className="v2-grid cols-2">

@@ -101,6 +101,30 @@ export const V2_NOTIFICATION_CONFIG: Record<V2CommunityNotificationKind, Notific
     defaultCtaLabel: 'Open room',
     fallbackTitle: 'A playlist room you joined had recent activity.',
   },
+  followed_circle_session_scheduled: {
+    icon: '📅',
+    tone: 'info',
+    defaultCtaLabel: 'View session',
+    fallbackTitle: 'A circle you follow scheduled a new session.',
+  },
+  followed_host_session_live: {
+    icon: '●',
+    tone: 'attention',
+    defaultCtaLabel: 'Join now',
+    fallbackTitle: 'A host you follow is live.',
+  },
+  saved_session_starting_soon: {
+    icon: '◷',
+    tone: 'attention',
+    defaultCtaLabel: 'Open session',
+    fallbackTitle: 'A saved session is starting soon.',
+  },
+  saved_playlist_round_completed: {
+    icon: '♫',
+    tone: 'info',
+    defaultCtaLabel: 'Open room',
+    fallbackTitle: 'A saved playlist room completed a round.',
+  },
 }
 
 export function notificationIcon(kind: string): string {
@@ -256,5 +280,75 @@ export function buildPlaylistRoomSubmissionAdded(params: {
     entityType: 'playlist_room',
     entityId: params.roomSlug,
     metadata: { songTitle: params.songTitle },
+  }
+}
+
+export function buildFollowedCircleSessionScheduled(params: {
+  userId: string
+  circleName: string
+  sessionId: string
+  sessionTitle: string
+}): V2NotificationInput {
+  return {
+    userId: params.userId,
+    kind: 'followed_circle_session_scheduled',
+    title: `“${params.circleName}” scheduled “${params.sessionTitle}”.`,
+    body: 'A circle you follow has a new listening event.',
+    ctaLabel: 'View session',
+    ctaHref: `/community/sessions/${params.sessionId}`,
+    entityType: 'session',
+    entityId: params.sessionId,
+  }
+}
+
+export function buildFollowedHostSessionLive(params: {
+  userId: string
+  sessionId: string
+  sessionTitle: string
+  hostName: string
+}): V2NotificationInput {
+  return {
+    userId: params.userId,
+    kind: 'followed_host_session_live',
+    title: `“${params.sessionTitle}” is live now.`,
+    body: `${params.hostName} started a listening session.`,
+    ctaLabel: 'Join now',
+    ctaHref: `/community/sessions/${params.sessionId}`,
+    entityType: 'session',
+    entityId: params.sessionId,
+  }
+}
+
+export function buildSavedSessionStartingSoon(params: {
+  userId: string
+  sessionId: string
+  sessionTitle: string
+}): V2NotificationInput {
+  return {
+    userId: params.userId,
+    kind: 'saved_session_starting_soon',
+    title: `Your saved session “${params.sessionTitle}” starts soon.`,
+    body: 'Get ready to listen along.',
+    ctaLabel: 'Open session',
+    ctaHref: `/community/sessions/${params.sessionId}`,
+    entityType: 'session',
+    entityId: params.sessionId,
+  }
+}
+
+export function buildSavedPlaylistRoundCompleted(params: {
+  userId: string
+  roomSlug: string
+  roomName: string
+}): V2NotificationInput {
+  return {
+    userId: params.userId,
+    kind: 'saved_playlist_round_completed',
+    title: `“${params.roomName}” completed a listening round.`,
+    body: 'A playlist room you saved had new activity.',
+    ctaLabel: 'Open room',
+    ctaHref: `/community/playlists/${params.roomSlug}`,
+    entityType: 'playlist_room',
+    entityId: params.roomSlug,
   }
 }

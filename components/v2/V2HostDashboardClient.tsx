@@ -7,17 +7,26 @@ import V2EmptyState from '@/components/v2/V2EmptyState'
 import V2HostCreatePanel from '@/components/v2/V2HostCreatePanel'
 import V2HostIntro from '@/components/v2/V2HostIntro'
 import V2HostPendingPanel from '@/components/v2/V2HostPendingPanel'
+import V2HostSchedulePanel from '@/components/v2/V2HostSchedulePanel'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
 import V2SessionCard from '@/components/v2/V2SessionCard'
 import { V2_ROUTES } from '@/lib/v2/routes'
-import type { V2CommunityReminder, V2HostDashboard } from '@/lib/v2/types'
+import type { V2CalendarSession, V2CommunityReminder, V2HostDashboard } from '@/lib/v2/types'
+
+type HostSchedule = {
+  thisWeek: V2CalendarSession[]
+  undated: V2CalendarSession[]
+  needsParticipants: V2CalendarSession[]
+  startingSoon: V2CalendarSession[]
+}
 
 type Props = {
   dashboard: V2HostDashboard
   hostReminders?: V2CommunityReminder[]
+  hostSchedule?: HostSchedule
 }
 
-export default function V2HostDashboardClient({ dashboard, hostReminders = [] }: Props) {
+export default function V2HostDashboardClient({ dashboard, hostReminders = [], hostSchedule }: Props) {
   const { access, circles, sessions, playlistRooms, pendingSubmissions, upcomingSessions, recentParticipation, analytics } = dashboard
 
   return (
@@ -81,6 +90,22 @@ export default function V2HostDashboardClient({ dashboard, hostReminders = [] }:
       </section>
 
       <V2HostCreatePanel access={access} circles={circles.map(c => ({ id: c.id, name: c.name }))} />
+
+      {hostSchedule && (
+        <section className="v2-section">
+          <V2SectionHeader
+            title="Upcoming schedule"
+            lead="Sessions you host this week — set dates, grow RSVPs, and prepare the queue."
+            action={<Link href={V2_ROUTES.calendar} className="v2-btn secondary sm">View Calendar</Link>}
+          />
+          <V2HostSchedulePanel
+            thisWeek={hostSchedule.thisWeek}
+            undated={hostSchedule.undated}
+            needsParticipants={hostSchedule.needsParticipants}
+            startingSoon={hostSchedule.startingSoon}
+          />
+        </section>
+      )}
 
       <section className="v2-section">
         <V2SectionHeader title="Pending submissions" lead="Approve or remove tracks before they enter the queue." />

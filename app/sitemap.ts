@@ -1,6 +1,8 @@
 import type { MetadataRoute } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import { absoluteAppUrl } from '@/lib/appUrl'
+import { fetchPublicSitemapEntries } from '@/lib/v2/data/publicDiscovery'
+import { V2_ROUTES } from '@/lib/v2/routes'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 3600
@@ -18,14 +20,45 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date()
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: absoluteAppUrl('/discover'), lastModified: now, changeFrequency: 'daily', priority: 0.9 },
+    { url: absoluteAppUrl(V2_ROUTES.explore), lastModified: now, changeFrequency: 'daily', priority: 0.85 },
     { url: absoluteAppUrl('/creators'), lastModified: now, changeFrequency: 'weekly', priority: 0.5 },
     { url: absoluteAppUrl('/charts'), lastModified: now, changeFrequency: 'daily', priority: 0.6 },
     { url: absoluteAppUrl('/login'), lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
   ]
 
   const sb = serviceClient()
+  const communityPublic = await fetchPublicSitemapEntries()
 
-  const { data: artists } = await sb
+  const communityRoutes: MetadataRoute.Sitemap = [
+    ...communityPublic.circles.map(c => ({
+      url: absoluteAppUrl(V2_ROUTES.circle(c.slug)),
+      lastModified: c.updated_at ? new Date(c.updated_at) : now,
+      changeFrequency: 'weekly' as const,
+      priority: 0.7,
+    })),
+    ...communityPublic.sessions.map(s => ({
+      url: absoluteAppUrl(V2_ROUTES.session(s.id)),
+      lastModified: s.updated_at ? new Date(s.updated_at) : now,
+      changeFrequency: 'daily' as const,
+      priority: 0.72,
+    })),
+    ...communityPublic.rooms.map(r => ({
+      url: absoluteAppUrl(V2_ROUTES.playlistRoom(r.slug)),
+      lastModified: r.updated_at ? new Date(r.updated_at) : now,
+      changeFrequency: 'weekly' as const,
+      priority: 0.68,
+    })),
+    ...communityPublic.hosts.map(h => ({
+      url: absoluteAppUrl(V2_ROUTES.hostProfile(h.id)),
+      lastModified: now,
+      changeFrequency: 'weekly' as const,
+      priority: 0.65,
+    })),
+  ]
+
+  const sbLegacy = sb
+
+  const { data: artists } = await sbLegacy
     .from('artists')
     .select('id, page_slug, created_at, page_settings')
     .eq('page_enabled', true)
@@ -107,5 +140,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     storyRoutes = [...storyRoutes, ...storyIndexRoutes]
   }
 
-  return [...staticRoutes, ...artistRoutes, ...epkRoutes, ...songRoutes, ...storyRoutes]
+  return [...staticRoutes, ...communityRoutes, ...artistRoutes, ...epkRoutes, ...songRoutes, ...storyRoutes]
 }

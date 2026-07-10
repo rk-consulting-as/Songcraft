@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { clipText, requireV2User } from '@/lib/v2/apiAuth'
+import { clipText, requireV2User, v2ServiceClient } from '@/lib/v2/apiAuth'
 import { resolveV2HostCapabilities } from '@/lib/v2/hostAccess'
+import { notifyCircleFollowersNewSession } from '@/lib/v2/data/followNotifications'
 import { slugifyCommunityName } from '@/lib/v2/slug'
 
 export const runtime = 'nodejs'
@@ -32,6 +33,12 @@ export async function POST(req: NextRequest) {
   }
 
   const startsAt = typeof body.starts_at === 'string' ? body.starts_at : new Date().toISOString()
+  const endsAt = typeof body.ends_at === 'string' ? body.ends_at : null
+  const timezone = typeof body.timezone === 'string' ? clipText(body.timezone, 64) : null
+  const isRecurring = body.is_recurring === true
+  const recurrenceRule = typeof body.recurrence_rule === 'string' && ['weekly', 'biweekly', 'monthly'].includes(body.recurrence_rule)
+    ? body.recurrence_rule
+    : null
 
   const { data, error } = await sb
     .from('v2_sessions')
@@ -43,6 +50,10 @@ export async function POST(req: NextRequest) {
       description: clipText(body.description, 500) || null,
       platform: typeof body.platform === 'string' ? body.platform : 'spotify',
       starts_at: startsAt,
+      ends_at: endsAt,
+      timezone,
+      is_recurring: isRecurring && !!recurrenceRule,
+      recurrence_rule: recurrenceRule,
       status: 'upcoming',
       features: ['Stream Engine Beta', 'Community feedback'],
     })
@@ -52,6 +63,20 @@ export async function POST(req: NextRequest) {
   if (error) {
     if (error.code === '23505') return NextResponse.json({ error: 'slug_taken' }, { status: 409 })
     return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  if (circleId) {
+    const service = v2ServiceClient()
+    const { data: circle } = await service.from('v2_circles').select('name, visibility').eq('id', circleId).maybeSingle()
+    if (circle?.visibility === 'public') {
+      await notifyCircleFollowersNewSession({
+        circleId,
+        circleName: circle.name as string,
+        sessionId: data.id as string,
+        sessionTitle: data.title as string,
+        hostUserId: userId,
+      })
+    }
   }
 
   return NextResponse.json({ session: data })

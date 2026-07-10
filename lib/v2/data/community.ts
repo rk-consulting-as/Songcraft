@@ -25,6 +25,8 @@ export function mapCircleRow(row: Record<string, unknown>): V2Circle {
     sessionCount: Number(row.session_count || 0),
     visibility: (row.visibility as V2Circle['visibility']) || 'public',
     featured: !!row.featured,
+    ownerUserId: row.owner_user_id ? String(row.owner_user_id) : undefined,
+    followerCount: row.follower_count != null ? Number(row.follower_count) : undefined,
   }
 }
 
@@ -33,6 +35,7 @@ export function mapSessionRow(row: Record<string, unknown>, circle?: { slug: str
     id: String(row.id),
     slug: String(row.slug || ''),
     title: String(row.title),
+    description: row.description ? String(row.description) : undefined,
     hostName: hostName || 'Host',
     hostUserId: row.host_user_id ? String(row.host_user_id) : undefined,
     circleSlug: circle?.slug || '',
@@ -40,6 +43,12 @@ export function mapSessionRow(row: Record<string, unknown>, circle?: { slug: str
     circleId: row.circle_id ? String(row.circle_id) : undefined,
     status: (row.status as V2SessionStatus) || 'upcoming',
     startsAt: String(row.starts_at),
+    endsAt: row.ends_at ? String(row.ends_at) : undefined,
+    timezone: row.timezone ? String(row.timezone) : undefined,
+    isRecurring: !!row.is_recurring,
+    recurrenceRule: row.recurrence_rule ? String(row.recurrence_rule) : undefined,
+    parentSessionId: row.parent_session_id ? String(row.parent_session_id) : undefined,
+    rsvpCount: row.rsvp_count != null ? Number(row.rsvp_count) : undefined,
     platform: (row.platform as PlatformTag) || 'spotify',
     coverImageUrl: String(row.cover_image_url || 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=900&q=80'),
     trackCount: Number(row.track_count || 0),
@@ -199,7 +208,7 @@ export async function fetchSessionsForCircle(circleSlug: string, circleId?: stri
 }
 
 /** Circle song submissions from v2_circle_songs */
-export async function fetchSongsForCircle(circleSlug: string, circleId?: string): Promise<{ songs: V2Song[]; fromMock: boolean }> {
+export async function fetchSongsForCircle(circleSlug: string, circleId?: string, opts?: { approvedOnly?: boolean }): Promise<{ songs: V2Song[]; fromMock: boolean }> {
   const supabase = createServerSupabase()
   let resolvedId = circleId
   if (!resolvedId) {
@@ -210,9 +219,9 @@ export async function fetchSongsForCircle(circleSlug: string, circleId?: string)
 
   const { data: rows, error } = await supabase
     .from('v2_circle_songs')
-    .select('song_id, songs(id, artist_id, title, status, lyrics_instructions, cover_image_url, spotify_cover_url, spotify_url, media_links, publish_content, artists(name, page_slug))')
+    .select('song_id, status, songs(id, artist_id, title, status, lyrics_instructions, cover_image_url, spotify_cover_url, spotify_url, media_links, publish_content, artists(name, page_slug))')
     .eq('circle_id', resolvedId)
-    .in('status', ['pending', 'approved'])
+    .in('status', opts?.approvedOnly ? ['approved'] : ['pending', 'approved'])
     .order('created_at', { ascending: false })
     .limit(24)
 

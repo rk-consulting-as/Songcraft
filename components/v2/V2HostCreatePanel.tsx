@@ -20,6 +20,12 @@ export default function V2HostCreatePanel({ access, circles }: Props) {
   const [circleName, setCircleName] = useState('')
   const [sessionTitle, setSessionTitle] = useState('')
   const [sessionCircleId, setSessionCircleId] = useState(circles[0]?.id || '')
+  const [sessionStartsAt, setSessionStartsAt] = useState('')
+  const [sessionTimezone, setSessionTimezone] = useState(
+    typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
+  )
+  const [sessionRecurring, setSessionRecurring] = useState(false)
+  const [sessionRecurrence, setSessionRecurrence] = useState<'weekly' | 'biweekly' | 'monthly' | ''>('')
   const [roomName, setRoomName] = useState('')
   const [roomCircleId, setRoomCircleId] = useState(circles[0]?.id || '')
 
@@ -72,13 +78,52 @@ export default function V2HostCreatePanel({ access, circles }: Props) {
               {circles.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )}
+          <label className="v2-meta">Start date & time</label>
+          <input
+            type="datetime-local"
+            className="v2-input"
+            value={sessionStartsAt}
+            onChange={e => setSessionStartsAt(e.target.value)}
+            style={{ width: '100%', marginBottom: 8 }}
+          />
+          <label className="v2-meta">Timezone</label>
+          <input
+            className="v2-input"
+            value={sessionTimezone}
+            onChange={e => setSessionTimezone(e.target.value)}
+            style={{ width: '100%', marginBottom: 8 }}
+          />
+          <label className="v2-meta" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <input type="checkbox" checked={sessionRecurring} onChange={e => setSessionRecurring(e.target.checked)} />
+            Make recurring
+          </label>
+          {sessionRecurring && (
+            <select
+              className="v2-input"
+              value={sessionRecurrence}
+              onChange={e => setSessionRecurrence(e.target.value as typeof sessionRecurrence)}
+              style={{ width: '100%', marginBottom: 8 }}
+            >
+              <option value="">Select frequency</option>
+              <option value="weekly">Weekly</option>
+              <option value="biweekly">Every 2 weeks</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          )}
           <button
             type="button"
             className="v2-btn secondary sm"
             disabled={busy || !sessionTitle.trim()}
-            onClick={() => create('/api/v2/community/host/sessions', { title: sessionTitle, circle_id: sessionCircleId || undefined }, 'Session')}
+            onClick={() => create('/api/v2/community/host/sessions', {
+              title: sessionTitle,
+              circle_id: sessionCircleId || undefined,
+              starts_at: sessionStartsAt ? new Date(sessionStartsAt).toISOString() : undefined,
+              timezone: sessionTimezone || undefined,
+              is_recurring: sessionRecurring && !!sessionRecurrence,
+              recurrence_rule: sessionRecurring && sessionRecurrence ? sessionRecurrence : undefined,
+            }, 'Session')}
           >
-            Create session
+            Schedule session
           </button>
         </div>
         <div className="v2-card">

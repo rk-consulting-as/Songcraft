@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
 export default async function ParticipationPage() {
   const supabase = createServerSupabase()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  if (!user) redirect(`/login?next=${encodeURIComponent(V2_ROUTES.participation)}`)
 
   const [profile, history] = await Promise.all([
     fetchUserCommunityProfile(user.id),
