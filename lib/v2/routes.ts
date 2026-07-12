@@ -17,6 +17,7 @@ export const V2_ROUTES = {
   explore: '/community/explore',
   hostProfile: (id: string) => `/community/hosts/${id}`,
   saved: '/community/saved',
+  invite: '/community/invite',
   pricing: '/community/pricing',
   submit: '/community#submit',
 } as const

@@ -4,6 +4,21 @@ type Props = {
   system: {
     migrations?: { checks: Array<{ table: string; label: string; exists: boolean; migrationHint: string }>; allPresent: boolean; missing: string[] }
     readiness?: { items: Array<{ id: string; label: string; status: string; detail: string }>; ready: boolean; warnCount: number; missingCount: number }
+    v2_community?: {
+      migrationsOk: boolean
+      upcomingSessions: number
+      liveSessions: number
+      publicCircles: number
+      privateCircles: number
+      notificationRows: number
+      orphanedSessionSongs: number
+      orphanedRoomItems: number
+      communityFeedback30d: number
+      activeCommunityUsers7d: number
+      seedLikelyPresent: boolean
+      warnings: string[]
+      migrationChecks?: Array<{ table: string; label: string; exists: boolean; migrationHint: string }>
+    }
     visibility_audit?: Array<{ id: string; surface: string; route: string; filters: string[]; status: string; notes: string }>
     plan_gating?: Record<string, unknown>
     recent_admin_actions?: Array<{ action: string; actor_id: string; created_at: string }>
@@ -48,6 +63,60 @@ export default function AdminSystemHealthPanel({ system, tx }: Props) {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {system.v2_community && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <h3 style={{ margin: '0 0 8px', color: '#d4a843', fontSize: 14, fontWeight: 'normal' }}>
+            ViaTone 2.0 Community health
+            {system.v2_community.migrationsOk ? (
+              <span style={{ color: '#7bc87b', marginLeft: 8, fontSize: 12 }}>✓ migrations</span>
+            ) : (
+              <span style={{ color: '#c05050', marginLeft: 8, fontSize: 12 }}>missing tables</span>
+            )}
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8, marginBottom: 12 }}>
+            {[
+              ['Upcoming sessions', system.v2_community.upcomingSessions],
+              ['Live now', system.v2_community.liveSessions],
+              ['Public circles', system.v2_community.publicCircles],
+              ['Private circles', system.v2_community.privateCircles],
+              ['Notifications', system.v2_community.notificationRows],
+              ['Community feedback (30d)', system.v2_community.communityFeedback30d],
+              ['Active users (7d)', system.v2_community.activeCommunityUsers7d],
+            ].map(([label, value]) => (
+              <div key={String(label)} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 8, padding: '8px 10px' }}>
+                <div style={{ color: '#6a5a40', fontSize: 10 }}>{label}</div>
+                <div style={{ color: '#e8e0d0', fontSize: 16 }}>{value}</div>
+              </div>
+            ))}
+          </div>
+          <p style={{ color: '#8a7a60', fontSize: 12, margin: '0 0 8px' }}>
+            Seed data: {system.v2_community.seedLikelyPresent ? 'likely present' : 'not detected'} ·
+            Orphaned session songs: {system.v2_community.orphanedSessionSongs} ·
+            Orphaned room items: {system.v2_community.orphanedRoomItems}
+          </p>
+          {system.v2_community.warnings.length > 0 && (
+            <ul style={{ margin: 0, paddingLeft: 18, color: '#d4a843', fontSize: 11 }}>
+              {system.v2_community.warnings.map((w, i) => <li key={i}>{w}</li>)}
+            </ul>
+          )}
+          {system.v2_community.migrationChecks && !system.v2_community.migrationsOk && (
+            <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse', marginTop: 10 }}>
+              <tbody>
+                {system.v2_community.migrationChecks.filter(c => !c.exists).map(c => (
+                  <tr key={c.table}>
+                    <td style={{ color: '#c05050', padding: '4px 0' }}>{c.label}</td>
+                    <td style={{ color: '#6a5a40' }}>{c.migrationHint}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <p style={{ color: '#6a5a40', fontSize: 11, margin: '10px 0 0' }}>
+            Beta feedback: floating button on all pages · Admin → Feedback inbox · Docs: VIATONE_V2_BETA_TEST_SCRIPT.md
+          </p>
         </div>
       )}
 

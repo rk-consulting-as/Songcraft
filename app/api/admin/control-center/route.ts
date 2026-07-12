@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { checkMigrationTables } from '@/lib/admin/migrationHealth'
+import { buildV2CommunityHealthReport } from '@/lib/admin/v2MigrationHealth'
 import { buildBetaReadinessReport } from '@/lib/admin/betaReadiness'
 import { PUBLIC_VISIBILITY_AUDIT } from '@/lib/admin/publicVisibilityRules'
 
@@ -209,9 +210,10 @@ export async function GET(req: NextRequest) {
       songs: songs.filter((s: any) => s.user_id === p.id).length,
     })).sort((a: any, b: any) => String(b.created_at).localeCompare(String(a.created_at)))
 
-    const [migrations, readiness] = await Promise.all([
+    const [migrations, readiness, v2Community] = await Promise.all([
       checkMigrationTables(sb),
       buildBetaReadinessReport(sb),
+      buildV2CommunityHealthReport(sb),
     ])
 
     const hiddenEpks = (artists || []).filter((a: any) => {
@@ -267,6 +269,7 @@ export async function GET(req: NextRequest) {
       system: {
         migrations,
         readiness,
+        v2_community: v2Community,
         visibility_audit: PUBLIC_VISIBILITY_AUDIT,
         plan_gating: planGatingAudit,
         recent_admin_actions: auditLog.slice(0, 25),

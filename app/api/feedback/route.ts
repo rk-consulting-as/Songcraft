@@ -15,6 +15,15 @@ function clip(value: unknown, max: number) {
   return s ? s.slice(0, max) : ''
 }
 
+function safeMeta(value: Record<string, unknown>): Record<string, string | number | boolean | null> {
+  const out: Record<string, string | number | boolean | null> = {}
+  for (const [k, v] of Object.entries(value).slice(0, 12)) {
+    if (typeof v === 'string') out[k.slice(0, 40)] = v.slice(0, 200)
+    else if (typeof v === 'number' || typeof v === 'boolean' || v === null) out[k.slice(0, 40)] = v
+  }
+  return out
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}))
@@ -39,6 +48,8 @@ export async function POST(req: NextRequest) {
       metadata: {
         user_agent: clip(req.headers.get('user-agent'), 500),
         referrer: clip(req.headers.get('referer'), 500),
+        community: page.startsWith('/community'),
+        ...(body.metadata && typeof body.metadata === 'object' ? safeMeta(body.metadata) : {}),
       },
     })
 

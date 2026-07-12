@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { unstable_cache } from 'next/cache'
 import { v2ServiceClient } from '@/lib/v2/apiAuth'
 import { mapCircleRow, mapSessionRow } from '@/lib/v2/data/community'
 import { isPublicCircleVisibility } from '@/lib/v2/publicVisibility'
@@ -250,6 +251,18 @@ export async function saveSessionForUser(sb: SupabaseClient, userId: string, ses
 }
 
 export async function fetchCommunityDiscoverySummary(): Promise<{
+  topCircles: { slug: string; name: string; followerCount: number }[]
+  topHosts: { id: string; name: string; followerCount: number }[]
+  topSessions: { id: string; title: string; saveCount: number }[]
+}> {
+  return unstable_cache(
+    fetchCommunityDiscoverySummaryUncached,
+    ['v2-community-discovery-summary'],
+    { revalidate: 120 },
+  )()
+}
+
+async function fetchCommunityDiscoverySummaryUncached(): Promise<{
   topCircles: { slug: string; name: string; followerCount: number }[]
   topHosts: { id: string; name: string; followerCount: number }[]
   topSessions: { id: string; title: string; saveCount: number }[]

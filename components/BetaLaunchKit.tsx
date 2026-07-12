@@ -88,7 +88,16 @@ export default function BetaLaunchKit() {
     const res = await fetch('/api/feedback', {
       method: 'POST',
       headers,
-      body: JSON.stringify({ page: pathname || '/', type: feedbackType, message }),
+      body: JSON.stringify({
+        page: pathname || '/',
+        type: feedbackType,
+        message,
+        metadata: {
+          viewport_width: typeof window !== 'undefined' ? window.innerWidth : null,
+          community: (pathname || '').startsWith('/community'),
+          ref: typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('ref') : null,
+        },
+      }),
     })
     setSending(false)
     if (res.ok) {

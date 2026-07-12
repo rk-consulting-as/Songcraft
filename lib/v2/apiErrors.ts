@@ -1,6 +1,6 @@
 const V2_API_ERROR_MESSAGES: Record<string, string> = {
   not_authenticated: 'Log in to continue.',
-  host_only: 'Only the host can manage this session.',
+  host_only: 'Only the host can manage this session or room.',
   host_pro_required: 'Host Pro is required to create circles, sessions and playlist rooms.',
   join_circle_first: 'Join this circle before submitting a song.',
   join_first: 'Join this session before confirming listening.',
@@ -11,14 +11,19 @@ const V2_API_ERROR_MESSAGES: Record<string, string> = {
   song_not_owned: 'You can only submit songs from your own catalog.',
   song_id_required: 'Select a song to submit.',
   no_songs: 'You need at least one song before submitting to a session.',
+  room_not_public: 'This playlist room is not open to the public.',
   room_not_available: 'This playlist room is private or not available.',
   room_private: 'This playlist room is private or not available.',
   slug_taken: 'That URL slug is already taken — try another name.',
   invalid_payload: 'Something was missing from your request. Try again.',
   invalid_action: 'That action is not available right now.',
   not_found: 'We could not find that community item.',
+  insert_failed: 'Could not save your feedback. Try again or contact support.',
+  message_too_short: 'Please write a bit more detail before sending.',
   request_failed_403: 'You do not have permission to do that.',
   request_failed_401: 'Log in to continue.',
+  request_failed_404: 'We could not find that community item.',
+  request_failed_500: 'Something went wrong on our side. Please try again.',
 }
 
 export function formatV2ApiError(error: unknown): string {
@@ -26,10 +31,15 @@ export function formatV2ApiError(error: unknown): string {
   if (V2_API_ERROR_MESSAGES[raw]) return V2_API_ERROR_MESSAGES[raw]
   if (raw.startsWith('request_failed_')) {
     const code = raw.replace('request_failed_', '')
-    if (code === '403') return V2_API_ERROR_MESSAGES.request_failed_403
-    if (code === '401') return V2_API_ERROR_MESSAGES.request_failed_401
+    const key = `request_failed_${code}` as keyof typeof V2_API_ERROR_MESSAGES
+    if (V2_API_ERROR_MESSAGES[key]) return V2_API_ERROR_MESSAGES[key]
+  }
+  if (raw.includes('does not exist') || raw.includes('schema cache') || raw.includes('PGRST205')) {
+    return 'Community database is not fully set up yet. Ask your admin to apply v2 migrations.'
   }
   if (raw.includes('host_pro')) return V2_API_ERROR_MESSAGES.host_pro_required
   if (raw.includes('host_only')) return V2_API_ERROR_MESSAGES.host_only
   return raw || 'Something went wrong. Please try again.'
 }
+
+export { V2_API_ERROR_MESSAGES }

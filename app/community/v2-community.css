@@ -1846,4 +1846,10 @@ body.v2-community-page .chat-dock-root {
   .v2-saved-row {
     flex-direction: column;
   }
+
+  body.v2-community-page .feedback-fab {
+    bottom: 18px;
+    right: 14px;
+    z-index: 90;
+  }
 }
