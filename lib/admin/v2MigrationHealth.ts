@@ -18,6 +18,11 @@ export const V2_REQUIRED_MIGRATION_TABLES: Array<{ table: string; label: string;
   { table: 'v2_circle_follows', label: 'V2 Circle Follows', migrationHint: '20260706190000_v2_community_follows_saves.sql' },
   { table: 'v2_host_follows', label: 'V2 Host Follows', migrationHint: '20260706190000_v2_community_follows_saves.sql' },
   { table: 'v2_saved_community_items', label: 'V2 Saved Items', migrationHint: '20260706190000_v2_community_follows_saves.sql' },
+  { table: 'playlist_snapshots', label: 'Playback Snapshots', migrationHint: '20260713120000_playback_evidence_engine.sql' },
+  { table: 'playback_sessions', label: 'Playback Sessions', migrationHint: '20260713120000_playback_evidence_engine.sql' },
+  { table: 'playback_evidence', label: 'Playback Evidence', migrationHint: '20260713120000_playback_evidence_engine.sql' },
+  { table: 'playback_reports', label: 'Playback Reports', migrationHint: '20260713120000_playback_evidence_engine.sql' },
+  { table: 'playback_queues', label: 'Playback Queues', migrationHint: '20260713120000_playback_evidence_engine.sql' },
 ]
 
 const UNIQUE_TABLES = Array.from(

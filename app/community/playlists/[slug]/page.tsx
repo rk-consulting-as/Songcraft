@@ -12,6 +12,7 @@ import V2PublicRestrictedState from '@/components/v2/V2PublicRestrictedState'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
 import V2ShareButton from '@/components/v2/V2ShareButton'
 import V2SubmitSongPanel from '@/components/v2/V2SubmitSongPanel'
+import V2PlaybackContextSection from '@/components/playback/V2PlaybackContextSection'
 import { fetchPlaylistRoomBySlug } from '@/lib/v2/data/community'
 import { getPlaylistRoomSaveState } from '@/lib/v2/data/followsSaves'
 import { fetchRoomCircleVisibility } from '@/lib/v2/data/publicDiscovery'
@@ -168,6 +169,16 @@ export default async function PlaylistRoomPage({ params }: Props) {
           ))}
         </div>
       </section>
+
+      {!fromMock && (
+        <V2PlaybackContextSection
+          contextType="v2_playlist_room"
+          contextId={room.id}
+          showControls={!!user}
+          isLoggedIn={!!user}
+          demoMode={fromMock}
+        />
+      )}
     </>
   )
 }

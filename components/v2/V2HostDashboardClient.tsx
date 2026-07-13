@@ -10,6 +10,9 @@ import V2HostPendingPanel from '@/components/v2/V2HostPendingPanel'
 import V2HostSchedulePanel from '@/components/v2/V2HostSchedulePanel'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
 import V2SessionCard from '@/components/v2/V2SessionCard'
+import PlaybackReportCard from '@/components/playback/PlaybackReportCard'
+import { PLAYBACK_LABELS } from '@/lib/playback/types'
+import type { PlaybackReport } from '@/lib/playback/types'
 import { V2_ROUTES } from '@/lib/v2/routes'
 import type { V2CalendarSession, V2CommunityReminder, V2HostDashboard } from '@/lib/v2/types'
 
@@ -24,9 +27,10 @@ type Props = {
   dashboard: V2HostDashboard
   hostReminders?: V2CommunityReminder[]
   hostSchedule?: HostSchedule
+  playbackReports?: PlaybackReport[]
 }
 
-export default function V2HostDashboardClient({ dashboard, hostReminders = [], hostSchedule }: Props) {
+export default function V2HostDashboardClient({ dashboard, hostReminders = [], hostSchedule, playbackReports = [] }: Props) {
   const { access, circles, sessions, playlistRooms, pendingSubmissions, upcomingSessions, recentParticipation, analytics } = dashboard
 
   return (
@@ -85,6 +89,19 @@ export default function V2HostDashboardClient({ dashboard, hostReminders = [], h
               title="No host activity yet"
               description="Create your first circle or session below, approve submissions, then start a live listening room."
             />
+          </div>
+        )}
+      </section>
+
+      <section className="v2-section" style={{ marginTop: 0 }}>
+        <V2SectionHeader title={PLAYBACK_LABELS.evidence} lead="Queue and session reports from the Playback Evidence Engine." />
+        {playbackReports.length === 0 ? (
+          <p className="v2-meta">Reports appear when listeners complete playback sessions in your rooms.</p>
+        ) : (
+          <div className="v2-grid cols-2">
+            {playbackReports.map(report => (
+              <PlaybackReportCard key={report.id} report={report} compact />
+            ))}
           </div>
         )}
       </section>

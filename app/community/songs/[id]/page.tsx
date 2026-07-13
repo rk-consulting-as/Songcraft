@@ -4,6 +4,7 @@ import V2FeedbackPanel from '@/components/v2/V2FeedbackPanel'
 import V2ReportButton from '@/components/v2/V2ReportButton'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
 import V2SupporterProfileCard from '@/components/v2/V2SupporterProfileCard'
+import V2PlaybackContextSection from '@/components/playback/V2PlaybackContextSection'
 import { fetchSongFeedback } from '@/lib/v2/data/feedback'
 import { fetchUserCommunityProfile } from '@/lib/v2/data/supporters'
 import { fetchCommunitySongById } from '@/lib/v2/data/songs'
@@ -91,6 +92,14 @@ export default async function SongDetailPage({ params }: Props) {
           demoMode={fromMock}
         />
       </section>
+
+      {!fromMock && song.legacySongId && (
+        <V2PlaybackContextSection
+          contextType="song_page"
+          contextId={song.legacySongId}
+          isLoggedIn={!!user}
+        />
+      )}
 
       <section className="v2-section">
         <V2SectionHeader title="Streaming links" />

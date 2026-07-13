@@ -1853,3 +1853,112 @@ body.v2-community-page .chat-dock-root {
     z-index: 90;
   }
 }
+
+/* Phase 6A — Playback Evidence Engine */
+.v2-playback-card {
+  border: 1px solid rgba(0, 229, 255, 0.12);
+}
+
+.v2-playback-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.v2-playback-confidence {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--v2-stroke);
+  white-space: nowrap;
+}
+
+.v2-playback-confidence--high {
+  color: var(--v2-green);
+  border-color: rgba(68, 229, 154, 0.35);
+}
+
+.v2-playback-confidence--medium {
+  color: var(--v2-brand2);
+  border-color: rgba(0, 229, 255, 0.35);
+}
+
+.v2-playback-confidence--low {
+  color: var(--v2-muted);
+}
+
+.v2-playback-confidence--unknown {
+  color: var(--v2-muted);
+  opacity: 0.8;
+}
+
+.v2-playback-evidence-list,
+.v2-playback-queue-list,
+.v2-playback-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.v2-playback-evidence-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.v2-playback-evidence-row:first-child {
+  border-top: none;
+}
+
+.v2-playback-session-card__stats,
+.v2-playback-report-card__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.v2-playback-confidence-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.v2-playback-timeline__item {
+  display: grid;
+  grid-template-columns: 12px 1fr;
+  gap: 12px;
+  padding: 10px 0;
+  position: relative;
+}
+
+.v2-playback-timeline__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--v2-brand2);
+  margin-top: 6px;
+}
+
+.v2-playback-timeline__when {
+  display: block;
+  margin-top: 2px;
+}
+
+.v2-playback-queue-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.v2-playback-controls {
+  border-color: rgba(139, 92, 246, 0.25);
+}

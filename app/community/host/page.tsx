@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import V2HostDashboardClient from '@/components/v2/V2HostDashboardClient'
 import { fetchHostDashboard } from '@/lib/v2/data/hostDashboard'
+import { fetchHostPlaybackReports } from '@/lib/playback/data/fetchPlaybackContext'
 import { computeHostReminders } from '@/lib/v2/data/communityReminders'
 import { fetchHostSchedule } from '@/lib/v2/data/sessionCalendar'
 import { buildLoginUrl } from '@/lib/v2/authReturn'
@@ -15,10 +16,11 @@ export default async function HostDashboardPage() {
   if (!user) redirect(buildLoginUrl(V2_ROUTES.host))
 
   const dashboard = await fetchHostDashboard(user.id)
-  const [hostReminders, hostSchedule] = await Promise.all([
+  const [hostReminders, hostSchedule, playbackReports] = await Promise.all([
     Promise.resolve(computeHostReminders(dashboard)),
     fetchHostSchedule(user.id),
+    fetchHostPlaybackReports(user.id, 5),
   ])
 
-  return <V2HostDashboardClient dashboard={dashboard} hostReminders={hostReminders} hostSchedule={hostSchedule} />
+  return <V2HostDashboardClient dashboard={dashboard} hostReminders={hostReminders} hostSchedule={hostSchedule} playbackReports={playbackReports} />
 }

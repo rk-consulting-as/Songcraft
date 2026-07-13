@@ -17,6 +17,7 @@ import V2StreamEngineBlock from '@/components/v2/V2StreamEngineBlock'
 import V2StreamEnginePanel from '@/components/v2/V2StreamEnginePanel'
 import V2SubmitSongPanel from '@/components/v2/V2SubmitSongPanel'
 import V2SupporterProfileCard from '@/components/v2/V2SupporterProfileCard'
+import V2PlaybackContextSection from '@/components/playback/V2PlaybackContextSection'
 import { fetchCommunitySessionById } from '@/lib/v2/data/community'
 import { fetchSessionCircleVisibility } from '@/lib/v2/data/publicDiscovery'
 import { fetchSessionRsvpCounts, fetchUserRsvpStatus } from '@/lib/v2/data/sessionCalendar'
@@ -290,6 +291,16 @@ export default async function SessionDetailPage({ params }: Props) {
       <section className="v2-section">
         <V2StreamEngineBlock />
       </section>
+
+      {!fromMock && (
+        <V2PlaybackContextSection
+          contextType="v2_session"
+          contextId={session.id}
+          showControls={!!user}
+          isLoggedIn={!!user}
+          demoMode={fromMock}
+        />
+      )}
     </>
   )
 }

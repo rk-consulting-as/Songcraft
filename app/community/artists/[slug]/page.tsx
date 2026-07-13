@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
 import V2SongCard from '@/components/v2/V2SongCard'
+import ListeningActivityCard from '@/components/playback/ListeningActivityCard'
+import { PLAYBACK_LABELS } from '@/lib/playback/types'
 import { fetchCommunityArtistBySlug } from '@/lib/v2/data/artists'
 import { fetchSongsForArtistId } from '@/lib/v2/data/songs'
 import { V2_ROUTES } from '@/lib/v2/routes'
@@ -66,10 +68,25 @@ export default async function ArtistDetailPage({ params }: Props) {
         <div className="v2-card">
           <p className="v2-meta">
             Active in {artist.circleCount || 0} circles
-            {/* TODO: v2_circle_members + session_songs when community tables are seeded */}
           </p>
           <Link href={V2_ROUTES.sessions} className="v2-btn sm" style={{ marginTop: 12 }}>Browse sessions</Link>
         </div>
+      </section>
+
+      <section className="v2-section">
+        <V2SectionHeader title={PLAYBACK_LABELS.participation} lead="Community listening evidence from sessions and playlist rooms featuring this artist." />
+        <ListeningActivityCard
+          summary={{
+            available: true,
+            labels: PLAYBACK_LABELS,
+            sessions: [],
+            report: null,
+            sessionCount: 0,
+            highConfidenceCount: 0,
+            averageCompletion: 0,
+          }}
+          title={PLAYBACK_LABELS.activity}
+        />
       </section>
     </>
   )
