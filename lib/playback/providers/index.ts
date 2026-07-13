@@ -1,5 +1,6 @@
 import type { PlaybackProvider } from '../PlaybackProviders'
 import { defaultMatchTracks, scoreTrackMatch } from '../PlaybackProviders'
+import { SpotifyProvider } from './spotify/SpotifyProvider'
 import type {
   PlaybackConfidence,
   PlaybackEvidenceInput,
@@ -37,28 +38,7 @@ function manualProvider(id: 'manual', displayName: string): PlaybackProvider {
 
 export const ManualProvider: PlaybackProvider = manualProvider('manual', 'Manual Participation')
 
-export const SpotifyProvider: PlaybackProvider = {
-  id: 'spotify',
-  displayName: 'Spotify',
-  isConfigured: false, // Phase 6B: OAuth + Recently Played
-  async sync() {
-    // Phase 6B: Spotify OAuth token refresh + playlist sync
-  },
-  async startPlayback() {},
-  async finishPlayback() {
-    // Phase 6B: fetch recently-played and map to snapshot
-    return []
-  },
-  async collectEvidence() {
-    return []
-  },
-  async matchTracks(snapshotTracks, candidates) {
-    return defaultMatchTracks(snapshotTracks, candidates, 'spotify')
-  },
-  calculateConfidence(e) {
-    return scoreToConfidence(scoreEvidenceRow({ ...e, provider: 'spotify' }))
-  },
-}
+export { SpotifyProvider }
 
 export const YoutubeProvider: PlaybackProvider = {
   id: 'youtube',

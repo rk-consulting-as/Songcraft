@@ -19,6 +19,7 @@ export const V2_ROUTES = {
   saved: '/community/saved',
   invite: '/community/invite',
   pricing: '/community/pricing',
+  integrations: '/community/settings/integrations',
   submit: '/community#submit',
 } as const
 

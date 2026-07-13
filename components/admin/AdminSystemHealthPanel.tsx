@@ -22,6 +22,16 @@ type Props = {
     visibility_audit?: Array<{ id: string; surface: string; route: string; filters: string[]; status: string; notes: string }>
     plan_gating?: Record<string, unknown>
     recent_admin_actions?: Array<{ action: string; actor_id: string; created_at: string }>
+    spotify?: {
+      configured: boolean
+      appStatus: string
+      redirectUri: string
+      connectionTableExists: boolean
+      activeConnections: number
+      needsReconnect: number
+      recentSyncFailures: number
+      latestSuccessfulSync?: string
+    }
     failed_api_warnings?: Array<{ provider: string; feature: string; at: string }>
   } | null
   tx: Record<string, string>
@@ -116,6 +126,36 @@ export default function AdminSystemHealthPanel({ system, tx }: Props) {
           )}
           <p style={{ color: '#6a5a40', fontSize: 11, margin: '10px 0 0' }}>
             Beta feedback: floating button on all pages · Admin → Feedback inbox · Docs: VIATONE_V2_BETA_TEST_SCRIPT.md
+          </p>
+        </div>
+      )}
+
+      {system.spotify && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <h3 style={{ margin: '0 0 8px', color: '#1ed760', fontSize: 14, fontWeight: 'normal' }}>
+            Spotify integration health
+            {system.spotify.configured ? (
+              <span style={{ color: '#7bc87b', marginLeft: 8, fontSize: 12 }}>configured</span>
+            ) : (
+              <span style={{ color: '#d4a843', marginLeft: 8, fontSize: 12 }}>not configured</span>
+            )}
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
+            {[
+              ['App status', system.spotify.appStatus],
+              ['Active connections', system.spotify.activeConnections],
+              ['Needs reconnect', system.spotify.needsReconnect],
+              ['Recent sync failures', system.spotify.recentSyncFailures],
+            ].map(([label, value]) => (
+              <div key={String(label)} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 8, padding: '8px 10px' }}>
+                <div style={{ color: '#6a5a40', fontSize: 10 }}>{label}</div>
+                <div style={{ color: '#e8e0d0', fontSize: 14 }}>{value}</div>
+              </div>
+            ))}
+          </div>
+          <p style={{ color: '#8a7a60', fontSize: 11, margin: '8px 0 0' }}>
+            Redirect: {system.spotify.redirectUri || '—'} · Table: {system.spotify.connectionTableExists ? 'ok' : 'missing'} ·
+            Last sync: {system.spotify.latestSuccessfulSync ? new Date(system.spotify.latestSuccessfulSync).toLocaleString() : '—'}
           </p>
         </div>
       )}

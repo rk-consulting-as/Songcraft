@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation'
 import PlaybackReportCard from '@/components/playback/PlaybackReportCard'
 import PlaybackListeningControls from '@/components/playback/PlaybackListeningControls'
 import ListeningActivityCard from '@/components/playback/ListeningActivityCard'
+import SpotifyConnectionCard from '@/components/spotify/SpotifyConnectionCard'
+import SpotifyPlaylistPicker, { type SpotifyPickerPlaylist } from '@/components/spotify/SpotifyPlaylistPicker'
+import SpotifyPlaylistSyncStatus from '@/components/spotify/SpotifyPlaylistSyncStatus'
 import V2PlaylistListenButton from '@/components/v2/V2PlaylistListenButton'
 import V2PlaylistRoomEngine from '@/components/v2/V2PlaylistRoomEngine'
 import V2SectionHeader from '@/components/v2/V2SectionHeader'
@@ -62,28 +65,59 @@ export default function V2CuratorRoomDashboard({
   const [linkUrl, setLinkUrl] = useState('')
   const [linkTitle, setLinkTitle] = useState('')
   const [linkBusy, setLinkBusy] = useState(false)
+  const [showPicker, setShowPicker] = useState(false)
+  const [syncingId, setSyncingId] = useState<string | null>(null)
 
-  const linkPlaylist = async () => {
-    if (!linkUrl.trim()) return
+  const linkPlaylist = async (opts?: { url?: string; title?: string; platform?: string; spotifySync?: boolean }) => {
+    const url = opts?.url || linkUrl
+    if (!url.trim()) return
     setLinkBusy(true)
     try {
-      await v2ApiFetch(`/api/v2/community/playlists/${room.slug}/linked-playlists`, {
+      const res = await v2ApiFetch<{ playlist: { id: string } }>(`/api/v2/community/playlists/${room.slug}/linked-playlists`, {
         method: 'POST',
         body: JSON.stringify({
-          playlist_url: linkUrl,
-          platform: room.platform,
-          title: linkTitle || undefined,
-          create_snapshot: !!linkTitle,
+          playlist_url: url,
+          platform: opts?.platform || room.platform,
+          title: opts?.title || linkTitle || undefined,
+          create_snapshot: !!(opts?.title || linkTitle),
+          spotify_sync: opts?.spotifySync ?? false,
         }),
       })
+      if (opts?.spotifySync && res.playlist?.id) {
+        await v2ApiFetch('/api/v2/integrations/spotify/sync-playlist', {
+          method: 'POST',
+          body: JSON.stringify({ linked_playlist_id: res.playlist.id }),
+        })
+      }
       showToast('Playlist linked')
       setLinkUrl('')
       setLinkTitle('')
+      setShowPicker(false)
       router.refresh()
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Link failed')
     } finally {
       setLinkBusy(false)
+    }
+  }
+
+  const pickSpotifyPlaylist = (p: SpotifyPickerPlaylist) => {
+    linkPlaylist({ url: p.spotifyUrl, title: p.title, platform: 'spotify', spotifySync: true })
+  }
+
+  const syncLinkedPlaylist = async (linkedId: string) => {
+    setSyncingId(linkedId)
+    try {
+      await v2ApiFetch('/api/v2/integrations/spotify/sync-playlist', {
+        method: 'POST',
+        body: JSON.stringify({ linked_playlist_id: linkedId }),
+      })
+      showToast('Playlist synced')
+      router.refresh()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Sync failed')
+    } finally {
+      setSyncingId(null)
     }
   }
 
@@ -109,8 +143,15 @@ export default function V2CuratorRoomDashboard({
               </div>
               <h4>{lp.title || 'Linked playlist'}</h4>
               {lp.description && <p className="v2-meta">{lp.description}</p>}
+              {lp.platform === 'spotify' && (
+                <SpotifyPlaylistSyncStatus
+                  playlist={lp}
+                  syncing={syncingId === lp.id}
+                  onSync={isHost ? () => syncLinkedPlaylist(lp.id) : undefined}
+                />
+              )}
               <div className="v2-hero-actions" style={{ marginTop: 8 }}>
-                <a href={lp.playlistUrl} target="_blank" rel="noopener noreferrer" className="v2-btn hot sm">Open playlist ↗</a>
+                <a href={lp.playlistUrl} target="_blank" rel="noopener noreferrer" className="v2-btn hot sm">Open in Spotify ↗</a>
               </div>
             </article>
           ))}
@@ -118,10 +159,25 @@ export default function V2CuratorRoomDashboard({
         {isHost && (
           <div className="v2-card" style={{ marginTop: 16 }}>
             <h4 style={{ margin: '0 0 8px' }}>Link external playlist</h4>
-            <input className="v2-input" placeholder="Playlist URL (Spotify, YouTube…)" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} style={{ width: '100%', marginBottom: 8 }} />
-            <input className="v2-input" placeholder="Title (manual metadata)" value={linkTitle} onChange={e => setLinkTitle(e.target.value)} style={{ width: '100%', marginBottom: 8 }} />
-            <button type="button" className="v2-btn sm" disabled={linkBusy} onClick={linkPlaylist}>Link playlist</button>
-            <p className="v2-meta" style={{ marginTop: 8 }}>Without API sync, add title manually. Status will show honestly as manual or needs configuration.</p>
+            {room.platform === 'spotify' && (
+              <div style={{ marginBottom: 12 }}>
+                <SpotifyConnectionCard compact returnTo={`/community/playlists/${room.slug}`} />
+                <button type="button" className="v2-btn secondary sm" style={{ marginTop: 8 }} onClick={() => setShowPicker(v => !v)}>
+                  {showPicker ? 'Hide Spotify playlists' : 'Choose from my Spotify playlists'}
+                </button>
+                {showPicker && (
+                  <div style={{ marginTop: 8 }}>
+                    <SpotifyPlaylistPicker onSelect={pickSpotifyPlaylist} />
+                  </div>
+                )}
+              </div>
+            )}
+            <input className="v2-input" placeholder="Paste Spotify playlist URL" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} style={{ width: '100%', marginBottom: 8 }} />
+            <input className="v2-input" placeholder="Title (optional manual metadata)" value={linkTitle} onChange={e => setLinkTitle(e.target.value)} style={{ width: '100%', marginBottom: 8 }} />
+            <button type="button" className="v2-btn sm" disabled={linkBusy} onClick={() => linkPlaylist()}>Link playlist</button>
+            <p className="v2-meta" style={{ marginTop: 8 }}>
+              Connect Spotify to sync owned or collaborative playlists. Manual URL linking remains available if sync is forbidden.
+            </p>
           </div>
         )}
       </section>
@@ -170,7 +226,7 @@ export default function V2CuratorRoomDashboard({
           ))}
         </div>
         {isHost && (
-          <p className="v2-meta" style={{ marginTop: 8 }}>To update Spotify directly, open the external playlist. ViaTone tracks placement status here until Phase 6C sync.</p>
+          <p className="v2-meta" style={{ marginTop: 8 }}>External playlist changes sync via Spotify when connected. ViaTone snapshots stay immutable for Playback Evidence.</p>
         )}
       </section>
 

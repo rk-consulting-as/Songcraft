@@ -193,6 +193,12 @@ export type V2CuratorLinkedPlaylistSyncStatus =
   | 'manual'
   | 'sync_unavailable'
   | 'needs_configuration'
+  | 'syncing'
+  | 'synced'
+  | 'stale'
+  | 'needs_reconnect'
+  | 'forbidden'
+  | 'failed'
 
 export type V2CuratorLinkedPlaylist = {
   id: string
@@ -206,6 +212,7 @@ export type V2CuratorLinkedPlaylist = {
   curatorName?: string
   syncStatus: V2CuratorLinkedPlaylistSyncStatus
   lastSyncedAt?: string
+  lastSyncError?: string
   trackCount: number
   totalDurationSeconds: number
   latestSnapshotId?: string

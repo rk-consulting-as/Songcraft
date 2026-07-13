@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireV2User, v2ServiceClient } from '@/lib/v2/apiAuth'
 import { mapLinkedPlaylistRow, parsePlaylistUrl } from '@/lib/v2/data/curatorRooms'
 import { createPlaybackEngine } from '@/lib/playback/PlaybackEngine'
+import { syncCuratorLinkedSpotifyPlaylist } from '@/lib/spotify/playlistSync'
+import { trackSpotifyEvent } from '@/lib/spotify/analytics'
 import type { PlaylistSnapshotTrack } from '@/lib/playback/types'
 
 export const runtime = 'nodejs'
@@ -52,7 +54,8 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
 
   const parsed = parsePlaylistUrl(platform, playlistUrl)
   const hasManualMeta = !!(title || trackCount)
-  const syncStatus = hasManualMeta ? 'manual' : 'needs_configuration'
+  const wantsSpotifySync = !!body.spotify_sync && platform === 'spotify'
+  const syncStatus = wantsSpotifySync ? 'connected' : hasManualMeta ? 'manual' : 'needs_configuration'
 
   const { count } = await sb
     .from('v2_curator_linked_playlists')
@@ -80,6 +83,12 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  await trackSpotifyEvent(sb, userId, 'spotify_playlist_linked', {
+    room_id: room.id,
+    linked_playlist_id: linked.id,
+    platform,
+  })
+
   let snapshot = null
   if (body.create_snapshot && title) {
     const engine = createPlaybackEngine(sb)
@@ -103,8 +112,21 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
     await sb.from('v2_playlist_rooms').update({ current_snapshot_id: snapshot.id }).eq('id', room.id)
   }
 
+  if (wantsSpotifySync) {
+    try {
+      const synced = await syncCuratorLinkedSpotifyPlaylist(v2ServiceClient(), userId, String(linked.id))
+      snapshot = { id: synced.snapshotId }
+      await trackSpotifyEvent(sb, userId, 'spotify_playlist_synced', { linked_playlist_id: linked.id })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'sync_failed'
+      await trackSpotifyEvent(sb, userId, 'spotify_playlist_sync_failed', { error: msg })
+    }
+  }
+
+  const { data: fresh } = await sb.from('v2_curator_linked_playlists').select('*').eq('id', linked.id).single()
+
   return NextResponse.json({
-    playlist: mapLinkedPlaylistRow(linked as Record<string, unknown>),
+    playlist: mapLinkedPlaylistRow((fresh || linked) as Record<string, unknown>),
     snapshot,
     message: syncStatus === 'needs_configuration'
       ? 'Playlist linked. Add manual metadata or wait for platform sync configuration.'

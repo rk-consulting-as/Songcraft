@@ -29,6 +29,7 @@ export function mapLinkedPlaylistRow(row: Record<string, unknown>): V2CuratorLin
     curatorName: row.curator_name ? String(row.curator_name) : undefined,
     syncStatus: (row.sync_status as V2CuratorLinkedPlaylist['syncStatus']) || 'manual',
     lastSyncedAt: row.last_synced_at ? String(row.last_synced_at) : undefined,
+    lastSyncError: row.last_sync_error ? String(row.last_sync_error) : undefined,
     trackCount: Number(row.track_count || 0),
     totalDurationSeconds: Number(row.total_duration_seconds || 0),
     latestSnapshotId: row.latest_snapshot_id ? String(row.latest_snapshot_id) : undefined,

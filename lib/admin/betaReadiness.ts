@@ -109,6 +109,16 @@ export async function buildBetaReadinessReport(sb: SupabaseClient): Promise<{
     detail: 'app/sitemap.ts — excludes hidden content',
   })
 
+  items.push({
+    id: 'spotify_oauth',
+    label: 'Spotify user OAuth',
+    status: process.env.SPOTIFY_CLIENT_ID && process.env.SPOTIFY_CLIENT_SECRET ? 'ok' : 'warn',
+    detail:
+      process.env.SPOTIFY_CLIENT_ID && process.env.SPOTIFY_CLIENT_SECRET
+        ? 'Client credentials configured'
+        : 'Spotify connection disabled until SPOTIFY_CLIENT_ID/SECRET set',
+  })
+
   const missingCount = items.filter(i => i.status === 'missing').length
   const warnCount = items.filter(i => i.status === 'warn').length
   const ready = missingCount === 0
