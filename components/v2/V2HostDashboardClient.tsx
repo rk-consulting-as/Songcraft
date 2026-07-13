@@ -37,7 +37,7 @@ export default function V2HostDashboardClient({ dashboard, hostReminders = [], h
     <>
       <V2SectionHeader
         title="Host dashboard"
-        lead="Curator tools for circles, sessions and playlist rooms — powered by Stream Engine beta."
+        lead="Curator tools for circles, live sessions, and Curator Rooms."
         action={
           <div className="v2-hero-actions">
             {access.isAdmin && <span className="v2-tag">Admin</span>}
@@ -162,20 +162,20 @@ export default function V2HostDashboardClient({ dashboard, hostReminders = [], h
           </div>
         </section>
         <section className="v2-section">
-          <V2SectionHeader title="My playlist rooms" action={<Link href={V2_ROUTES.playlists} className="v2-btn secondary sm">All rooms</Link>} />
+          <V2SectionHeader title="My Curator Rooms" action={<Link href={V2_ROUTES.playlists} className="v2-btn secondary sm">All rooms</Link>} />
           <div className="v2-card">
             {playlistRooms.length === 0 && (
               <V2EmptyState
                 icon="♫"
-                title="No playlist rooms yet"
-                description="Open a room for ongoing submissions and listening rounds alongside your circle."
+                title="No Curator Rooms yet"
+                description="Open a Curator Room for ongoing submissions, curator review, and listening sessions."
               />
             )}
             {playlistRooms.map(room => (
               <div key={room.id} className="v2-track">
                 <span className="num">♫</span>
                 <div><b>{room.name}</b><span>{room.trackCount} tracks · {room.roundStatus || 'active'}</span></div>
-                <Link href={V2_ROUTES.playlistRoom(room.slug)} className="v2-btn sm secondary">Manage</Link>
+                <Link href={V2_ROUTES.playlistRoom(room.slug)} className="v2-btn sm secondary">Open Curator Workspace</Link>
               </div>
             ))}
           </div>

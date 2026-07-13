@@ -238,14 +238,20 @@ export function computeHostReminders(dashboard: V2HostDashboard): V2CommunityRem
 
   if (pendingSubmissions.length) {
     const first = pendingSubmissions[0]
+    const ctaHref = first.targetType === 'playlist_room' && first.roomSlug
+      ? V2_ROUTES.playlistRoom(first.roomSlug)
+      : first.sessionId
+        ? V2_ROUTES.session(first.sessionId)
+        : V2_ROUTES.host
+    const targetLabel = first.targetType === 'playlist_room' ? first.roomName : first.sessionTitle
     reminders.push({
       id: 'host-pending',
       kind: 'host_submission_pending',
       icon: '⧗',
       tone: 'attention',
       title: `${pendingSubmissions.length} submission${pendingSubmissions.length > 1 ? 's' : ''} waiting for review`,
-      body: `Latest: “${first.title}” for “${first.sessionTitle}”.`,
-      cta: { label: 'Review submissions', href: V2_ROUTES.session(first.sessionId) },
+      body: `Latest: “${first.title}” for “${targetLabel}”.`,
+      cta: { label: 'Review submissions', href: ctaHref },
     })
   }
 

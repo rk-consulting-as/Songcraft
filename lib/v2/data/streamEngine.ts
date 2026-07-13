@@ -150,7 +150,7 @@ export async function fetchPlaylistRoomActivity(roomId: string, circleId?: strin
     supabase.from('v2_playlist_rooms').select('round_status, last_completed_at').eq('id', roomId).maybeSingle(),
     supabase
       .from('v2_playlist_room_items')
-      .select('id, title, artist_name, created_at, played_at, submitted_by')
+      .select('id, title, artist_name, created_at, played_at, submitted_by, status')
       .eq('room_id', roomId)
       .order('created_at', { ascending: false })
       .limit(24),
@@ -161,7 +161,7 @@ export async function fetchPlaylistRoomActivity(roomId: string, circleId?: strin
 
   const allItems = items || []
   const recentSubmissions = allItems
-    .filter(i => !i.played_at)
+    .filter(i => !i.played_at && (!i.status || ['pending', 'reviewing'].includes(i.status)))
     .slice(0, 8)
     .map(i => ({ id: i.id, title: i.title, artistName: i.artist_name || '', createdAt: i.created_at }))
 

@@ -125,6 +125,42 @@ export const V2_NOTIFICATION_CONFIG: Record<V2CommunityNotificationKind, Notific
     defaultCtaLabel: 'Open room',
     fallbackTitle: 'A saved playlist room completed a round.',
   },
+  curator_submission_shortlisted: {
+    icon: '★',
+    tone: 'positive',
+    defaultCtaLabel: 'View room',
+    fallbackTitle: 'Your song was shortlisted in a Curator Room.',
+  },
+  curator_submission_accepted: {
+    icon: '✓',
+    tone: 'positive',
+    defaultCtaLabel: 'View room',
+    fallbackTitle: 'Your song was accepted by a curator.',
+  },
+  curator_submission_rejected: {
+    icon: '↩',
+    tone: 'info',
+    defaultCtaLabel: 'View room',
+    fallbackTitle: 'A curator reviewed your submission.',
+  },
+  curator_song_added_to_playlist: {
+    icon: '♫',
+    tone: 'celebrate',
+    defaultCtaLabel: 'View room',
+    fallbackTitle: 'Your song was marked for playlist placement.',
+  },
+  curator_session_scheduled: {
+    icon: '📅',
+    tone: 'info',
+    defaultCtaLabel: 'View session',
+    fallbackTitle: 'A Curator Room scheduled a listening session.',
+  },
+  curator_feedback_received: {
+    icon: '💬',
+    tone: 'positive',
+    defaultCtaLabel: 'View song',
+    fallbackTitle: 'New feedback on your Curator Room submission.',
+  },
 }
 
 export function notificationIcon(kind: string): string {
@@ -345,10 +381,86 @@ export function buildSavedPlaylistRoundCompleted(params: {
     userId: params.userId,
     kind: 'saved_playlist_round_completed',
     title: `“${params.roomName}” completed a listening round.`,
-    body: 'A playlist room you saved had new activity.',
+    body: 'A Curator Room you saved had new activity.',
     ctaLabel: 'Open room',
     ctaHref: `/community/playlists/${params.roomSlug}`,
     entityType: 'playlist_room',
     entityId: params.roomSlug,
+  }
+}
+
+export function buildCuratorSubmissionShortlisted(params: {
+  userId: string
+  roomSlug: string
+  roomName: string
+  songTitle: string
+}): V2NotificationInput {
+  return {
+    userId: params.userId,
+    kind: 'curator_submission_shortlisted',
+    title: `“${params.songTitle}” was shortlisted in “${params.roomName}”.`,
+    body: 'The curator is still reviewing — you will hear more soon.',
+    ctaLabel: 'View room',
+    ctaHref: `/community/playlists/${params.roomSlug}`,
+    entityType: 'playlist_room',
+    entityId: params.roomSlug,
+    metadata: { songTitle: params.songTitle },
+  }
+}
+
+export function buildCuratorSubmissionAccepted(params: {
+  userId: string
+  roomSlug: string
+  roomName: string
+  songTitle: string
+}): V2NotificationInput {
+  return {
+    userId: params.userId,
+    kind: 'curator_submission_accepted',
+    title: `“${params.songTitle}” was accepted in “${params.roomName}”.`,
+    body: 'Great fit for this Curator Room — watch for session and playlist updates.',
+    ctaLabel: 'View room',
+    ctaHref: `/community/playlists/${params.roomSlug}`,
+    entityType: 'playlist_room',
+    entityId: params.roomSlug,
+    metadata: { songTitle: params.songTitle },
+  }
+}
+
+export function buildCuratorSubmissionRejected(params: {
+  userId: string
+  roomSlug: string
+  roomName: string
+  songTitle: string
+}): V2NotificationInput {
+  return {
+    userId: params.userId,
+    kind: 'curator_submission_rejected',
+    title: `“${params.songTitle}” was not selected for “${params.roomName}”.`,
+    body: 'You can submit another song or try a different Curator Room.',
+    ctaLabel: 'View room',
+    ctaHref: `/community/playlists/${params.roomSlug}`,
+    entityType: 'playlist_room',
+    entityId: params.roomSlug,
+    metadata: { songTitle: params.songTitle },
+  }
+}
+
+export function buildCuratorSongAddedToPlaylist(params: {
+  userId: string
+  roomSlug: string
+  roomName: string
+  songTitle: string
+}): V2NotificationInput {
+  return {
+    userId: params.userId,
+    kind: 'curator_song_added_to_playlist',
+    title: `“${params.songTitle}” marked for playlist placement.`,
+    body: `Curator marked your song in “${params.roomName}”. Update the external playlist when ready.`,
+    ctaLabel: 'View room',
+    ctaHref: `/community/playlists/${params.roomSlug}`,
+    entityType: 'playlist_room',
+    entityId: params.roomSlug,
+    metadata: { songTitle: params.songTitle },
   }
 }

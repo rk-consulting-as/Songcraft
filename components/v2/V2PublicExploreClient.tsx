@@ -124,7 +124,7 @@ export default function V2PublicExploreClient({
             <option value="all">All types</option>
             <option value="circle">Circles</option>
             <option value="session">Sessions</option>
-            <option value="playlist_room">Playlist rooms</option>
+            <option value="playlist_room">Curator Rooms</option>
           </select>
           <select className="v2-input" value={genre} onChange={e => setGenre(e.target.value)} aria-label="Genre">
             <option value="">All genres</option>
@@ -179,7 +179,7 @@ export default function V2PublicExploreClient({
 
       {showRooms && (
         <section className="v2-section">
-          <V2SectionHeader title="Playlist rooms" action={<Link href={V2_ROUTES.playlists} className="v2-btn secondary sm">All rooms</Link>} />
+          <V2SectionHeader title="Curator Rooms" action={<Link href={V2_ROUTES.playlists} className="v2-btn secondary sm">All rooms</Link>} />
           {playlistRooms.length === 0 ? (
             <p className="v2-meta">No public playlist rooms yet.</p>
           ) : (

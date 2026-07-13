@@ -23,6 +23,7 @@ export const V2_REQUIRED_MIGRATION_TABLES: Array<{ table: string; label: string;
   { table: 'playback_evidence', label: 'Playback Evidence', migrationHint: '20260713120000_playback_evidence_engine.sql' },
   { table: 'playback_reports', label: 'Playback Reports', migrationHint: '20260713120000_playback_evidence_engine.sql' },
   { table: 'playback_queues', label: 'Playback Queues', migrationHint: '20260713120000_playback_evidence_engine.sql' },
+  { table: 'v2_curator_linked_playlists', label: 'Curator Linked Playlists', migrationHint: '20260713140000_v2_curator_rooms.sql' },
 ]
 
 const UNIQUE_TABLES = Array.from(

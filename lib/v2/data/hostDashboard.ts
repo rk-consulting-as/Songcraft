@@ -50,34 +50,65 @@ export async function fetchHostDashboard(userId: string): Promise<V2HostDashboar
   })
   const sessionIds = sessions.map(s => s.id)
 
-  const { data: pendingRows } = sessionIds.length
-    ? await sb
-      .from('v2_session_songs')
-      .select('id, title, artist_name, status, created_at, session_id, v2_sessions(title)')
-      .eq('status', 'pending')
-      .in('session_id', sessionIds)
-      .order('created_at', { ascending: false })
-      .limit(24)
-    : { data: [] }
   const playlistRooms = (roomRows || []).map(row => {
     const circleRaw = (row as { v2_circles?: { slug: string } | { slug: string }[] }).v2_circles
     const circle = Array.isArray(circleRaw) ? circleRaw[0] : circleRaw
     return mapPlaylistRoomRow(row as Record<string, unknown>, circle)
   })
+  const roomIds = playlistRooms.map(r => r.id)
 
-  const pendingSubmissions: V2HostPendingSubmission[] = (pendingRows || []).map(row => {
-    const sessionRaw = (row as { v2_sessions?: { title?: string } | { title?: string }[] }).v2_sessions
-    const sessionTitle = Array.isArray(sessionRaw) ? sessionRaw[0]?.title : sessionRaw?.title
-    return {
-      id: row.id as string,
-      title: row.title as string,
-      artistName: (row.artist_name as string) || '',
-      sessionId: row.session_id as string,
-      sessionTitle: sessionTitle || 'Session',
-      status: row.status as V2HostPendingSubmission['status'],
-      createdAt: row.created_at as string,
-    }
-  })
+  const [{ data: pendingRows }, { data: roomPendingRows }] = await Promise.all([
+    sessionIds.length
+      ? sb
+        .from('v2_session_songs')
+        .select('id, title, artist_name, status, created_at, session_id, v2_sessions(title)')
+        .eq('status', 'pending')
+        .in('session_id', sessionIds)
+        .order('created_at', { ascending: false })
+        .limit(24)
+      : Promise.resolve({ data: [] }),
+    roomIds.length
+      ? sb
+        .from('v2_playlist_room_items')
+        .select('id, title, artist_name, status, created_at, room_id, v2_playlist_rooms(slug, name)')
+        .in('status', ['pending', 'reviewing'])
+        .in('room_id', roomIds)
+        .order('created_at', { ascending: false })
+        .limit(24)
+      : Promise.resolve({ data: [] }),
+  ])
+
+  const pendingSubmissions: V2HostPendingSubmission[] = [
+    ...(pendingRows || []).map(row => {
+      const sessionRaw = (row as { v2_sessions?: { title?: string } | { title?: string }[] }).v2_sessions
+      const sessionTitle = Array.isArray(sessionRaw) ? sessionRaw[0]?.title : sessionRaw?.title
+      return {
+        id: row.id as string,
+        title: row.title as string,
+        artistName: (row.artist_name as string) || '',
+        sessionId: row.session_id as string,
+        sessionTitle: sessionTitle || 'Session',
+        targetType: 'session' as const,
+        status: row.status as V2HostPendingSubmission['status'],
+        createdAt: row.created_at as string,
+      }
+    }),
+    ...(roomPendingRows || []).map(row => {
+      const roomRaw = (row as { v2_playlist_rooms?: { slug: string; name: string } | { slug: string; name: string }[] }).v2_playlist_rooms
+      const room = Array.isArray(roomRaw) ? roomRaw[0] : roomRaw
+      return {
+        id: row.id as string,
+        title: row.title as string,
+        artistName: (row.artist_name as string) || '',
+        roomId: row.room_id as string,
+        roomSlug: room?.slug,
+        roomName: room?.name || 'Curator Room',
+        targetType: 'playlist_room' as const,
+        status: row.status as V2HostPendingSubmission['status'],
+        createdAt: row.created_at as string,
+      }
+    }),
+  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
   const upcomingSessions = sessions.filter(s => s.status !== 'ended').slice(0, 8)
 

@@ -172,7 +172,106 @@ export type V2PlaylistRoom = {
   ownerUserId?: string
   roundStatus?: 'active' | 'completed'
   lastCompletedAt?: string
+  submissionOpen?: boolean
+  roomMeta?: V2CuratorRoomMeta
+  currentSnapshotId?: string
 }
+
+export type V2CuratorSubmissionStatus =
+  | 'pending'
+  | 'reviewing'
+  | 'shortlisted'
+  | 'accepted'
+  | 'rejected'
+  | 'added_to_playlist'
+  | 'removed_from_playlist'
+  | 'approved'
+  | 'removed'
+
+export type V2CuratorLinkedPlaylistSyncStatus =
+  | 'connected'
+  | 'manual'
+  | 'sync_unavailable'
+  | 'needs_configuration'
+
+export type V2CuratorLinkedPlaylist = {
+  id: string
+  roomId: string
+  platform: PlatformTag | 'other'
+  playlistUrl: string
+  externalPlaylistId?: string
+  title?: string
+  description?: string
+  coverImageUrl?: string
+  curatorName?: string
+  syncStatus: V2CuratorLinkedPlaylistSyncStatus
+  lastSyncedAt?: string
+  trackCount: number
+  totalDurationSeconds: number
+  latestSnapshotId?: string
+  position: number
+}
+
+export type V2CuratorRoomMeta = {
+  dna?: import('@/lib/v2/curatorMatching/curatorMatchTypes').CuratorPlaylistDna
+  introduction?: string
+  lookingFor?: string
+  submissionGuidelines?: string
+  weeklyNote?: string
+  selectionNotes?: string
+  privateNotes?: string
+  tags?: string[]
+}
+
+export type V2CuratorSubmission = {
+  id: string
+  roomId: string
+  songId?: string
+  title: string
+  artistName: string
+  position: number
+  status: V2CuratorSubmissionStatus
+  pitch?: string
+  curatorNote?: string
+  curatorNoteShared?: boolean
+  externalUrl?: string
+  submittedBy?: string
+  submittedByName?: string
+  createdAt: string
+  playedAt?: string
+  featured?: boolean
+  sessionId?: string
+  externalAddedAt?: string
+  aiMatch?: import('@/lib/v2/curatorMatching/curatorMatchTypes').CuratorMatchResult
+  feedbackCount?: number
+}
+
+export type V2CuratorRoomDashboard = {
+  room: V2PlaylistRoom
+  linkedPlaylists: V2CuratorLinkedPlaylist[]
+  submissions: V2CuratorSubmission[]
+  playlistItems: V2CuratorSubmission[]
+  saveCount: number
+  followerCount: number
+  memberCount: number
+  upcomingSession?: V2Session | null
+  recentSessions: V2Session[]
+  hostName?: string
+  visibility?: CircleVisibility
+}
+
+/** Safe public labels — Curator Rooms 2.0 */
+export const CURATOR_LABELS = {
+  room: 'Curator Room',
+  rooms: 'Curator Rooms',
+  evidence: 'Playback Evidence',
+  activity: 'Listening Activity',
+  participation: 'Playlist Participation',
+  review: 'Curator Review',
+  support: 'Community Support',
+  aiMatch: 'AI Match',
+  aiMatchAdvisory: 'Metadata-based match',
+} as const
 
 export type V2SupporterBadgeId =
   | 'new_supporter'
@@ -230,9 +329,13 @@ export type V2HostPendingSubmission = {
   id: string
   title: string
   artistName: string
-  sessionId: string
-  sessionTitle: string
-  status: V2SubmissionStatus
+  sessionId?: string
+  sessionTitle?: string
+  roomId?: string
+  roomSlug?: string
+  roomName?: string
+  targetType: 'session' | 'playlist_room'
+  status: V2SubmissionStatus | V2CuratorSubmissionStatus
   createdAt: string
 }
 
@@ -361,6 +464,12 @@ export type V2CommunityNotificationKind =
   | 'followed_host_session_live'
   | 'saved_session_starting_soon'
   | 'saved_playlist_round_completed'
+  | 'curator_submission_shortlisted'
+  | 'curator_submission_accepted'
+  | 'curator_submission_rejected'
+  | 'curator_song_added_to_playlist'
+  | 'curator_session_scheduled'
+  | 'curator_feedback_received'
 
 export type V2SavedEntityType = 'session' | 'playlist_room'
 

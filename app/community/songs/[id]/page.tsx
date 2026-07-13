@@ -7,7 +7,10 @@ import V2SupporterProfileCard from '@/components/v2/V2SupporterProfileCard'
 import V2PlaybackContextSection from '@/components/playback/V2PlaybackContextSection'
 import { fetchSongFeedback } from '@/lib/v2/data/feedback'
 import { fetchUserCommunityProfile } from '@/lib/v2/data/supporters'
+import { fetchUserCuratorSubmissions } from '@/lib/v2/data/curatorRooms'
 import { fetchCommunitySongById } from '@/lib/v2/data/songs'
+import V2CuratorAiMatchBadge from '@/components/v2/V2CuratorAiMatchBadge'
+import { CURATOR_LABELS } from '@/lib/v2/types'
 import { V2_ROUTES } from '@/lib/v2/routes'
 import { createServerSupabase } from '@/lib/supabase/server'
 
@@ -24,6 +27,9 @@ export default async function SongDetailPage({ params }: Props) {
 
   const songId = song.legacySongId || song.id
   const feedback = fromMock ? [] : await fetchSongFeedback(songId)
+  const curatorSubmissions = user && song.legacySongId && !fromMock
+    ? await fetchUserCuratorSubmissions(user.id, song.legacySongId)
+    : []
   let isOwner = false
   let myProfile = null
   if (!fromMock && user) {
@@ -99,6 +105,28 @@ export default async function SongDetailPage({ params }: Props) {
           contextId={song.legacySongId}
           isLoggedIn={!!user}
         />
+      )}
+
+      {curatorSubmissions.length > 0 && (
+        <section className="v2-section">
+          <V2SectionHeader title={`Submitted to ${CURATOR_LABELS.rooms}`} lead="Your curator review status across rooms." />
+          <div className="v2-card">
+            {curatorSubmissions.map(sub => (
+              <div key={sub.id} className="v2-track">
+                <span className="num">♫</span>
+                <div>
+                  <b>{sub.roomName || 'Curator Room'}</b>
+                  <span>{sub.status.replace(/_/g, ' ')} · {new Date(sub.createdAt).toLocaleDateString()}</span>
+                  {sub.curatorNoteShared && sub.curatorNote && <span className="v2-meta">{sub.curatorNote}</span>}
+                </div>
+                {sub.aiMatch && <V2CuratorAiMatchBadge match={sub.aiMatch} compact />}
+                {sub.roomSlug && (
+                  <Link href={V2_ROUTES.playlistRoom(sub.roomSlug)} className="v2-btn secondary sm">Open room</Link>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       <section className="v2-section">

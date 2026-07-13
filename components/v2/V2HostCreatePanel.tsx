@@ -56,7 +56,7 @@ export default function V2HostCreatePanel({ access, circles }: Props) {
           <p className="v2-meta" style={{ marginTop: 0 }}>
             {access.softGating
               ? 'Host Pro billing is in beta — you can create while plans finalize. Upgrade for full curator tools.'
-              : 'Create circles, sessions and playlist rooms with Host Pro.'}
+              : 'Create circles, sessions and Curator Rooms with Host Pro.'}
           </p>
           <Link href={V2_ROUTES.pricing} className="v2-btn hot sm">View Host Pro</Link>
         </div>
@@ -127,7 +127,7 @@ export default function V2HostCreatePanel({ access, circles }: Props) {
           </button>
         </div>
         <div className="v2-card">
-          <h5 style={{ margin: '0 0 8px' }}>Playlist room</h5>
+          <h5 style={{ margin: '0 0 8px' }}>Curator Room</h5>
           <input className="v2-input" placeholder="Room name" value={roomName} onChange={e => setRoomName(e.target.value)} style={{ width: '100%', marginBottom: 8 }} />
           {circles.length > 0 && (
             <select className="v2-input" value={roomCircleId} onChange={e => setRoomCircleId(e.target.value)} style={{ width: '100%', marginBottom: 8 }}>
@@ -138,7 +138,7 @@ export default function V2HostCreatePanel({ access, circles }: Props) {
             type="button"
             className="v2-btn secondary sm"
             disabled={busy || !roomName.trim()}
-            onClick={() => create('/api/v2/community/host/playlist-rooms', { name: roomName, circle_id: roomCircleId || undefined }, 'Playlist room')}
+            onClick={() => create('/api/v2/community/host/playlist-rooms', { name: roomName, circle_id: roomCircleId || undefined }, 'Curator Room')}
           >
             Create room
           </button>

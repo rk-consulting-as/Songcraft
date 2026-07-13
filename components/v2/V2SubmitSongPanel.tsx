@@ -15,12 +15,14 @@ type Props = {
   target: Target
   songs: V2Song[]
   demoMode?: boolean
+  showPitch?: boolean
 }
 
-export default function V2SubmitSongPanel({ target, songs, demoMode }: Props) {
+export default function V2SubmitSongPanel({ target, songs, demoMode, showPitch }: Props) {
   const router = useRouter()
   const { showToast } = useV2Toast()
   const [songId, setSongId] = useState(songs[0]?.legacySongId || songs[0]?.id || '')
+  const [pitch, setPitch] = useState('')
   const [busy, setBusy] = useState(false)
 
   const endpoint = target.type === 'circle'
@@ -40,7 +42,13 @@ export default function V2SubmitSongPanel({ target, songs, demoMode }: Props) {
     }
     setBusy(true)
     try {
-      await v2ApiFetch(endpoint, { method: 'POST', body: JSON.stringify({ song_id: songId }) })
+      await v2ApiFetch(endpoint, {
+        method: 'POST',
+        body: JSON.stringify({
+          song_id: songId,
+          pitch: showPitch && target.type === 'playlist' ? pitch.trim() || undefined : undefined,
+        }),
+      })
       showToast(`Submitted to ${target.label}`)
       router.refresh()
     } catch (e) {
@@ -72,6 +80,17 @@ export default function V2SubmitSongPanel({ target, songs, demoMode }: Props) {
           <option key={s.id} value={s.legacySongId || s.id}>{s.title} — {s.artistName}</option>
         ))}
       </select>
+      {showPitch && target.type === 'playlist' && (
+        <textarea
+          className="v2-input"
+          rows={3}
+          placeholder="Short pitch for the curator (optional)"
+          value={pitch}
+          onChange={e => setPitch(e.target.value)}
+          maxLength={500}
+          style={{ width: '100%', marginTop: 8 }}
+        />
+      )}
       <button type="button" className="v2-btn hot sm" style={{ marginTop: 12 }} onClick={submit} disabled={busy}>
         {busy ? 'Submitting…' : `Submit to ${target.label}`}
       </button>

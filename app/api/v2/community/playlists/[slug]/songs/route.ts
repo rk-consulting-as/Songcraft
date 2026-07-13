@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireV2User, v2ServiceClient } from '@/lib/v2/apiAuth'
+import { buildSongMatchContext, calculateCuratorMatch, roomDnaFromMeta } from '@/lib/v2/curatorMatching'
+import { buildPlaylistRoomSubmissionAdded } from '@/lib/v2/communityNotifications'
+import { createManyCommunityNotifications } from '@/lib/v2/data/communityNotifications'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 async function resolveRoom(slug: string) {
   const sb = v2ServiceClient()
-  return sb.from('v2_playlist_rooms').select('id, slug, name, circle_id').eq('slug', slug).maybeSingle()
+  return sb.from('v2_playlist_rooms').select('id, slug, name, circle_id, owner_user_id, room_meta, submission_open').eq('slug', slug).maybeSingle()
 }
 
 export async function POST(req: NextRequest, { params }: { params: { slug: string } }) {
@@ -20,10 +23,13 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
 
   const { data: room } = await resolveRoom(params.slug)
   if (!room) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  if (room.submission_open === false) return NextResponse.json({ error: 'submissions_closed' }, { status: 403 })
+
+  const pitch = typeof body.pitch === 'string' ? body.pitch.trim().slice(0, 500) : ''
 
   const { data: song } = await sb
     .from('songs')
-    .select('id, title, user_id, artists(name), spotify_url, media_links')
+    .select('id, title, user_id, creation_type, lyrics_instructions, publish_content, song_dna, artists(name), spotify_url, media_links')
     .eq('id', songId)
     .maybeSingle()
   if (!song || song.user_id !== userId) return NextResponse.json({ error: 'song_not_owned' }, { status: 403 })
@@ -31,6 +37,18 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
   const artistRow = (song as { artists?: { name: string } | { name: string }[] | null }).artists
   const artistName = Array.isArray(artistRow) ? artistRow[0]?.name : artistRow?.name
   const externalUrl = (song as { spotify_url?: string }).spotify_url || null
+
+  const roomDna = roomDnaFromMeta((room.room_meta as Record<string, unknown>) || {})
+  const matchContext = buildSongMatchContext({
+    title: song.title as string,
+    artistName: artistName || 'Artist',
+    pitch: pitch || null,
+    songDna: (song as { song_dna?: unknown }).song_dna,
+    creationType: (song as { creation_type?: string }).creation_type,
+    lyricsInstructions: (song as { lyrics_instructions?: string }).lyrics_instructions,
+    publishContent: (song as { publish_content?: unknown }).publish_content,
+  })
+  const aiMatch = calculateCuratorMatch(roomDna, matchContext)
 
   const { count } = await sb
     .from('v2_playlist_room_items')
@@ -47,6 +65,10 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
       artist_name: artistName || 'Artist',
       external_url: externalUrl,
       submitted_by: userId,
+      status: 'pending',
+      pitch: pitch || null,
+      song_dna_snapshot: (song as { song_dna?: unknown }).song_dna || null,
+      ai_match: aiMatch,
     })
     .select('id, position')
     .single()
@@ -55,7 +77,29 @@ export async function POST(req: NextRequest, { params }: { params: { slug: strin
 
   await sb.from('v2_playlist_rooms').update({ track_count: (count || 0) + 1 }).eq('id', room.id)
 
-  return NextResponse.json({ item: data })
+  if (room.owner_user_id) {
+    await createManyCommunityNotifications(sb, [
+      {
+        userId: room.owner_user_id,
+        kind: 'host_submission_pending',
+        title: `New submission for “${room.name}”.`,
+        body: `“${song.title}” is waiting for curator review.`,
+        ctaLabel: 'Open Curator Workspace',
+        ctaHref: `/community/playlists/${room.slug}`,
+        entityType: 'playlist_room',
+        entityId: room.id,
+        metadata: { songTitle: song.title },
+      },
+      buildPlaylistRoomSubmissionAdded({
+        userId,
+        roomSlug: room.slug,
+        roomName: room.name,
+        songTitle: song.title as string,
+      }),
+    ])
+  }
+
+  return NextResponse.json({ item: data, ai_match: aiMatch })
 }
 
 export async function GET(_req: NextRequest, { params }: { params: { slug: string } }) {

@@ -1962,3 +1962,63 @@ body.v2-community-page .chat-dock-root {
 .v2-playback-controls {
   border-color: rgba(139, 92, 246, 0.25);
 }
+
+/* Phase 6B — Curator Rooms */
+.v2-curator-match {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid var(--v2-stroke);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.v2-curator-match--high { border-color: rgba(68, 229, 154, 0.35); }
+.v2-curator-match--medium { border-color: rgba(0, 229, 255, 0.35); }
+.v2-curator-match--low { border-color: rgba(167, 172, 196, 0.35); }
+
+.v2-curator-match__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.v2-curator-match__list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--v2-muted);
+}
+
+.v2-curator-match__list--warn { color: #ffb4c8; }
+
+.v2-curator-review__toolbar {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.v2-curator-review__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.v2-curator-review__card h3 {
+  font-size: 22px;
+}
+
+.v2-curator-review__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+@media (max-width: 768px) {
+  .v2-curator-review__actions .v2-btn {
+    flex: 1 1 calc(50% - 8px);
+    justify-content: center;
+  }
+}

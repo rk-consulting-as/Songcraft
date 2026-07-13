@@ -17,14 +17,22 @@ export default function V2HostPendingPanel({ submissions }: Props) {
   const { showToast } = useV2Toast()
   const [busy, setBusy] = useState<string | null>(null)
 
-  const review = async (submission: V2HostPendingSubmission, status: 'approved' | 'removed') => {
+  const review = async (submission: V2HostPendingSubmission, status: 'approved' | 'removed' | 'shortlisted' | 'rejected') => {
     setBusy(submission.id)
     try {
-      await v2ApiFetch(`/api/v2/community/sessions/${submission.sessionId}/songs`, {
-        method: 'PATCH',
-        body: JSON.stringify({ row_id: submission.id, status }),
-      })
-      showToast(status === 'approved' ? 'Approved' : 'Removed')
+      if (submission.targetType === 'playlist_room' && submission.roomSlug) {
+        const mapped = status === 'approved' ? 'shortlisted' : status === 'removed' ? 'rejected' : status
+        await v2ApiFetch(`/api/v2/community/playlists/${submission.roomSlug}/items/${submission.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: mapped }),
+        })
+      } else if (submission.sessionId) {
+        await v2ApiFetch(`/api/v2/community/sessions/${submission.sessionId}/songs`, {
+          method: 'PATCH',
+          body: JSON.stringify({ row_id: submission.id, status: status === 'shortlisted' ? 'approved' : status }),
+        })
+      }
+      showToast('Updated')
       router.refresh()
     } catch (e) {
       showToast(formatV2ApiError(e))
@@ -41,11 +49,17 @@ export default function V2HostPendingPanel({ submissions }: Props) {
           <span className="num">♪</span>
           <div>
             <b>{s.title}</b>
-            <span>{s.artistName} · {s.sessionTitle}</span>
+            <span>{s.artistName} · {s.targetType === 'playlist_room' ? s.roomName : s.sessionTitle}</span>
           </div>
-          <button type="button" className="v2-btn sm hot" disabled={busy === s.id} onClick={() => review(s, 'approved')}>Approve</button>
-          <button type="button" className="v2-btn sm secondary" disabled={busy === s.id} onClick={() => review(s, 'removed')}>Remove</button>
-          <Link href={V2_ROUTES.session(s.sessionId)} className="v2-btn sm secondary">Open</Link>
+          <button type="button" className="v2-btn sm hot" disabled={busy === s.id} onClick={() => review(s, s.targetType === 'playlist_room' ? 'shortlisted' : 'approved')}>
+            {s.targetType === 'playlist_room' ? 'Shortlist' : 'Approve'}
+          </button>
+          <button type="button" className="v2-btn sm secondary" disabled={busy === s.id} onClick={() => review(s, 'removed')}>Decline</button>
+          {s.targetType === 'playlist_room' && s.roomSlug ? (
+            <Link href={V2_ROUTES.playlistRoom(s.roomSlug)} className="v2-btn sm secondary">Curator Workspace</Link>
+          ) : s.sessionId ? (
+            <Link href={V2_ROUTES.session(s.sessionId)} className="v2-btn sm secondary">Open</Link>
+          ) : null}
         </div>
       ))}
     </div>
