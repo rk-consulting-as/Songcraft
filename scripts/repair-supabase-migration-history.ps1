@@ -119,6 +119,112 @@ function Write-Log {
   if ($script:LogPath) { Add-Content -Path $script:LogPath -Value $line }
 }
 
+function Invoke-NativeCommand {
+  <#
+    Run a native process without PowerShell stderr-to-error-record conversion.
+    Success is determined solely by the process exit code.
+  #>
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$FileName,
+    [string[]]$ArgumentList = @(),
+    [string]$WorkingDirectory = $ProjectRoot
+  )
+
+  $escapedArgs = $ArgumentList | ForEach-Object {
+    if ($_ -match '[\s"]') { '"' + ($_ -replace '"', '\"') + '"' } else { $_ }
+  }
+  $argumentString = [string]::Join(' ', $escapedArgs)
+
+  $psi = New-Object System.Diagnostics.ProcessStartInfo
+  $psi.FileName = $FileName
+  $psi.Arguments = $argumentString
+  $psi.UseShellExecute = $false
+  $psi.RedirectStandardOutput = $true
+  $psi.RedirectStandardError = $true
+  $psi.CreateNoWindow = $true
+  $psi.WorkingDirectory = $WorkingDirectory
+
+  $process = New-Object System.Diagnostics.Process
+  $process.StartInfo = $psi
+  [void]$process.Start()
+
+  $stdout = $process.StandardOutput.ReadToEnd()
+  $stderr = $process.StandardError.ReadToEnd()
+  $process.WaitForExit()
+
+  return [PSCustomObject]@{
+    ExitCode = $process.ExitCode
+    StdOut   = $stdout.TrimEnd()
+    StdErr   = $stderr.TrimEnd()
+    Command  = "$FileName $argumentString"
+  }
+}
+
+function Write-CommandOutput {
+  param(
+    [string]$StdOut,
+    [string]$StdErr
+  )
+
+  if ($StdOut) {
+    foreach ($line in $StdOut -split "`r?`n") {
+      if ($line.Length -gt 0) { Write-Log "STDOUT: $line" }
+    }
+  }
+  if ($StdErr) {
+    foreach ($line in $StdErr -split "`r?`n") {
+      if ($line.Length -gt 0) { Write-Log "STDERR: $line" }
+    }
+  }
+}
+
+function Get-RemoteMigrationVersions {
+  Write-Log 'Fetching remote migration history (read-only)...'
+  $result = Invoke-NativeCommand -FileName 'npx' -ArgumentList @('supabase', 'migration', 'list')
+  Write-Log "CMD: $($result.Command)"
+  Write-CommandOutput -StdOut $result.StdOut -StdErr $result.StdErr
+
+  if ($result.ExitCode -ne 0) {
+    throw "Failed to fetch remote migration list (exit $($result.ExitCode))."
+  }
+
+  $remoteVersions = New-Object 'System.Collections.Generic.HashSet[string]'
+  $combined = @()
+  if ($result.StdOut) { $combined += $result.StdOut -split "`r?`n" }
+  if ($result.StdErr) { $combined += $result.StdErr -split "`r?`n" }
+
+  foreach ($line in $combined) {
+    if ($line -match '^\s*\{"migrations"') {
+      $parsed = $line | ConvertFrom-Json
+      foreach ($m in $parsed.migrations) {
+        if (-not [string]::IsNullOrWhiteSpace($m.remote)) {
+          [void]$remoteVersions.Add([string]$m.remote)
+        }
+      }
+    }
+  }
+
+  return @($remoteVersions | Sort-Object)
+}
+
+function Invoke-MigrationRepair {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Version
+  )
+
+  $result = Invoke-NativeCommand -FileName 'npx' -ArgumentList @(
+    'supabase', 'migration', 'repair', '--status', 'applied', $Version
+  )
+
+  Write-Log "CMD: $($result.Command)"
+  Write-CommandOutput -StdOut $result.StdOut -StdErr $result.StdErr
+  Write-Log "EXIT: $($result.ExitCode)"
+
+  return $result
+}
+
 Set-Location $ProjectRoot
 Write-Host "Project root: $(Get-Location)"
 
@@ -133,8 +239,14 @@ Write-Log "Log file: $script:LogPath"
 Write-Log "Mode: $(if ($Execute) { 'EXECUTE' } else { 'DRY-RUN' })"
 
 Write-Log '--- git status ---'
-$status = git status --porcelain 2>&1
-$status | ForEach-Object { Write-Log $_ }
+$gitResult = Invoke-NativeCommand -FileName 'git' -ArgumentList @('status', '--porcelain')
+if ($gitResult.StdOut) {
+  $gitResult.StdOut -split "`r?`n" | Where-Object { $_.Length -gt 0 } | ForEach-Object { Write-Log $_ }
+}
+if ($gitResult.StdErr) {
+  $gitResult.StdErr -split "`r?`n" | Where-Object { $_.Length -gt 0 } | ForEach-Object { Write-Log "STDERR: $_" }
+}
+$status = $gitResult.StdOut
 
 if ($status -and -not $Force) {
   throw "Working tree is dirty. Commit or stash changes, or pass -Force."
@@ -172,6 +284,22 @@ if ($confirmAll -ne 'YES') {
   exit 1
 }
 
+$script:LastSuccessfulVersion = $null
+$script:RemoteVersions = New-Object 'System.Collections.Generic.HashSet[string]'
+foreach ($v in $AlreadyOnRemoteVersions) { [void]$script:RemoteVersions.Add($v) }
+
+Write-Log ''
+Write-Log '--- loading remote migration history for resume safety ---'
+try {
+  foreach ($v in (Get-RemoteMigrationVersions)) {
+    [void]$script:RemoteVersions.Add($v)
+  }
+  Write-Log "Remote versions currently recorded: $($script:RemoteVersions.Count)"
+} catch {
+  Write-Log "WARN: Could not load remote migration list: $_"
+  Write-Log 'Proceeding without pre-check; repeated repair may still be safe if CLI no-ops.'
+}
+
 $batchSize = 10
 for ($i = 0; $i -lt $RepairVersions.Count; $i += $batchSize) {
   $batch = $RepairVersions[$i..([Math]::Min($i + $batchSize - 1, $RepairVersions.Count - 1))]
@@ -184,20 +312,40 @@ for ($i = 0; $i -lt $RepairVersions.Count; $i += $batchSize) {
     continue
   }
   foreach ($v in $batch) {
-    Write-Log "RUN: npx supabase migration repair --status applied $v"
-    $output = npx supabase migration repair --status applied $v 2>&1
-    $output | ForEach-Object { Write-Log $_ }
-    if ($LASTEXITCODE -ne 0) {
-      Write-Log "ERROR: repair failed for version $v (exit $LASTEXITCODE)"
-      throw "Migration repair failed for $v"
+    if ($script:RemoteVersions.Contains($v)) {
+      Write-Log "SKIP: $v already recorded remotely"
+      $script:LastSuccessfulVersion = $v
+      continue
     }
+
+    Write-Log "RUN: npx supabase migration repair --status applied $v"
+    $result = Invoke-MigrationRepair -Version $v
+    if ($result.ExitCode -ne 0) {
+      Write-Log "ERROR: repair failed for version $v (exit $($result.ExitCode))"
+      Write-Log "FAILED COMMAND: $($result.Command)"
+      if ($script:LastSuccessfulVersion) {
+        Write-Log "Last successfully repaired version: $script:LastSuccessfulVersion"
+        Write-Host "Last successfully repaired version: $script:LastSuccessfulVersion" -ForegroundColor Yellow
+      } else {
+        Write-Log 'Last successfully repaired version: none in this run'
+        Write-Host 'Last successfully repaired version: none in this run' -ForegroundColor Yellow
+      }
+      exit 1
+    }
+
+    [void]$script:RemoteVersions.Add($v)
+    $script:LastSuccessfulVersion = $v
+    Write-Log "OK: version $v marked applied"
   }
 }
 
 Write-Log ''
 Write-Log '--- post-repair migration list ---'
-$list = npx supabase migration list 2>&1
-$list | ForEach-Object { Write-Log $_ }
+try {
+  Get-RemoteMigrationVersions | Out-Null
+} catch {
+  Write-Log "WARN: post-repair migration list failed: $_"
+}
 
 Write-Log ''
 Write-Log 'Repair complete. Run scripts/verify-supabase-migration-repair.ps1 next.'
