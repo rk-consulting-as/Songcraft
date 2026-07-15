@@ -103,6 +103,15 @@ $ManualReviewVersions = @(
   '20260706200000'      # v2 beta readiness seed inserts
 )
 
+# Already recorded in remote schema_migrations — no repair command needed.
+$AlreadyOnRemoteVersions = @(
+  '20260428'
+)
+
+$RepairVersions = @(
+  $VerifiedVersions | Where-Object { $_ -notin $AlreadyOnRemoteVersions }
+)
+
 function Write-Log {
   param([string]$Message)
   $line = "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $Message"
@@ -132,13 +141,20 @@ if ($status -and -not $Force) {
 }
 
 Write-Log ''
-Write-Log "Verified versions to mark applied: $($VerifiedVersions.Count)"
+Write-Log "Verified schema-applied versions: $($VerifiedVersions.Count)"
+Write-Log "Already on remote (skipped): $($AlreadyOnRemoteVersions -join ', ')"
+Write-Log "Repair commands to run: $($RepairVersions.Count)"
 Write-Log "Manual review (skipped): $($ManualReviewVersions -join ', ')"
 
-# Skip versions already on remote (20260428 is expected pre-repair)
+Write-Log ''
+Write-Log '--- already on remote (no repair command) ---'
+foreach ($v in $AlreadyOnRemoteVersions) {
+  Write-Log "SKIP: $v - already recorded remotely"
+}
+
 Write-Log ''
 Write-Log '--- planned repair commands ---'
-foreach ($v in $VerifiedVersions) {
+foreach ($v in $RepairVersions) {
   $cmd = "npx supabase migration repair --status applied $v"
   Write-Log $cmd
 }
@@ -150,15 +166,15 @@ if (-not $Execute) {
 }
 
 Write-Host ''
-$confirmAll = Read-Host "Execute $($VerifiedVersions.Count) migration repair commands? Type YES to continue"
+$confirmAll = Read-Host "Execute $($RepairVersions.Count) migration repair commands? Type YES to continue"
 if ($confirmAll -ne 'YES') {
   Write-Log 'Aborted by user.'
   exit 1
 }
 
 $batchSize = 10
-for ($i = 0; $i -lt $VerifiedVersions.Count; $i += $batchSize) {
-  $batch = $VerifiedVersions[$i..([Math]::Min($i + $batchSize - 1, $VerifiedVersions.Count - 1))]
+for ($i = 0; $i -lt $RepairVersions.Count; $i += $batchSize) {
+  $batch = $RepairVersions[$i..([Math]::Min($i + $batchSize - 1, $RepairVersions.Count - 1))]
   Write-Host ''
   Write-Host "Next batch ($($batch.Count) versions):"
   $batch | ForEach-Object { Write-Host "  $_" }

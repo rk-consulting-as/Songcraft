@@ -11,22 +11,23 @@
 
 | Category | Count | Action |
 |----------|------:|--------|
-| Verified applied (repair) | 62 | `migration repair --status applied` |
+| Verified schema-applied | 62 | Schema effects confirmed on remote |
+| Repair commands (`migration repair`) | 61 | Mark missing versions as applied |
 | Manual review required | 3 | Verify seed/duplicate DDL before repair |
-| Remote pre-existing | 1 | `20260428` already on remote — skip or no-op |
+| Already on remote (skip repair) | 1 | `20260428` — no command needed |
 | **Total local migrations** | **65** | |
 
 After repair, `db push` should be safe **except** for the 3 manual-review versions (if still local-only).
 
 ---
 
-## Verified applied (62 versions)
+## Verified schema-applied (62 versions)
 
-These migrations' schema effects are confirmed on remote. Mark as applied **without re-running SQL**.
+These migrations' schema effects are confirmed on remote. **61** require `migration repair`; **`20260428`** is already on remote.
 
 | Version | Filename | Expected object(s) | Verification evidence | Action |
 |---------|----------|-------------------|----------------------|--------|
-| `20260428` | `20260428_albums.sql` | `albums`, `songs.album_id` | Remote history + `albums` EXISTS | **Already on remote** |
+| `20260428` | `20260428_albums.sql` | `albums`, `songs.album_id` | Remote history + `albums` EXISTS | **Already on remote — skip repair** |
 | `20260428100000` | `20260428100000_artist_spotify_links.sql` | `artists.spotify_url`, etc. | Column EXISTS | repair applied |
 | `20260428100100` | `20260428100100_song_spotify_import.sql` | `songs.spotify_track_id`, etc. | Column EXISTS | repair applied |
 | `20260429100000` | `20260429100000_artist_public_page.sql` | `artists.page_slug`, page cols | Production artist pages | repair applied |
@@ -108,9 +109,13 @@ Do **not** auto-repair until verification section 10 passes.
 
 ## Repair command order
 
-Run via `scripts/repair-supabase-migration-history.ps1 -Execute` (skips `20260428` if already remote).
+Run via `scripts/repair-supabase-migration-history.ps1 -Execute`.
 
-Chronological order matches the `$VerifiedVersions` array in the PowerShell script (62 entries; `20260428` included for completeness — CLI may no-op if already applied).
+- **61** `migration repair --status applied` commands (verified versions missing from remote)
+- **`20260428`** skipped — already recorded remotely
+- **3** manual-review versions excluded
+
+Chronological order matches the `$RepairVersions` array in the PowerShell script.
 
 ---
 

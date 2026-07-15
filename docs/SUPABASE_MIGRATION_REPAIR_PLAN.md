@@ -327,10 +327,10 @@ For each migration where verification returned **EXISTS**, mark applied:
 
 ```bash
 # DO NOT RUN YET — example pattern only
-supabase migration repair --status applied 20260428
+# 20260428 already on remote — skip repair
 supabase migration repair --status applied 20260428100000
 supabase migration repair --status applied 20260428100100
-# ... continue in chronological order for every verified migration
+# ... continue in chronological order for every other verified migration
 ```
 
 **Critical rules:**
@@ -543,7 +543,7 @@ cd C:\Users\runek\OneDrive\Dokumenter\GitHub\Songcraft
 .\scripts\repair-supabase-migration-history.ps1
 ```
 
-Prints 62 `migration repair --status applied` commands. **Does not modify remote.**
+Prints **61** `migration repair --status applied` commands. Skips **`20260428`** (already on remote). **Does not modify remote.**
 
 ### Execute (after review)
 
@@ -589,7 +589,7 @@ After section 10 SQL checks in `verify-remote-migrations.sql`:
 
 | Scenario | `db push` |
 |----------|-----------|
-| All 62 verified + 3 manual marked applied | No pending migrations |
-| 62 verified only; 3 manual unapplied | May attempt seed INSERTs — review first |
+| 61 repair commands + 3 manual marked applied | No pending migrations |
+| 61 repair commands only; 3 manual unapplied | May attempt seed INSERTs — review first |
 | Repair not run | **Unsafe** — duplicate version / replay errors |
 
